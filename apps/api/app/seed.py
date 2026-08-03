@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Service, Tenant, User, UserRole
+from app.models import Resource, Service, Tenant, User, UserRole
 from app.security import hash_password
 
 
@@ -116,5 +116,17 @@ def bootstrap(db: Session) -> None:
                 svc.category = "Treatments"
             else:
                 svc.category = "General"
+
+    if db.query(Resource).filter(Resource.tenant_id == vendor.id).count() == 0:
+        db.add_all(
+            [
+                Resource(tenant_id=vendor.id, name="Room 1", kind="room", sort_order=1),
+                Resource(tenant_id=vendor.id, name="Room 2", kind="room", sort_order=2),
+                Resource(tenant_id=vendor.id, name="Tattoo Bay A", kind="room", sort_order=3),
+                Resource(tenant_id=vendor.id, name="Aisha", kind="person", sort_order=1),
+                Resource(tenant_id=vendor.id, name="Wei", kind="person", sort_order=2),
+                Resource(tenant_id=vendor.id, name="Rafi", kind="person", sort_order=3),
+            ]
+        )
 
     db.commit()

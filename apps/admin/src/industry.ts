@@ -11,6 +11,10 @@ export type IndustryProfile = {
   showDuration: boolean;
   showDeposit: boolean;
   supportsCartQty: boolean;
+  supportsResources: boolean;
+  resourcesNoun: string;
+  roomNoun: string;
+  personNoun: string;
 };
 
 const PROFILES: Record<IndustryKey, IndustryProfile> = {
@@ -25,6 +29,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     showDuration: true,
     showDeposit: true,
     supportsCartQty: true,
+    supportsResources: true,
+    resourcesNoun: "Rooms & staff",
+    roomNoun: "Room / bay",
+    personNoun: "Artist / therapist",
   },
   fnb: {
     key: "fnb",
@@ -37,6 +45,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     showDuration: false,
     showDeposit: false,
     supportsCartQty: true,
+    supportsResources: false,
+    resourcesNoun: "Resources",
+    roomNoun: "Station",
+    personNoun: "Staff",
   },
   retail: {
     key: "retail",
@@ -49,6 +61,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     showDuration: false,
     showDeposit: false,
     supportsCartQty: true,
+    supportsResources: false,
+    resourcesNoun: "Resources",
+    roomNoun: "Station",
+    personNoun: "Staff",
   },
   general: {
     key: "general",
@@ -61,6 +77,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     showDuration: true,
     showDeposit: true,
     supportsCartQty: true,
+    supportsResources: true,
+    resourcesNoun: "Resources",
+    roomNoun: "Room",
+    personNoun: "Staff",
   },
 };
 

@@ -131,9 +131,24 @@ class CustomerOut(CustomerIn):
     id: int
 
 
+class ResourceIn(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    kind: str = Field(pattern="^(room|person)$")
+    is_active: bool = True
+    sort_order: int = 0
+
+
+class ResourceOut(ResourceIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+
+
 class BookingIn(BaseModel):
     customer_id: int
     service_id: int | None = None
+    room_id: int | None = None
+    person_id: int | None = None
     channel: Channel = Channel.manual
     status: BookingStatus = BookingStatus.inquiry
     payment_status: PaymentStatus = PaymentStatus.unpaid
@@ -154,6 +169,8 @@ class BookingUpdate(BaseModel):
     deposit_amount: Decimal | None = None
     notes: str | None = None
     service_id: int | None = None
+    room_id: int | None = None
+    person_id: int | None = None
 
 
 class BookingOut(BaseModel):
@@ -162,6 +179,8 @@ class BookingOut(BaseModel):
     id: int
     customer_id: int
     service_id: int | None
+    room_id: int | None = None
+    person_id: int | None = None
     channel: Channel
     status: BookingStatus
     payment_status: PaymentStatus
@@ -176,6 +195,8 @@ class BookingOut(BaseModel):
     created_at: datetime
     customer: CustomerOut | None = None
     service: ServiceOut | None = None
+    room: ResourceOut | None = None
+    person: ResourceOut | None = None
 
 
 class MessageOut(BaseModel):

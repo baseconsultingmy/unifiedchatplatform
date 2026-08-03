@@ -76,6 +76,7 @@ class Tenant(Base):
     customers: Mapped[list[Customer]] = relationship(back_populates="tenant")
     bookings: Mapped[list[Booking]] = relationship(back_populates="tenant")
     conversations: Mapped[list[Conversation]] = relationship(back_populates="tenant")
+    resources: Mapped[list[Resource]] = relationship(back_populates="tenant")
 
 
 class User(Base):
@@ -129,6 +130,30 @@ class Service(Base):
     bookings: Mapped[list[Booking]] = relationship(back_populates="service")
 
 
+class Resource(Base):
+    """Assignable capacity: rooms/stations or people (therapists, tattoo artists)."""
+
+    __tablename__ = "resources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="person")  # room | person
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    tenant: Mapped[Tenant] = relationship(back_populates="resources")
+    room_bookings: Mapped[list[Booking]] = relationship(
+        back_populates="room",
+        foreign_keys="Booking.room_id",
+    )
+    person_bookings: Mapped[list[Booking]] = relationship(
+        back_populates="person",
+        foreign_keys="Booking.person_id",
+    )
+
+
 class Booking(Base):
     __tablename__ = "bookings"
 
@@ -136,6 +161,8 @@ class Booking(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"), nullable=False, index=True)
     service_id: Mapped[int | None] = mapped_column(ForeignKey("services.id"))
+    room_id: Mapped[int | None] = mapped_column(ForeignKey("resources.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(ForeignKey("resources.id"), index=True)
     channel: Mapped[Channel] = mapped_column(Enum(Channel), default=Channel.manual)
     status: Mapped[BookingStatus] = mapped_column(Enum(BookingStatus), default=BookingStatus.inquiry)
     payment_status: Mapped[PaymentStatus] = mapped_column(
@@ -159,6 +186,14 @@ class Booking(Base):
     tenant: Mapped[Tenant] = relationship(back_populates="bookings")
     customer: Mapped[Customer] = relationship(back_populates="bookings")
     service: Mapped[Service | None] = relationship(back_populates="bookings")
+    room: Mapped[Resource | None] = relationship(
+        back_populates="room_bookings",
+        foreign_keys=[room_id],
+    )
+    person: Mapped[Resource | None] = relationship(
+        back_populates="person_bookings",
+        foreign_keys=[person_id],
+    )
 
 
 class Conversation(Base):

@@ -7,6 +7,7 @@ import ConversationsPage from "./pages/ConversationsPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import PosPage from "./pages/PosPage";
+import ResourcesPage from "./pages/ResourcesPage";
 import ServicesPage from "./pages/ServicesPage";
 import VendorsPage from "./pages/VendorsPage";
 
@@ -24,6 +25,8 @@ function Shell() {
   const navigate = useNavigate();
   const isPlatformAdmin = user?.role === "platform_admin" && !impersonating;
   const catalogLabel = industryProfile(user?.tenant?.industry).catalogNoun;
+  const resourcesLabel = industryProfile(user?.tenant?.industry).resourcesNoun;
+  const supportsResources = industryProfile(user?.tenant?.industry).supportsResources;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_KEY) === "1";
@@ -93,6 +96,11 @@ function Shell() {
               <NavLink to="/services" title={catalogLabel}>
                 {sidebarCollapsed ? catalogLabel.slice(0, 2) : catalogLabel}
               </NavLink>
+              {supportsResources ? (
+                <NavLink to="/resources" title={resourcesLabel}>
+                  {sidebarCollapsed ? "Rs" : resourcesLabel}
+                </NavLink>
+              ) : null}
             </>
           )}
         </nav>
@@ -167,6 +175,7 @@ export default function App() {
               <Route path="pos" element={<PosPage />} />
               <Route path="conversations" element={<ConversationsPage />} />
               <Route path="services" element={<ServicesPage />} />
+              <Route path="resources" element={<ResourcesPage />} />
             </Route>
           </Route>
         </Route>

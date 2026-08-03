@@ -29,6 +29,9 @@
 - [x] Admin calendar + booking detail actions
 - [x] Walk-in POS (cash + QR pay panel)
 - [x] Pay status polling for counter QR (`/pay/{token}/status`)
+- [x] Assignable rooms / artists (resources) on bookings
 - [ ] HitPay / Stripe / DuitNow QR live providers (`PAYMENT_MODE`)
 - [ ] Partial payments / balance due after deposit
-- [ ] Staff schedules / multi-resource calendar
+- [ ] Conflict detection / availability by resource
+- [ ] Staff login linked to person resources
+- [ ] Staff schedules / multi-resource calendar columns

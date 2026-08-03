@@ -115,6 +115,8 @@ def update_vendor(
     data = payload.model_dump(exclude_unset=True)
     if "country" in data and data["country"]:
         data["country"] = data["country"].upper()
+    if "industry" in data and data["industry"]:
+        data["industry"] = normalize_industry(data["industry"])
     for key, value in data.items():
         setattr(tenant, key, value)
     db.commit()

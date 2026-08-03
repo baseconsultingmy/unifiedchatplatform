@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import QrPayPanel from "../components/QrPayPanel";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { industryProfile } from "../industry";
 
 type ViewMode = "calendar" | "list";
 
@@ -43,13 +44,16 @@ function isPaid(status: string) {
 const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 08–21
 
 export default function BookingsPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const profile = industryProfile(user?.tenant?.industry);
   const [view, setView] = useState<ViewMode>("calendar");
   const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
   const [bookings, setBookings] = useState<any[]>([]);
   const [listBookings, setListBookings] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
+  const [filterPersonId, setFilterPersonId] = useState("");
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
   const [showQr, setShowQr] = useState(false);
@@ -57,7 +61,18 @@ export default function BookingsPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [serviceId, setServiceId] = useState("");
+  const [roomId, setRoomId] = useState("");
+  const [personId, setPersonId] = useState("");
   const [startsAt, setStartsAt] = useState("");
+
+  const rooms = useMemo(
+    () => resources.filter((r) => r.kind === "room" && r.is_active),
+    [resources],
+  );
+  const people = useMemo(
+    () => resources.filter((r) => r.kind === "person" && r.is_active),
+    [resources],
+  );
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
@@ -68,16 +83,18 @@ export default function BookingsPage() {
     if (!token) return;
     const from = weekAnchor.toISOString();
     const to = addDays(weekAnchor, 7).toISOString();
-    const [week, all, c, s] = await Promise.all([
+    const [week, all, c, s, r] = await Promise.all([
       api.bookings(token, { from, to }),
       api.bookings(token),
       api.customers(token),
       api.services(token),
+      profile.supportsResources ? api.resources(token) : Promise.resolve([]),
     ]);
     setBookings(week);
     setListBookings(all);
     setCustomers(c);
     setServices(s);
+    setResources(r);
     if (!serviceId && s[0]) setServiceId(String(s[0].id));
     if (selected) {
       const fresh = all.find((b: any) => b.id === selected.id) || week.find((b: any) => b.id === selected.id);
@@ -105,6 +122,8 @@ export default function BookingsPage() {
       await api.createBooking(token, {
         customer_id: customer.id,
         service_id: service ? service.id : null,
+        room_id: roomId ? Number(roomId) : null,
+        person_id: personId ? Number(personId) : null,
         channel: "manual",
         status: "confirmed",
         payment_status: service?.deposit_amount > 0 ? "deposit_due" : "unpaid",
@@ -116,6 +135,8 @@ export default function BookingsPage() {
       setCustomerName("");
       setCustomerPhone("");
       setStartsAt("");
+      setRoomId("");
+      setPersonId("");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create booking");
@@ -130,7 +151,16 @@ export default function BookingsPage() {
   }
 
   function bookingsForDay(day: Date) {
-    return bookings.filter((b) => b.starts_at && sameDay(new Date(b.starts_at), day));
+    return bookings.filter((b) => {
+      if (!b.starts_at || !sameDay(new Date(b.starts_at), day)) return false;
+      if (filterPersonId && String(b.person_id || "") !== filterPersonId) return false;
+      return true;
+    });
+  }
+
+  function assignmentLabel(b: any) {
+    const bits = [b.person?.name, b.room?.name].filter(Boolean);
+    return bits.join(" · ");
   }
 
   function blockStyle(b: any) {
@@ -190,6 +220,20 @@ export default function BookingsPage() {
               <div className="muted">Week view · 08:00–22:00</div>
             </div>
             <div className="btn-row">
+              {profile.supportsResources && people.length ? (
+                <select
+                  value={filterPersonId}
+                  onChange={(e) => setFilterPersonId(e.target.value)}
+                  aria-label={`Filter by ${profile.personNoun}`}
+                >
+                  <option value="">All {profile.personNoun.toLowerCase()}s</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
               <button
                 type="button"
                 className="btn secondary"
@@ -236,10 +280,11 @@ export default function BookingsPage() {
                           setSelected(b);
                           setShowQr(false);
                         }}
-                        title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}`}
+                        title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}${assignmentLabel(b) ? ` · ${assignmentLabel(b)}` : ""}`}
                       >
                         <strong>{b.service?.name || "Booking"}</strong>
                         <span>{b.customer?.name || b.customer?.phone}</span>
+                        {assignmentLabel(b) ? <span className="calendar-assign">{assignmentLabel(b)}</span> : null}
                       </button>
                     ))}
                   </div>
@@ -255,6 +300,7 @@ export default function BookingsPage() {
               <tr>
                 <th>Customer</th>
                 <th>Service</th>
+                {profile.supportsResources ? <th>Assigned</th> : null}
                 <th>When</th>
                 <th>Payment</th>
                 <th></th>
@@ -268,6 +314,9 @@ export default function BookingsPage() {
                     <div className="muted">{b.channel}</div>
                   </td>
                   <td>{b.service?.name || "—"}</td>
+                  {profile.supportsResources ? (
+                    <td>{assignmentLabel(b) || <span className="muted">Unassigned</span>}</td>
+                  ) : null}
                   <td>{b.starts_at ? new Date(b.starts_at).toLocaleString() : "TBD"}</td>
                   <td>
                     <span className="badge">{b.status}</span>{" "}
@@ -352,6 +401,46 @@ export default function BookingsPage() {
                     </div>
                   </div>
                 </div>
+                {profile.supportsResources ? (
+                  <>
+                    <label>
+                      {profile.personNoun}
+                      <select
+                        value={selected.person_id ? String(selected.person_id) : ""}
+                        onChange={(e) =>
+                          patchSelected({
+                            person_id: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      >
+                        <option value="">Unassigned</option>
+                        {people.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {profile.roomNoun}
+                      <select
+                        value={selected.room_id ? String(selected.room_id) : ""}
+                        onChange={(e) =>
+                          patchSelected({
+                            room_id: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                      >
+                        <option value="">Unassigned</option>
+                        {rooms.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </>
+                ) : null}
               </div>
 
               <div className="btn-row" style={{ marginTop: "1rem" }}>
@@ -435,6 +524,32 @@ export default function BookingsPage() {
               ))}
             </select>
           </label>
+          {profile.supportsResources ? (
+            <>
+              <label>
+                {profile.personNoun}
+                <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
+                  <option value="">Unassigned</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {profile.roomNoun}
+                <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+                  <option value="">Unassigned</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : null}
           <label>
             Starts at
             <input

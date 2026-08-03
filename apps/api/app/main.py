@@ -13,6 +13,7 @@ from app.routers import (
     dashboard,
     payments,
     pos,
+    resources,
     services,
     vendors,
     whatsapp,
@@ -48,6 +49,7 @@ app.include_router(auth.router, prefix="/v1")
 app.include_router(dashboard.router, prefix="/v1")
 app.include_router(vendors.router, prefix="/v1")
 app.include_router(services.router, prefix="/v1")
+app.include_router(resources.router, prefix="/v1")
 app.include_router(customers.router, prefix="/v1")
 app.include_router(bookings.router, prefix="/v1")
 app.include_router(pos.router, prefix="/v1")

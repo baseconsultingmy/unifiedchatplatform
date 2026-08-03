@@ -16,6 +16,22 @@ def ensure_schema() -> None:
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ",
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_bookings_payment_token ON bookings (payment_token)",
         "ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR(80)",
+        """
+        CREATE TABLE IF NOT EXISTS resources (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+            name VARCHAR(120) NOT NULL,
+            kind VARCHAR(20) NOT NULL DEFAULT 'person',
+            is_active BOOLEAN DEFAULT TRUE,
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_resources_tenant_id ON resources (tenant_id)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS room_id INTEGER REFERENCES resources(id)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS person_id INTEGER REFERENCES resources(id)",
+        "CREATE INDEX IF NOT EXISTS ix_bookings_room_id ON bookings (room_id)",
+        "CREATE INDEX IF NOT EXISTS ix_bookings_person_id ON bookings (person_id)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

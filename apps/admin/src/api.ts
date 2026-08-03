@@ -35,6 +35,17 @@ export const api = {
   services: (token: string) => request<any[]>("/v1/services", {}, token),
   createService: (token: string, body: unknown) =>
     request<any>("/v1/services", { method: "POST", body: JSON.stringify(body) }, token),
+  resources: (token: string, params?: { kind?: string; active_only?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.kind) q.set("kind", params.kind);
+    if (params?.active_only) q.set("active_only", "true");
+    const suffix = q.toString() ? `?${q}` : "";
+    return request<any[]>(`/v1/resources${suffix}`, {}, token);
+  },
+  createResource: (token: string, body: unknown) =>
+    request<any>("/v1/resources", { method: "POST", body: JSON.stringify(body) }, token),
+  updateResource: (token: string, id: number, body: unknown) =>
+    request<any>(`/v1/resources/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
   customers: (token: string) => request<any[]>("/v1/customers", {}, token),
   createCustomer: (token: string, body: unknown) =>
     request<any>("/v1/customers", { method: "POST", body: JSON.stringify(body) }, token),
