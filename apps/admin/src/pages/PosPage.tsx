@@ -5,7 +5,6 @@ import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
 
 type CartLine = { serviceId: number; quantity: number };
-type PosView = "pos" | "cart";
 type PayMethod = "cash" | "qr";
 
 function parseMoney(raw: string): number {
@@ -21,13 +20,13 @@ function formatMoney(n: number): string {
 export default function PosPage() {
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
-  const [view, setView] = useState<PosView>("pos");
   const [services, setServices] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [chargeMode, setChargeMode] = useState<"full" | "deposit">("full");
   const [payMethod, setPayMethod] = useState<PayMethod>("cash");
+  const [payOpen, setPayOpen] = useState(false);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -136,8 +135,8 @@ export default function PosPage() {
       .slice(0, 8);
   }, [customers, customerQuery]);
 
-  function resetSale(keepCart = false) {
-    if (!keepCart) setCart([]);
+  function resetSale() {
+    setCart([]);
     setCustomerId(null);
     setCustomerName("");
     setCustomerPhone("");
@@ -147,7 +146,8 @@ export default function PosPage() {
     setShowCustomerModal(false);
     setPayMethod("cash");
     setChargeMode("full");
-    if (!keepCart) setView("pos");
+    setPayOpen(false);
+    setShowQr(false);
   }
 
   function addToCart(serviceId: number) {
@@ -165,9 +165,7 @@ export default function PosPage() {
       }
       return [...prev, { serviceId, quantity: 1 }];
     });
-    if (wasEmpty) {
-      setShowCustomerModal(true);
-    }
+    if (wasEmpty) setShowCustomerModal(true);
   }
 
   function setQty(serviceId: number, quantity: number) {
@@ -176,12 +174,6 @@ export default function PosPage() {
       return prev.map((l) => (l.serviceId === serviceId ? { ...l, quantity } : l));
     });
   }
-
-  useEffect(() => {
-    if (cart.length === 0 && view === "cart" && !showQr) {
-      setView("pos");
-    }
-  }, [cart.length, view, showQr]);
 
   function pickCustomer(c: any) {
     setCustomerId(c.id);
@@ -205,14 +197,14 @@ export default function PosPage() {
     setCustomerQuery("");
   }
 
-  function continueShopping() {
+  function keepShopping() {
     setShowCustomerModal(false);
-    setView("pos");
+    setPayOpen(false);
   }
 
-  function goToPayment() {
+  function skipToPayment() {
     setShowCustomerModal(false);
-    setView("cart");
+    setPayOpen(true);
     setTenderInput("");
   }
 
@@ -266,9 +258,10 @@ export default function PosPage() {
       setResult(sale);
       if (method === "qr") {
         setShowQr(true);
+        setPayOpen(true);
       } else {
         setLastCash({ tendered, change: changeDue });
-        resetSale(false);
+        resetSale();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sale failed");
@@ -279,232 +272,219 @@ export default function PosPage() {
 
   return (
     <div className="pos-shell page-fill">
-      <div className="pos-topbar page-head">
-        <div>
-          <h1>{view === "pos" ? profile.posTitle : "Cart & payment"}</h1>
-          <p>
-            {view === "pos"
-              ? profile.posHint
-              : "Confirm services rendered, then take cash or QR."}
-          </p>
-        </div>
-        <div className="toolbar-actions">
-          <div className="segmented">
-            <button
-              type="button"
-              className={view === "pos" ? "active" : ""}
-              onClick={() => setView("pos")}
-            >
-              POS
-            </button>
-            <button
-              type="button"
-              className={view === "cart" ? "active" : ""}
-              onClick={() => setView("cart")}
-              disabled={cartDetails.length === 0 && !showQr}
-            >
-              Cart{itemCount ? ` (${itemCount})` : ""}
-            </button>
+      <section className="panel pos-catalog page-panel">
+        <div className="pos-catalog-head">
+          <div>
+            <h1>{profile.posTitle}</h1>
+            <p>{profile.posHint}</p>
           </div>
-          {cartDetails.length > 0 && view === "pos" ? (
-            <button type="button" className="btn" onClick={goToPayment}>
-              Go to payment
-            </button>
-          ) : null}
         </div>
-      </div>
 
-      {error && view === "pos" && !showCustomerModal ? <div className="error">{error}</div> : null}
+        <div className="pos-category-row">
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`pos-chip ${category === c ? "active" : ""}`}
+              onClick={() => setCategory(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
 
-      {view === "pos" ? (
-        <section className="panel pos-catalog page-panel">
-          <div className="pos-category-row">
-            {categories.map((c) => (
+        {visibleServices.length === 0 ? (
+          <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
+        ) : (
+          <div className="pos-service-grid">
+            {visibleServices.map((s) => {
+              const inCart = cart.find((l) => l.serviceId === s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`pos-service-btn ${inCart ? "selected" : ""}`}
+                  onClick={() => addToCart(s.id)}
+                >
+                  <strong>{s.name}</strong>
+                  <span className="pos-service-meta">
+                    {s.category || "General"}
+                    {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
+                    {inCart ? ` · ×${inCart.quantity}` : ""}
+                  </span>
+                  <span className="pos-service-price">
+                    {s.currency} {Number(s.price_amount).toFixed(2)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <aside className="panel pos-cart-side page-panel">
+        {showQr && result?.payment_url ? (
+          <QrPayPanel
+            paymentUrl={result.payment_url}
+            amountLabel={`${result.currency} ${Number(result.amount_due).toFixed(2)}`}
+            subtitle={(result.line_items || []).join(", ") || `Sale #${result.booking?.id}`}
+            onPaid={() => {
+              setResult((prev: any) =>
+                prev
+                  ? {
+                      ...prev,
+                      already_paid: true,
+                      booking: {
+                        ...prev.booking,
+                        payment_status:
+                          chargeMode === "deposit" && depositAllowed ? "deposit_paid" : "paid",
+                      },
+                    }
+                  : prev,
+              );
+            }}
+            onClose={() => {
+              setShowQr(false);
+              resetSale();
+            }}
+          />
+        ) : (
+          <>
+            <div className="pos-register-head">
+              <div>
+                <h2>Cart summary</h2>
+                <p className="muted">
+                  {itemCount
+                    ? `${itemCount} item${itemCount === 1 ? "" : "s"} · live validation`
+                    : "Tap services on the left"}
+                </p>
+              </div>
               <button
-                key={c}
                 type="button"
-                className={`pos-chip ${category === c ? "active" : ""}`}
-                onClick={() => setCategory(c)}
+                className="btn secondary"
+                onClick={resetSale}
+                disabled={!cart.length && !customerName && !customerPhone}
               >
-                {c}
+                Clear
               </button>
-            ))}
-          </div>
-
-          {visibleServices.length === 0 ? (
-            <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
-          ) : (
-            <div className="pos-service-grid">
-              {visibleServices.map((s) => {
-                const inCart = cart.find((l) => l.serviceId === s.id);
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={`pos-service-btn ${inCart ? "selected" : ""}`}
-                    onClick={() => addToCart(s.id)}
-                  >
-                    <strong>{s.name}</strong>
-                    <span className="pos-service-meta">
-                      {s.category || "General"}
-                      {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
-                      {inCart ? ` · ×${inCart.quantity}` : ""}
-                    </span>
-                    <span className="pos-service-price">
-                      {s.currency} {Number(s.price_amount).toFixed(2)}
-                    </span>
-                  </button>
-                );
-              })}
             </div>
-          )}
-        </section>
-      ) : (
-        <div className="pos-cart-layout page-panel">
-          {showQr && result?.payment_url ? (
-            <section className="panel pos-pay-panel">
-              <QrPayPanel
-                paymentUrl={result.payment_url}
-                amountLabel={`${result.currency} ${Number(result.amount_due).toFixed(2)}`}
-                subtitle={(result.line_items || []).join(", ") || `Sale #${result.booking?.id}`}
-                onPaid={() => {
-                  setResult((prev: any) =>
-                    prev
-                      ? {
-                          ...prev,
-                          already_paid: true,
-                          booking: {
-                            ...prev.booking,
-                            payment_status:
-                              chargeMode === "deposit" && depositAllowed ? "deposit_paid" : "paid",
-                          },
-                        }
-                      : prev,
-                  );
-                }}
-                onClose={() => {
-                  setShowQr(false);
-                  resetSale(false);
-                }}
-              />
-            </section>
-          ) : (
-            <>
-              <section className="panel pos-cart-panel">
+
+            <button
+              type="button"
+              className="pos-customer-chip"
+              onClick={() => setShowCustomerModal(true)}
+            >
+              <div>
+                <span className="muted">Customer</span>
+                <strong>{guestLabel}</strong>
+                <span className="muted">{guestPhone || "No phone"}</span>
+              </div>
+              <span className="pos-customer-edit">Edit</span>
+            </button>
+
+            <div className="pos-register-body">
+              {cartDetails.length === 0 ? (
+                <div className="pos-register-empty muted">
+                  Cart updates here as you add services — confirm before payment.
+                </div>
+              ) : (
+                <div className="pos-register-lines">
+                  {cartDetails.map((line) => (
+                    <div key={line.serviceId} className="pos-register-line">
+                      <div className="pos-register-line-main">
+                        <strong>{line.service.name}</strong>
+                        <span className="muted">
+                          {currency} {formatMoney(line.unit)} each
+                        </span>
+                      </div>
+                      <div className="pos-qty">
+                        <button
+                          type="button"
+                          aria-label="Decrease quantity"
+                          onClick={() => setQty(line.serviceId, line.quantity - 1)}
+                        >
+                          −
+                        </button>
+                        <span>{line.quantity}</span>
+                        <button
+                          type="button"
+                          aria-label="Increase quantity"
+                          onClick={() => setQty(line.serviceId, line.quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pos-cart-summary">
+              {depositAllowed ? (
+                <div className="segmented pos-charge-mode">
+                  <button
+                    type="button"
+                    className={chargeMode === "full" ? "active" : ""}
+                    onClick={() => {
+                      setChargeMode("full");
+                      setTenderInput("");
+                    }}
+                  >
+                    Full
+                  </button>
+                  <button
+                    type="button"
+                    className={chargeMode === "deposit" ? "active" : ""}
+                    onClick={() => {
+                      setChargeMode("deposit");
+                      setTenderInput("");
+                    }}
+                  >
+                    Deposit
+                  </button>
+                </div>
+              ) : null}
+              <div className="pos-register-total">
+                <span>
+                  {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total due"}
+                </span>
+                <strong>
+                  {currency} {formatMoney(amountDue)}
+                </strong>
+              </div>
+            </div>
+
+            {!payOpen ? (
+              <div className="btn-row pos-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={cartDetails.length === 0 || amountDue <= 0}
+                  onClick={skipToPayment}
+                >
+                  Proceed to payment
+                </button>
+              </div>
+            ) : (
+              <div className="pos-pay-block">
                 <div className="pos-register-head">
                   <div>
-                    <h2>Order summary</h2>
-                    <p className="muted">Validate services before payment</p>
-                  </div>
-                  <div className="btn-row">
-                    <button type="button" className="btn secondary" onClick={() => setView("pos")}>
-                      Add more
-                    </button>
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      onClick={() => resetSale(false)}
-                      disabled={!cart.length}
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pos-customer-chip">
-                  <div>
-                    <span className="muted">Customer</span>
-                    <strong>{guestLabel}</strong>
-                    <span className="muted">{guestPhone || "No phone"}</span>
+                    <h3>Payment</h3>
+                    <p className="muted">Cash shows the keypad</p>
                   </div>
                   <button
                     type="button"
                     className="btn secondary"
-                    onClick={() => setShowCustomerModal(true)}
+                    onClick={() => {
+                      setPayOpen(false);
+                      setTenderInput("");
+                      setError("");
+                    }}
                   >
-                    Edit
+                    Back
                   </button>
-                </div>
-
-                <div className="pos-register-body">
-                  {cartDetails.length === 0 ? (
-                    <div className="pos-register-empty muted">Cart is empty. Go back to POS.</div>
-                  ) : (
-                    <div className="pos-register-lines">
-                      {cartDetails.map((line) => (
-                        <div key={line.serviceId} className="pos-register-line">
-                          <div className="pos-register-line-main">
-                            <strong>{line.service.name}</strong>
-                            <span className="muted">
-                              {currency} {formatMoney(line.unit)} each
-                            </span>
-                          </div>
-                          <div className="pos-qty">
-                            <button
-                              type="button"
-                              aria-label="Decrease quantity"
-                              onClick={() => setQty(line.serviceId, line.quantity - 1)}
-                            >
-                              −
-                            </button>
-                            <span>{line.quantity}</span>
-                            <button
-                              type="button"
-                              aria-label="Increase quantity"
-                              onClick={() => setQty(line.serviceId, line.quantity + 1)}
-                            >
-                              +
-                            </button>
-                          </div>
-                          <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pos-cart-summary">
-                  {depositAllowed ? (
-                    <div className="segmented pos-charge-mode">
-                      <button
-                        type="button"
-                        className={chargeMode === "full" ? "active" : ""}
-                        onClick={() => {
-                          setChargeMode("full");
-                          setTenderInput("");
-                        }}
-                      >
-                        Full
-                      </button>
-                      <button
-                        type="button"
-                        className={chargeMode === "deposit" ? "active" : ""}
-                        onClick={() => {
-                          setChargeMode("deposit");
-                          setTenderInput("");
-                        }}
-                      >
-                        Deposit
-                      </button>
-                    </div>
-                  ) : null}
-                  <div className="pos-register-total">
-                    <span>
-                      {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total due"}
-                    </span>
-                    <strong>
-                      {currency} {formatMoney(amountDue)}
-                    </strong>
-                  </div>
-                </div>
-              </section>
-
-              <section className="panel pos-pay-panel">
-                <div className="pos-register-head">
-                  <div>
-                    <h2>Payment</h2>
-                    <p className="muted">Choose cash or QR</p>
-                  </div>
                 </div>
 
                 <div className="segmented pos-pay-method">
@@ -547,7 +527,6 @@ export default function PosPage() {
                         </strong>
                       </div>
                     </div>
-
                     <div className="pos-keypad compact">
                       {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
                         <button
@@ -584,8 +563,8 @@ export default function PosPage() {
                 ) : (
                   <div className="pos-qr-hint">
                     <p>
-                      Customer pays <strong>{currency} {formatMoney(amountDue)}</strong> via QR.
-                      No cash calculator needed.
+                      Charge <strong>{currency} {formatMoney(amountDue)}</strong> by QR — no cash
+                      keypad.
                     </p>
                   </div>
                 )}
@@ -613,22 +592,22 @@ export default function PosPage() {
                     </button>
                   )}
                 </div>
+              </div>
+            )}
 
-                {lastCash && result?.already_paid ? (
-                  <div className="pos-receipt">
-                    <strong>Sale recorded</strong>
-                    <div>#{result.booking?.id}</div>
-                    <div className="muted">
-                      {(result.line_items || []).join(", ")} · Change {currency}{" "}
-                      {formatMoney(lastCash.change)}
-                    </div>
-                  </div>
-                ) : null}
-              </section>
-            </>
-          )}
-        </div>
-      )}
+            {lastCash && result?.already_paid ? (
+              <div className="pos-receipt">
+                <strong>Sale recorded</strong>
+                <div>#{result.booking?.id}</div>
+                <div className="muted">
+                  {(result.line_items || []).join(", ")} · Change {currency}{" "}
+                  {formatMoney(lastCash.change)}
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
+      </aside>
 
       {showCustomerModal ? (
         <div
@@ -646,7 +625,7 @@ export default function PosPage() {
             <div className="bookings-toolbar">
               <div>
                 <h2 id="pos-customer-title">Customer</h2>
-                <p>Optional — skip straight to payment for walk-ins.</p>
+                <p>Optional — keep shopping or skip to payment.</p>
               </div>
               <button
                 type="button"
@@ -733,10 +712,10 @@ export default function PosPage() {
             </div>
 
             <div className="btn-row pos-actions">
-              <button type="button" className="btn secondary" onClick={continueShopping}>
+              <button type="button" className="btn secondary" onClick={keepShopping}>
                 Keep shopping
               </button>
-              <button type="button" className="btn" onClick={goToPayment}>
+              <button type="button" className="btn" onClick={skipToPayment}>
                 Skip to payment
               </button>
             </div>
