@@ -29,6 +29,8 @@ services:
       WA_APP_SECRET: ${WA_APP_SECRET:-}
       META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
+      PUBLIC_API_BASE: ${PUBLIC_API_BASE:-https://api.baseapp.asia}
+      PAYMENT_MODE: ${PAYMENT_MODE:-demo}
       ENVIRONMENT: production
     depends_on:
       db:

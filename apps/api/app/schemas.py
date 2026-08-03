@@ -133,6 +133,7 @@ class BookingIn(BaseModel):
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     amount: Decimal = Decimal("0")
+    deposit_amount: Decimal = Decimal("0")
     currency: str = "MYR"
     notes: str | None = None
 
@@ -143,6 +144,7 @@ class BookingUpdate(BaseModel):
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     amount: Decimal | None = None
+    deposit_amount: Decimal | None = None
     notes: str | None = None
     service_id: int | None = None
 
@@ -159,8 +161,11 @@ class BookingOut(BaseModel):
     starts_at: datetime | None
     ends_at: datetime | None
     amount: Decimal
+    deposit_amount: Decimal = Decimal("0")
     currency: str
     notes: str | None
+    payment_url: str | None = None
+    paid_at: datetime | None = None
     created_at: datetime
     customer: CustomerOut | None = None
     service: ServiceOut | None = None

@@ -143,9 +143,13 @@ class Booking(Base):
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    deposit_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     currency: Mapped[str] = mapped_column(String(3), default="MYR")
     notes: Mapped[str | None] = mapped_column(Text)
     external_ref: Mapped[str | None] = mapped_column(String(120))
+    payment_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+    payment_url: Mapped[str | None] = mapped_column(String(500))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

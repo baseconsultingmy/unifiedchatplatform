@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     wa_app_secret: str = ""
     meta_access_token: str = ""
     meta_phone_number_id: str = ""
+    public_api_base: str = "https://api.baseapp.asia"
+    payment_mode: str = "demo"  # demo | hitpay | stripe (hitpay/stripe later)
 
     @property
     def cors_origin_list(self) -> list[str]:

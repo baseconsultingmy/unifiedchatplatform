@@ -18,6 +18,7 @@ from app.models import (
     Service,
     Tenant,
 )
+from app.payments import attach_payment_link
 from app.whatsapp_client import (
     WhatsAppSendError,
     send_reply_buttons,
@@ -243,6 +244,8 @@ def _create_booking(
 
     amount = Decimal(str(ctx.get("amount") or "0"))
     deposit = Decimal(str(ctx.get("deposit_amount") or "0"))
+    if service is not None and deposit <= 0:
+        deposit = Decimal(str(service.deposit_amount or 0))
     notes = ctx.get("preferred_text")
     booking = Booking(
         tenant_id=tenant.id,
@@ -254,12 +257,14 @@ def _create_booking(
         starts_at=starts_at,
         ends_at=ends_at,
         amount=amount,
+        deposit_amount=deposit,
         currency=ctx.get("currency") or "MYR",
         notes=notes,
         external_ref=f"wa-{conversation.id}-{int(datetime.now(timezone.utc).timestamp())}",
     )
     db.add(booking)
     db.flush()
+    attach_payment_link(db, booking)
     return booking
 
 
@@ -342,18 +347,24 @@ def handle_inbound_message(
                 if booking.starts_at
                 else (booking.notes or "TBD")
             )
+            due = Decimal(str(booking.deposit_amount or 0))
+            if due <= 0:
+                due = Decimal(str(booking.amount or 0))
+            pay_url = booking.payment_url or ""
             body = (
                 f"Booked! ✅\n\n"
                 f"Ref: #{booking.id}\n"
                 f"Service: {ctx.get('service_name')}\n"
                 f"When: {when}\n"
-                f"Status: held (pending payment setup)\n\n"
-                f"Our team can see this in Admin. Type *menu* to book another."
+                f"Amount due: {booking.currency} {due}\n\n"
+                f"Pay here to confirm your slot:\n{pay_url}\n\n"
+                f"Type *menu* to book another."
             )
             result = send_text_message(
                 to_phone=to_phone,
                 body=body,
                 phone_number_id=_phone_id(tenant),
+                preview_url=True,
             )
             _store_outbound(db, conversation, body, result)
             _set_state(conversation, "idle", {})

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.db import get_db
 from app.deps import require_vendor_user
 from app.models import Booking, Customer, Service, User
+from app.payments import attach_payment_link
 from app.schemas import BookingIn, BookingOut, BookingUpdate
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -36,6 +37,7 @@ def create_booking(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
+    service = None
     if payload.service_id is not None:
         service = (
             db.query(Service)
@@ -45,8 +47,13 @@ def create_booking(
         if service is None:
             raise HTTPException(status_code=404, detail="Service not found")
 
-    booking = Booking(tenant_id=user.tenant_id, **payload.model_dump())
+    data = payload.model_dump()
+    if service is not None and float(data.get("deposit_amount") or 0) <= 0:
+        data["deposit_amount"] = service.deposit_amount or 0
+    booking = Booking(tenant_id=user.tenant_id, **data)
     db.add(booking)
+    db.flush()
+    attach_payment_link(db, booking)
     db.commit()
     db.refresh(booking)
     return (

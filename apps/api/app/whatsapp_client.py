@@ -54,6 +54,7 @@ def send_text_message(
     body: str,
     phone_number_id: str | None = None,
     access_token: str | None = None,
+    preview_url: bool = False,
 ) -> dict:
     return _post_message(
         {
@@ -61,7 +62,7 @@ def send_text_message(
             "recipient_type": "individual",
             "to": to_phone,
             "type": "text",
-            "text": {"preview_url": False, "body": body},
+            "text": {"preview_url": preview_url, "body": body},
         },
         phone_number_id=phone_number_id,
         access_token=access_token,

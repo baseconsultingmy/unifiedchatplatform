@@ -2,6 +2,11 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
+function paymentBadgeClass(status: string) {
+  if (status === "paid" || status === "deposit_paid") return "";
+  return "warn";
+}
+
 export default function BookingsPage() {
   const { token } = useAuth();
   const [bookings, setBookings] = useState<any[]>([]);
@@ -51,6 +56,7 @@ export default function BookingsPage() {
         payment_status: service?.deposit_amount > 0 ? "deposit_due" : "unpaid",
         starts_at: startsAt ? new Date(startsAt).toISOString() : null,
         amount: service?.price_amount || 0,
+        deposit_amount: service?.deposit_amount || 0,
         currency: service?.currency || "MYR",
       });
       setCustomerName("");
@@ -79,34 +85,52 @@ export default function BookingsPage() {
               <th>Customer</th>
               <th>Service</th>
               <th>When</th>
-              <th>Status</th>
+              <th>Payment</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {bookings.map((b) => (
-              <tr key={b.id}>
-                <td>
-                  <strong>{b.customer?.name || b.customer?.phone}</strong>
-                  <div className="muted">{b.channel}</div>
-                </td>
-                <td>{b.service?.name || "—"}</td>
-                <td>{b.starts_at ? new Date(b.starts_at).toLocaleString() : "TBD"}</td>
-                <td>
-                  <span className="badge">{b.status}</span>{" "}
-                  <span className={`badge ${b.payment_status !== "paid" ? "warn" : ""}`}>
-                    {b.payment_status}
-                  </span>
-                </td>
-                <td>
-                  {b.payment_status !== "paid" ? (
-                    <button className="btn secondary" onClick={() => markPaid(b.id)}>
-                      Mark paid
-                    </button>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
+            {bookings.map((b) => {
+              const due =
+                Number(b.deposit_amount || 0) > 0 ? b.deposit_amount : b.amount;
+              const isPaid = b.payment_status === "paid" || b.payment_status === "deposit_paid";
+              return (
+                <tr key={b.id}>
+                  <td>
+                    <strong>{b.customer?.name || b.customer?.phone}</strong>
+                    <div className="muted">{b.channel}</div>
+                  </td>
+                  <td>{b.service?.name || "—"}</td>
+                  <td>{b.starts_at ? new Date(b.starts_at).toLocaleString() : "TBD"}</td>
+                  <td>
+                    <span className="badge">{b.status}</span>{" "}
+                    <span className={`badge ${paymentBadgeClass(b.payment_status)}`}>
+                      {b.payment_status}
+                    </span>
+                    <div className="muted">
+                      {b.currency} {due}
+                      {isPaid && b.paid_at
+                        ? ` · paid ${new Date(b.paid_at).toLocaleString()}`
+                        : ""}
+                    </div>
+                    {b.payment_url ? (
+                      <div>
+                        <a href={b.payment_url} target="_blank" rel="noreferrer">
+                          Pay link
+                        </a>
+                      </div>
+                    ) : null}
+                  </td>
+                  <td>
+                    {!isPaid ? (
+                      <button className="btn secondary" onClick={() => markPaid(b.id)}>
+                        Mark paid
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </section>

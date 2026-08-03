@@ -10,6 +10,11 @@ def ensure_schema() -> None:
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS is_platform BOOLEAN DEFAULT FALSE",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_phone_number_id VARCHAR(64)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS line_channel_id VARCHAR(64)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS deposit_amount NUMERIC(12,2) DEFAULT 0",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_token VARCHAR(64)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_url VARCHAR(500)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_bookings_payment_token ON bookings (payment_token)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

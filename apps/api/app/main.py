@@ -11,6 +11,7 @@ from app.routers import (
     conversations,
     customers,
     dashboard,
+    payments,
     services,
     vendors,
     whatsapp,
@@ -49,6 +50,8 @@ app.include_router(customers.router, prefix="/v1")
 app.include_router(bookings.router, prefix="/v1")
 app.include_router(conversations.router, prefix="/v1")
 app.include_router(whatsapp.router, prefix="/v1")
+# Hosted checkout lives at /pay/{token} (not under /v1)
+app.include_router(payments.router)
 
 
 @app.get("/health")
