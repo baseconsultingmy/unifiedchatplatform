@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,10 +22,21 @@ class Settings(BaseSettings):
     meta_phone_number_id: str = ""
     public_api_base: str = "https://api.baseapp.asia"
     payment_mode: str = "demo"  # demo | hitpay | stripe (hitpay/stripe later)
+    # WhatsApp Flows endpoint encryption (PEM or base64 PEM)
+    wa_flow_private_key: str = ""
+    wa_flow_private_key_password: str = ""
+    wa_flow_public_key: str = ""
+    # Send draft Flows before Meta publish completes (dev / first setup)
+    wa_flow_draft_mode: bool = False
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
-settings = Settings()
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+
+settings = get_settings()

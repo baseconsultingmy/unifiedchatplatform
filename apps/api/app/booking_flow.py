@@ -1,20 +1,30 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from app.booking_reserve import ReserveError, reserve_whatsapp_booking
+from app.config import settings
+from app.flow_booking import encode_flow_token
 from app.models import (
     Conversation,
     Message,
     MessageDirection,
     Tenant,
 )
-from app.book_links import booking_url
-from app.whatsapp_client import WhatsAppSendError, send_cta_url, send_text_message
+from app.whatsapp_client import (
+    WhatsAppSendError,
+    send_cta_url,
+    send_flow,
+    send_text_message,
+)
 from app.whatsapp_creds import resolve_whatsapp_credentials
+
+logger = logging.getLogger("baseapp.booking_flow")
 
 MENU_WORDS = {"hi", "hello", "menu", "book", "start", "help", "services", "hola", "packages"}
 CANCEL_WORDS = {"cancel", "stop", "reset"}
@@ -88,50 +98,190 @@ def _try_send(
         return None
 
 
+def send_booking_flow(
+    db: Session,
+    tenant: Tenant,
+    conversation: Conversation,
+    to_phone: str,
+) -> None:
+    """Open the native WhatsApp booking Flow (package → date → time → confirm)."""
+    flow_id = (tenant.wa_flow_id or "").strip()
+    if not flow_id:
+        body = (
+            f"Welcome to *{tenant.name}*!\n\n"
+            "In-chat booking is almost ready. The shop still needs to publish the "
+            "WhatsApp booking Flow (Master Admin → Meta setup → Publish booking Flow).\n\n"
+            "Type *menu* again after that."
+        )
+        _set_state(conversation, "idle", {})
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox=body,
+            send_fn=lambda: send_text_message(
+                to_phone=to_phone,
+                body=body,
+                **_send_kwargs(tenant),
+            ),
+        )
+        return
+
+    flow_token = encode_flow_token(
+        tenant_id=tenant.id,
+        phone=to_phone,
+        conversation_id=conversation.id,
+    )
+    body = (
+        f"Welcome to *{tenant.name}*!\n\n"
+        "Tap *Book* to choose package, date, and time — all inside WhatsApp.\n"
+        "Only open dates and times are shown."
+    )
+    _set_state(conversation, "awaiting_flow", {"flow_id": flow_id})
+    _try_send(
+        db,
+        conversation,
+        body_for_inbox=body + f"\n[flow:{flow_id}]",
+        send_fn=lambda: send_flow(
+            to_phone=to_phone,
+            header="Book appointment",
+            body=body,
+            flow_id=flow_id,
+            flow_token=flow_token,
+            flow_cta="Book",
+            footer="BaseApp",
+            draft=bool(settings.wa_flow_draft_mode),
+            **_send_kwargs(tenant),
+        ),
+    )
+
+
+# Backwards-compatible names used by older call sites / docs.
 def send_booking_window(
     db: Session,
     tenant: Tenant,
     conversation: Conversation,
     to_phone: str,
 ) -> None:
-    """
-    One WhatsApp message → one booking window.
-
-    Package, date, and time are chosen in a single hosted sheet.
-    Dates with zero open slots and taken times are never selectable.
-    """
-    url = booking_url(tenant, to_phone)
-    body = (
-        f"Welcome to *{tenant.name}*!\n\n"
-        "Tap below to book in one window:\n"
-        "package → date → time → confirm & pay.\n\n"
-        "Only open dates and times are shown — sold-out slots stay hidden."
-    )
-    _set_state(conversation, "awaiting_web_book", {"book_url": url})
-    _try_send(
-        db,
-        conversation,
-        body_for_inbox=body + f"\n{url}",
-        send_fn=lambda: send_cta_url(
-            to_phone=to_phone,
-            header="Book appointment",
-            body=body,
-            display_text="Book now",
-            url=url,
-            footer="BaseApp",
-            **_send_kwargs(tenant),
-        ),
-    )
+    send_booking_flow(db, tenant, conversation, to_phone)
 
 
-# Backwards-compatible alias used by older call sites / docs.
 def send_services_menu(
     db: Session,
     tenant: Tenant,
     conversation: Conversation,
     to_phone: str,
 ) -> None:
-    send_booking_window(db, tenant, conversation, to_phone)
+    send_booking_flow(db, tenant, conversation, to_phone)
+
+
+def _handle_nfm_reply(
+    db: Session,
+    *,
+    tenant: Tenant,
+    conversation: Conversation,
+    to_phone: str,
+    nfm: dict,
+) -> None:
+    """Customer completed the native Flow — hold slot and send pay link."""
+    raw = nfm.get("response_json") or "{}"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
+    package_id = payload.get("package_id")
+    slot_id = payload.get("slot_id")
+    if not package_id or not slot_id:
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox="Flow completed without a slot — restart.",
+            send_fn=lambda: send_text_message(
+                to_phone=to_phone,
+                body="Something went wrong with that booking. Type *book* to try again.",
+                **_send_kwargs(tenant),
+            ),
+        )
+        return
+
+    try:
+        service_id = int(package_id)
+        starts_at = datetime.fromisoformat(str(slot_id))
+    except (TypeError, ValueError):
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox="Invalid flow payload",
+            send_fn=lambda: send_text_message(
+                to_phone=to_phone,
+                body="That booking selection looked invalid. Type *book* to try again.",
+                **_send_kwargs(tenant),
+            ),
+        )
+        return
+
+    try:
+        booking, service = reserve_whatsapp_booking(
+            db,
+            tenant=tenant,
+            phone=to_phone,
+            service_id=service_id,
+            starts_at=starts_at,
+            external_ref_prefix="flow",
+        )
+    except ReserveError as exc:
+        logger.info("flow reserve failed: %s", exc)
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox=f"Reserve failed: {exc}",
+            send_fn=lambda: send_text_message(
+                to_phone=to_phone,
+                body=f"{exc}\n\nType *book* to pick another time.",
+                **_send_kwargs(tenant),
+            ),
+        )
+        return
+
+    pay_url = booking.payment_url or ""
+    when = booking.notes or ""
+    due = float(booking.deposit_amount or booking.amount or 0)
+    currency = booking.currency or "MYR"
+    body = (
+        f"*{service.name}* is held for you.\n"
+        f"When: {when}\n"
+        f"Amount due: {currency} {due:.2f}\n\n"
+        "Tap below to pay and confirm."
+    )
+    _set_state(conversation, "awaiting_payment", {"booking_id": booking.id})
+    if pay_url:
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox=body + f"\n{pay_url}",
+            send_fn=lambda: send_cta_url(
+                to_phone=to_phone,
+                header="Pay to confirm",
+                body=body,
+                display_text="Pay now",
+                url=pay_url,
+                footer="BaseApp",
+                **_send_kwargs(tenant),
+            ),
+        )
+    else:
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox=body,
+            send_fn=lambda: send_text_message(
+                to_phone=to_phone,
+                body=body + "\n\n(Payment link unavailable — message the shop.)",
+                **_send_kwargs(tenant),
+            ),
+        )
 
 
 def handle_inbound_message(
@@ -141,7 +291,7 @@ def handle_inbound_message(
     conversation: Conversation,
     msg: dict,
 ) -> None:
-    """WhatsApp entrypoint: open the single booking window (no multi-message lists)."""
+    """WhatsApp entrypoint: open native booking Flow; handle Flow completion."""
     to_phone = conversation.external_thread_id
     msg_type = msg.get("type")
     text = ""
@@ -151,15 +301,22 @@ def handle_inbound_message(
         text = ((msg.get("text") or {}).get("body") or "").strip()
     elif msg_type == "interactive":
         interactive = msg.get("interactive") or {}
-        if interactive.get("type") == "button_reply":
+        itype = interactive.get("type")
+        if itype == "button_reply":
             button_id = (interactive.get("button_reply") or {}).get("id")
             text = (interactive.get("button_reply") or {}).get("title") or ""
-        elif interactive.get("type") == "list_reply":
-            # Legacy mid-flow list taps → restart into the single booking window.
+        elif itype == "list_reply":
             text = "menu"
-        elif interactive.get("type") == "nfm_reply":
-            # Future WhatsApp Flows completion — treat as booking restart for now.
-            text = "menu"
+        elif itype == "nfm_reply":
+            _handle_nfm_reply(
+                db,
+                tenant=tenant,
+                conversation=conversation,
+                to_phone=to_phone,
+                nfm=interactive.get("nfm_reply") or {},
+            )
+            db.commit()
+            return
         else:
             text = "menu"
     else:
@@ -188,9 +345,11 @@ def handle_inbound_message(
         "awaiting_slot",
         "awaiting_confirm",
         "awaiting_web_book",
+        "awaiting_flow",
+        "awaiting_payment",
         "awaiting_datetime",
     }:
-        send_booking_window(db, tenant, conversation, to_phone)
+        send_booking_flow(db, tenant, conversation, to_phone)
         return
 
     _try_send(
@@ -199,7 +358,7 @@ def handle_inbound_message(
         body_for_inbox="Type menu to book.",
         send_fn=lambda: send_text_message(
             to_phone=to_phone,
-            body="Type *menu* or *book* to open the booking window.",
+            body="Type *menu* or *book* to open booking inside WhatsApp.",
             **_send_kwargs(tenant),
         ),
     )

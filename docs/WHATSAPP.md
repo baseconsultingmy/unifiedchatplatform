@@ -11,6 +11,15 @@ under **Settings → WhatsApp / Meta**.
 https://api.baseapp.asia/v1/webhooks/whatsapp
 ```
 
+## Flows data endpoint (in-chat booking)
+
+```text
+https://api.baseapp.asia/v1/webhooks/whatsapp/flows
+```
+
+Booking happens inside WhatsApp via **WhatsApp Flows** (native multi-screen form),
+not a browser sheet. Meta encrypts Flow data-exchange traffic to this endpoint.
+
 ## Verify token
 
 1. **Platform default** — `WA_VERIFY_TOKEN` in `deploy/.env` (bootstrap: `baseapp-wa-verify`)
@@ -21,10 +30,11 @@ Webhook verification accepts either the platform token or any active shop overri
 ## Master Admin
 
 1. Open **Vendors**
-2. Review **Master Meta / WhatsApp** (callback URL, platform verify token, app-secret / fallback status)
+2. Review **Master Meta / WhatsApp** (callback URL, Flows endpoint, platform verify token, crypto status)
 3. On each shop → **Meta setup**
-4. Paste Phone number ID, permanent System User token, display phone, optional WABA ID / verify override
-5. Save — inbound messages for that `phone_number_id` route only to that shop
+4. Paste Phone number ID, permanent System User token, display phone, **WABA ID**
+5. Save, then click **Publish booking Flow** (uploads Flow JSON, sets endpoint, publishes, saves `wa_flow_id`)
+6. Inbound messages for that `phone_number_id` route only to that shop
 
 ## Merchant self-serve
 
@@ -32,7 +42,8 @@ Webhook verification accepts either the platform token or any active shop overri
 2. Open **Settings**
 3. Copy callback URL + verify token into Meta Developer → WhatsApp → Configuration
 4. Subscribe to `messages`
-5. Paste Phone number ID + permanent access token → **Save WhatsApp settings**
+5. Paste Phone number ID + permanent access token (+ WABA ID) → **Save WhatsApp settings**
+6. Ask Master Admin to **Publish booking Flow** if Flow ID is still empty
 
 ## Server / platform env (still required)
 
@@ -42,7 +53,11 @@ Webhook verification accepts either the platform token or any active shop overri
 | `WA_APP_SECRET` | Meta app secret for `X-Hub-Signature-256` |
 | `META_ACCESS_TOKEN` | Optional platform fallback send token |
 | `META_PHONE_NUMBER_ID` | Optional platform fallback phone id |
-| `PUBLIC_API_BASE` | Used to build the callback URL shown in admin |
+| `PUBLIC_API_BASE` | Used to build callback / Flows / pay URLs |
+| `WA_FLOW_PRIVATE_KEY` | RSA private key PEM (or base64 PEM) for Flows decrypt |
+| `WA_FLOW_PRIVATE_KEY_PASSWORD` | Passphrase if the private key is encrypted |
+| `WA_FLOW_PUBLIC_KEY` | Matching public key PEM (uploaded to phone number on Publish) |
+| `WA_FLOW_DRAFT_MODE` | `true` to send draft Flows before publish succeeds |
 
 Prefer shop-owned token + phone id. Platform values are fallback only.
 
@@ -54,27 +69,31 @@ Prefer shop-owned token + phone id. Platform values are fallback only.
 4. Verify token: platform default or the shop override you saved
 5. Subscribe to `messages`
 6. Put the **App Secret** into `WA_APP_SECRET` on the server and recreate the API container
-7. Add each shop’s **Phone number ID** + permanent token in admin (or Settings)
+7. Add each shop’s **Phone number ID** + permanent token + **WABA ID** in admin
+8. Master Admin → **Publish booking Flow** (registers encryption public key + Flow)
 
 ## Routing rules
 
 - Inbound payload `metadata.phone_number_id` must match `tenants.wa_phone_number_id`
 - Unmapped phone ids return **404** (no silent wrong-shop fallback)
 - Outbound sends prefer the shop token/phone id, else platform env
+- Flows data-exchange resolves the shop from the encrypted `flow_token` (tenant_id + phone)
 
-## Booking (single window)
+## Booking (native WhatsApp Flow)
 
-Customers type `menu` / `book` and get **one WhatsApp message** with a **Book now**
-button. That opens a single booking sheet:
+Customers type `menu` / `book` and get **one WhatsApp message** with a **Book**
+button that opens an in-chat Flow:
 
 1. Package  
 2. Date — only dates that still have open slots  
 3. Time — only available times (taken/past slots are never listed)  
-4. Confirm & pay  
+4. Confirm  
 
-No back-and-forth list messages. Sold-out inventory is hidden, not shown as disabled clutter.
+On confirm, BaseApp holds the slot and sends a **Pay now** CTA (payment page only —
+selection stays inside WhatsApp).
 
-Booking URL shape: `https://api.baseapp.asia/book/{shop-slug}?wa=...&sig=...`
+Legacy hosted sheet at `/book/{slug}` remains for backwards compatibility but is
+not the primary chat path.
 
 ## Policy note
 

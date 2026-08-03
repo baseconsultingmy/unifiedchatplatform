@@ -117,4 +117,6 @@ export const api = {
       { method: "POST" },
       token,
     ),
+  publishVendorFlow: (token: string, id: number) =>
+    request<any>(`/v1/vendors/${id}/publish-flow`, { method: "POST" }, token),
 };

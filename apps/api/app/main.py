@@ -12,6 +12,7 @@ from app.routers import (
     conversations,
     customers,
     dashboard,
+    flows,
     payments,
     pos,
     resources,
@@ -57,7 +58,8 @@ app.include_router(pos.router, prefix="/v1")
 app.include_router(workspace.router, prefix="/v1")
 app.include_router(conversations.router, prefix="/v1")
 app.include_router(whatsapp.router, prefix="/v1")
-# Hosted booking + checkout (not under /v1)
+app.include_router(flows.router)
+# Hosted booking + checkout (not under /v1) — legacy fallback; primary UX is WhatsApp Flows
 app.include_router(book.router)
 app.include_router(payments.router)
 

@@ -49,6 +49,7 @@ def apply_whatsapp_fields(tenant: Tenant, data: dict) -> None:
     for key in (
         "wa_phone_number_id",
         "wa_business_account_id",
+        "wa_flow_id",
         "wa_display_phone",
         "wa_verify_token",
         "wa_webhook_status",

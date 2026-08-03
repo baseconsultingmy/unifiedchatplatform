@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_db
 from app.deps import require_vendor_user
+from app.flow_crypto import is_flow_crypto_configured
 from app.models import Tenant, User
 from app.schemas import TenantOut, WhatsAppSetupOut, WorkspaceUpdateIn
 from app.whatsapp_creds import apply_whatsapp_fields, resolve_verify_token, resolve_whatsapp_credentials
@@ -107,10 +108,12 @@ def get_whatsapp_setup(
         or (not (tenant.wa_phone_number_id or "").strip() and settings.meta_phone_number_id)
     )
     verify = resolve_verify_token(tenant)
+    crypto_ok = is_flow_crypto_configured(settings.wa_flow_private_key)
     notes = [
         "In Meta Developer → your WhatsApp app → Configuration, set the callback URL and verify token below.",
         "Subscribe to messages webhooks for the phone number used by this shop.",
         "Paste the Phone number ID and a permanent System User access token here so BaseApp can reply and send receipts.",
+        "Booking runs as a native WhatsApp Flow (in-chat). Paste your WABA ID; Master Admin publishes the Flow.",
     ]
     if using_fallback:
         notes.append(
@@ -118,16 +121,23 @@ def get_whatsapp_setup(
         )
     if not token or not phone_id:
         notes.append("WhatsApp sending will stay offline until both Phone number ID and Access token are set.")
+    if not (tenant.wa_flow_id or "").strip():
+        notes.append("No Flow ID yet — Master Admin must Publish booking Flow after WABA ID is saved.")
+    if not crypto_ok:
+        notes.append("Server Flows crypto is not configured — in-chat booking endpoint will fail until fixed.")
 
     return WhatsAppSetupOut(
         webhook_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp",
+        flows_endpoint_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp/flows",
         verify_token=verify,
         phone_number_id=tenant.wa_phone_number_id,
         display_phone=tenant.wa_display_phone,
         business_account_id=tenant.wa_business_account_id,
+        flow_id=tenant.wa_flow_id,
         access_token_set=bool((tenant.wa_access_token or "").strip()),
         webhook_status=tenant.wa_webhook_status or "not_configured",
         connected_at=tenant.wa_connected_at,
         using_platform_fallback=using_fallback,
+        flow_crypto_configured=crypto_ok,
         notes=notes,
     )

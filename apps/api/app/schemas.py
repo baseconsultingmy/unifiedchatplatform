@@ -31,6 +31,7 @@ class TenantOut(BaseModel):
     is_active: bool = True
     wa_phone_number_id: str | None = None
     wa_business_account_id: str | None = None
+    wa_flow_id: str | None = None
     wa_display_phone: str | None = None
     wa_verify_token: str | None = None
     wa_webhook_status: str = "not_configured"
@@ -59,6 +60,7 @@ class WhatsAppFieldsIn(BaseModel):
     wa_access_token: str | None = None
     clear_wa_access_token: bool = False
     wa_business_account_id: str | None = None
+    wa_flow_id: str | None = None
     wa_display_phone: str | None = None
     wa_verify_token: str | None = None
     wa_webhook_status: str | None = None
@@ -76,6 +78,7 @@ class VendorCreateIn(BaseModel):
     wa_phone_number_id: str | None = None
     wa_access_token: str | None = None
     wa_business_account_id: str | None = None
+    wa_flow_id: str | None = None
     wa_display_phone: str | None = None
     wa_verify_token: str | None = None
 
@@ -101,6 +104,7 @@ class VendorOut(BaseModel):
     is_active: bool
     wa_phone_number_id: str | None = None
     wa_business_account_id: str | None = None
+    wa_flow_id: str | None = None
     wa_display_phone: str | None = None
     wa_verify_token: str | None = None
     wa_webhook_status: str = "not_configured"
@@ -126,12 +130,15 @@ class PlatformMetaOut(BaseModel):
     """Master Admin read-only view of platform Meta / WhatsApp defaults."""
 
     webhook_url: str
+    flows_endpoint_url: str
     platform_verify_token: str
     app_secret_set: bool
     platform_access_token_set: bool
     platform_phone_number_id: str | None = None
+    flow_crypto_configured: bool = False
     vendors_with_phone_id: int = 0
     vendors_with_token: int = 0
+    vendors_with_flow: int = 0
     vendors_verified: int = 0
     notes: list[str] = []
 
@@ -161,14 +168,17 @@ class WorkspaceUpdateIn(WhatsAppFieldsIn):
 
 class WhatsAppSetupOut(BaseModel):
     webhook_url: str
+    flows_endpoint_url: str
     verify_token: str
     phone_number_id: str | None = None
     display_phone: str | None = None
     business_account_id: str | None = None
+    flow_id: str | None = None
     access_token_set: bool = False
     webhook_status: str = "not_configured"
     connected_at: datetime | None = None
     using_platform_fallback: bool = False
+    flow_crypto_configured: bool = False
     notes: list[str] = []
 
 

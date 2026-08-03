@@ -8,6 +8,7 @@ type WaForm = {
   wa_access_token: string;
   clear_wa_access_token: boolean;
   wa_business_account_id: string;
+  wa_flow_id: string;
   wa_display_phone: string;
   wa_verify_token: string;
 };
@@ -17,11 +18,13 @@ const emptyWa: WaForm = {
   wa_access_token: "",
   clear_wa_access_token: false,
   wa_business_account_id: "",
+  wa_flow_id: "",
   wa_display_phone: "",
   wa_verify_token: "",
 };
 
 const WEBHOOK_URL = "https://api.baseapp.asia/v1/webhooks/whatsapp";
+const FLOWS_URL = "https://api.baseapp.asia/v1/webhooks/whatsapp/flows";
 
 export default function VendorsPage() {
   const { token, user, viewAsVendor } = useAuth();
@@ -98,6 +101,7 @@ export default function VendorsPage() {
       wa_access_token: "",
       clear_wa_access_token: false,
       wa_business_account_id: vendor.wa_business_account_id || "",
+      wa_flow_id: vendor.wa_flow_id || "",
       wa_display_phone: vendor.wa_display_phone || "",
       wa_verify_token: vendor.wa_verify_token || "",
     });
@@ -115,6 +119,7 @@ export default function VendorsPage() {
       const body: Record<string, unknown> = {
         wa_phone_number_id: waForm.wa_phone_number_id.trim() || null,
         wa_business_account_id: waForm.wa_business_account_id.trim() || null,
+        wa_flow_id: waForm.wa_flow_id.trim() || null,
         wa_display_phone: waForm.wa_display_phone.trim() || null,
         wa_verify_token: waForm.wa_verify_token.trim() || null,
         clear_wa_access_token: waForm.clear_wa_access_token,
@@ -124,11 +129,34 @@ export default function VendorsPage() {
       }
       const updated = await api.updateVendor(token, editing.id, body);
       setEditing(updated);
-      setWaForm((f) => ({ ...f, wa_access_token: "", clear_wa_access_token: false }));
+      setWaForm((f) => ({
+        ...f,
+        wa_access_token: "",
+        clear_wa_access_token: false,
+        wa_flow_id: updated.wa_flow_id || "",
+      }));
       setSaved("WhatsApp / Meta settings saved");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save Meta setup");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function publishBookingFlow() {
+    if (!token || !editing) return;
+    setError("");
+    setSaved("");
+    setBusyId(editing.id);
+    try {
+      const updated = await api.publishVendorFlow(token, editing.id);
+      setEditing(updated);
+      setWaForm((f) => ({ ...f, wa_flow_id: updated.wa_flow_id || "" }));
+      setSaved(`Booking Flow published · id ${updated.wa_flow_id}`);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish Flow");
     } finally {
       setBusyId(null);
     }
@@ -184,10 +212,14 @@ export default function VendorsPage() {
             <div>{meta?.platform_phone_number_id || "—"}</div>
           </div>
           <div>
+            <span className="muted">Flows crypto</span>
+            <div>{meta?.flow_crypto_configured ? "Ready" : "Missing private key"}</div>
+          </div>
+          <div>
             <span className="muted">Vendors linked</span>
             <div>
               {meta?.vendors_with_phone_id ?? 0} phone · {meta?.vendors_with_token ?? 0} token ·{" "}
-              {meta?.vendors_verified ?? 0} verified
+              {meta?.vendors_with_flow ?? 0} flow · {meta?.vendors_verified ?? 0} verified
             </div>
           </div>
         </div>
@@ -210,6 +242,17 @@ export default function VendorsPage() {
             </button>
           </div>
           <code className="settings-code">{meta?.webhook_url || WEBHOOK_URL}</code>
+          <div className="pos-receipt-row" style={{ marginTop: "0.55rem" }}>
+            <span className="muted">Flows data endpoint</span>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => copyText(meta?.flows_endpoint_url || FLOWS_URL)}
+            >
+              Copy
+            </button>
+          </div>
+          <code className="settings-code">{meta?.flows_endpoint_url || FLOWS_URL}</code>
           <div className="pos-receipt-row" style={{ marginTop: "0.55rem" }}>
             <span className="muted">Platform verify token</span>
             <button
@@ -334,7 +377,15 @@ export default function VendorsPage() {
                   onChange={(e) =>
                     setWaForm((f) => ({ ...f, wa_business_account_id: e.target.value }))
                   }
-                  placeholder="Optional WABA ID"
+                  placeholder="Required to publish in-chat booking Flow"
+                />
+              </label>
+              <label>
+                Booking Flow ID
+                <input
+                  value={waForm.wa_flow_id}
+                  onChange={(e) => setWaForm((f) => ({ ...f, wa_flow_id: e.target.value }))}
+                  placeholder="Auto-filled by Publish, or paste from Meta"
                 />
               </label>
               <label>
@@ -377,6 +428,13 @@ export default function VendorsPage() {
               </div>
               <code className="settings-code">{WEBHOOK_URL}</code>
               <div className="pos-receipt-row" style={{ marginTop: "0.55rem" }}>
+                <span className="muted">Flows endpoint</span>
+                <button type="button" className="btn secondary" onClick={() => copyText(FLOWS_URL)}>
+                  Copy
+                </button>
+              </div>
+              <code className="settings-code">{FLOWS_URL}</code>
+              <div className="pos-receipt-row" style={{ marginTop: "0.55rem" }}>
                 <span className="muted">Effective verify token</span>
                 <button
                   type="button"
@@ -390,9 +448,19 @@ export default function VendorsPage() {
 
               {error ? <div className="error">{error}</div> : null}
               {saved ? <div className="pos-receipt ok">{saved}</div> : null}
-              <button className="btn" disabled={busyId === editing.id}>
-                {busyId === editing.id ? "Saving…" : "Save Meta setup"}
-              </button>
+              <div className="pos-receipt-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+                <button className="btn" disabled={busyId === editing.id}>
+                  {busyId === editing.id ? "Saving…" : "Save Meta setup"}
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={busyId === editing.id || !waForm.wa_business_account_id.trim()}
+                  onClick={publishBookingFlow}
+                >
+                  Publish booking Flow
+                </button>
+              </div>
             </form>
           ) : null}
 

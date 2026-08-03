@@ -10,6 +10,8 @@ from app.schemas import PlatformMetaOut, TokenOut, VendorCreateIn, VendorOut, Ve
 from app.security import create_access_token, hash_password
 from app.seed import slugify
 from app.config import settings
+from app.flow_crypto import is_flow_crypto_configured, normalize_public_key_pem
+from app.flow_meta import FlowMetaError, ensure_booking_flow_published
 from app.whatsapp_creds import apply_whatsapp_fields, refresh_whatsapp_status
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -54,6 +56,7 @@ def _vendor_out(db: Session, tenant: Tenant) -> VendorOut:
         is_active=tenant.is_active,
         wa_phone_number_id=tenant.wa_phone_number_id,
         wa_business_account_id=tenant.wa_business_account_id,
+        wa_flow_id=tenant.wa_flow_id,
         wa_display_phone=tenant.wa_display_phone,
         wa_verify_token=tenant.wa_verify_token,
         wa_webhook_status=tenant.wa_webhook_status or "not_configured",
@@ -91,24 +94,32 @@ def platform_meta_overview(
     vendors = db.query(Tenant).filter(Tenant.is_platform.is_(False)).all()
     with_phone = sum(1 for t in vendors if (t.wa_phone_number_id or "").strip())
     with_token = sum(1 for t in vendors if (t.wa_access_token or "").strip())
+    with_flow = sum(1 for t in vendors if (t.wa_flow_id or "").strip())
     verified = sum(1 for t in vendors if (t.wa_webhook_status or "") == "verified")
+    crypto_ok = is_flow_crypto_configured(settings.wa_flow_private_key)
     notes = [
         "Per-vendor Phone number ID + access token are set on each row via Meta setup (or by the merchant under Settings).",
-        "WA_APP_SECRET and the platform WA_VERIFY_TOKEN live in deploy/.env — rotate there and recreate the API container.",
+        "Booking uses native WhatsApp Flows (in-chat). Paste WABA ID, then Publish booking Flow.",
+        "WA_APP_SECRET, WA_VERIFY_TOKEN, and WA_FLOW_PRIVATE_KEY live in deploy/.env.",
         "Platform META_ACCESS_TOKEN / META_PHONE_NUMBER_ID are fallback only; prefer shop-owned credentials.",
     ]
     if not settings.wa_app_secret:
         notes.append("WA_APP_SECRET is empty — webhook signature checks are disabled.")
     if not settings.meta_access_token:
         notes.append("No platform fallback access token is configured.")
+    if not crypto_ok:
+        notes.append("WA_FLOW_PRIVATE_KEY missing — Flows data endpoint cannot decrypt Meta requests.")
     return PlatformMetaOut(
         webhook_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp",
+        flows_endpoint_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp/flows",
         platform_verify_token=settings.wa_verify_token,
         app_secret_set=bool(settings.wa_app_secret),
         platform_access_token_set=bool(settings.meta_access_token),
         platform_phone_number_id=(settings.meta_phone_number_id or "").strip() or None,
+        flow_crypto_configured=crypto_ok,
         vendors_with_phone_id=with_phone,
         vendors_with_token=with_token,
+        vendors_with_flow=with_flow,
         vendors_verified=verified,
         notes=notes,
     )
@@ -186,6 +197,51 @@ def update_vendor(
     apply_whatsapp_fields(tenant, data)
     for key, value in data.items():
         setattr(tenant, key, value)
+    db.commit()
+    db.refresh(tenant)
+    return _vendor_out(db, tenant)
+
+
+@router.post("/{vendor_id}/publish-flow", response_model=VendorOut)
+def publish_vendor_booking_flow(
+    vendor_id: int,
+    _: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+) -> VendorOut:
+    """Create/upload/publish the in-chat booking Flow for this shop and save wa_flow_id."""
+    tenant = (
+        db.query(Tenant)
+        .filter(Tenant.id == vendor_id, Tenant.is_platform.is_(False))
+        .first()
+    )
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    if not (tenant.wa_business_account_id or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Set WhatsApp Business Account ID (WABA) first, then publish the Flow",
+        )
+    if not is_flow_crypto_configured(settings.wa_flow_private_key):
+        raise HTTPException(
+            status_code=503,
+            detail="Server missing WA_FLOW_PRIVATE_KEY — cannot host Flows endpoint",
+        )
+
+    public_pem = normalize_public_key_pem(settings.wa_flow_public_key)
+
+    try:
+        steps = ensure_booking_flow_published(
+            tenant,
+            public_key_pem=public_pem or None,
+        )
+    except FlowMetaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    flow_id = str(steps.get("flow_id") or "").strip()
+    if not flow_id:
+        raise HTTPException(status_code=400, detail="Meta did not return a Flow ID")
+
+    tenant.wa_flow_id = flow_id
     db.commit()
     db.refresh(tenant)
     return _vendor_out(db, tenant)

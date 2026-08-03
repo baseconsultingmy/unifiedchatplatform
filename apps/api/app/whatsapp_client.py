@@ -110,7 +110,7 @@ def send_cta_url(
     phone_number_id: str | None = None,
     access_token: str | None = None,
 ) -> dict:
-    """Single-tap CTA that opens a URL (booking window) inside WhatsApp."""
+    """Single-tap CTA that opens a URL (e.g. payment) inside WhatsApp."""
     interactive: dict[str, Any] = {
         "type": "cta_url",
         "body": {"text": body},
@@ -120,6 +120,54 @@ def send_cta_url(
                 "display_text": display_text[:20],
                 "url": url,
             },
+        },
+    }
+    if header:
+        interactive["header"] = {"type": "text", "text": header[:60]}
+    if footer:
+        interactive["footer"] = {"text": footer[:60]}
+    return _post_message(
+        {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to_phone,
+            "type": "interactive",
+            "interactive": interactive,
+        },
+        phone_number_id=phone_number_id,
+        access_token=access_token,
+    )
+
+
+def send_flow(
+    *,
+    to_phone: str,
+    body: str,
+    flow_id: str,
+    flow_token: str,
+    flow_cta: str = "Book",
+    header: str | None = None,
+    footer: str | None = None,
+    draft: bool = False,
+    phone_number_id: str | None = None,
+    access_token: str | None = None,
+) -> dict:
+    """Open a native WhatsApp Flow (in-chat multi-screen form)."""
+    parameters: dict[str, Any] = {
+        "flow_message_version": "3",
+        "flow_token": flow_token,
+        "flow_id": str(flow_id),
+        "flow_cta": flow_cta[:30],
+        "flow_action": "data_exchange",
+    }
+    if draft:
+        parameters["mode"] = "draft"
+    interactive: dict[str, Any] = {
+        "type": "flow",
+        "body": {"text": body},
+        "action": {
+            "name": "flow",
+            "parameters": parameters,
         },
     }
     if header:

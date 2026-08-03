@@ -70,6 +70,7 @@ class Tenant(Base):
     wa_phone_number_id: Mapped[str | None] = mapped_column(String(64))
     wa_access_token: Mapped[str | None] = mapped_column(Text)
     wa_business_account_id: Mapped[str | None] = mapped_column(String(64))
+    wa_flow_id: Mapped[str | None] = mapped_column(String(64))
     wa_display_phone: Mapped[str | None] = mapped_column(String(32))
     wa_verify_token: Mapped[str | None] = mapped_column(String(128))
     wa_webhook_status: Mapped[str] = mapped_column(String(32), default="not_configured")

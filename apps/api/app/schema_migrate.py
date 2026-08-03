@@ -11,6 +11,7 @@ def ensure_schema() -> None:
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_phone_number_id VARCHAR(64)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_access_token TEXT",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_business_account_id VARCHAR(64)",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_flow_id VARCHAR(64)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_display_phone VARCHAR(32)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_verify_token VARCHAR(128)",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS wa_webhook_status VARCHAR(32) DEFAULT 'not_configured'",

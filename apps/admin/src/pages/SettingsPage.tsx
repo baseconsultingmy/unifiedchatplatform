@@ -6,6 +6,7 @@ type WaForm = {
   wa_display_phone: string;
   wa_phone_number_id: string;
   wa_business_account_id: string;
+  wa_flow_id: string;
   wa_access_token: string;
   clear_wa_access_token: boolean;
   wa_verify_token: string;
@@ -15,6 +16,7 @@ const emptyWa: WaForm = {
   wa_display_phone: "",
   wa_phone_number_id: "",
   wa_business_account_id: "",
+  wa_flow_id: "",
   wa_access_token: "",
   clear_wa_access_token: false,
   wa_verify_token: "",
@@ -41,6 +43,7 @@ export default function SettingsPage() {
       wa_display_phone: workspace.wa_display_phone || "",
       wa_phone_number_id: workspace.wa_phone_number_id || "",
       wa_business_account_id: workspace.wa_business_account_id || "",
+      wa_flow_id: workspace.wa_flow_id || "",
       wa_access_token: "",
       clear_wa_access_token: false,
       wa_verify_token: workspace.wa_verify_token || "",
@@ -63,6 +66,7 @@ export default function SettingsPage() {
         wa_display_phone: form.wa_display_phone.trim() || null,
         wa_phone_number_id: form.wa_phone_number_id.trim() || null,
         wa_business_account_id: form.wa_business_account_id.trim() || null,
+        wa_flow_id: form.wa_flow_id.trim() || null,
         wa_verify_token: form.wa_verify_token.trim() || null,
         clear_wa_access_token: form.clear_wa_access_token,
       };
@@ -118,6 +122,14 @@ export default function SettingsPage() {
             <span className="muted">Display phone</span>
             <div>{setup?.display_phone || "—"}</div>
           </div>
+          <div>
+            <span className="muted">Booking Flow ID</span>
+            <div>{setup?.flow_id || "Not published"}</div>
+          </div>
+          <div>
+            <span className="muted">Flows crypto</span>
+            <div>{setup?.flow_crypto_configured ? "Ready" : "Server key missing"}</div>
+          </div>
         </div>
 
         {setup?.using_platform_fallback ? (
@@ -145,6 +157,17 @@ export default function SettingsPage() {
             </button>
           </div>
           <code className="settings-code">{setup?.webhook_url || "…"}</code>
+          <div className="pos-receipt-row" style={{ marginTop: "0.55rem" }}>
+            <span className="muted">Flows data endpoint</span>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => copyText(setup?.flows_endpoint_url || "")}
+            >
+              Copy
+            </button>
+          </div>
+          <code className="settings-code">{setup?.flows_endpoint_url || "…"}</code>
           <div className="pos-receipt-row" style={{ marginTop: "0.55rem" }}>
             <span className="muted">Verify token</span>
             <button
@@ -194,7 +217,15 @@ export default function SettingsPage() {
           <input
             value={form.wa_business_account_id}
             onChange={(e) => setForm((f) => ({ ...f, wa_business_account_id: e.target.value }))}
-            placeholder="Optional"
+            placeholder="From Meta Business → WhatsApp accounts"
+          />
+        </label>
+        <label>
+          Booking Flow ID
+          <input
+            value={form.wa_flow_id}
+            onChange={(e) => setForm((f) => ({ ...f, wa_flow_id: e.target.value }))}
+            placeholder="Published by Master Admin, or paste from Meta"
           />
         </label>
         <label>
