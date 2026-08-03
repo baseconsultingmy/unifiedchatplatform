@@ -28,9 +28,11 @@ export default function LoginPage() {
     <div className="login-page">
       <form className="panel login-card form" onSubmit={onSubmit}>
         <div>
-          <p className="muted">Master Admin</p>
-          <h1>BaseApp</h1>
-          <p>Track reservations, payments, and WhatsApp conversations in one place.</p>
+          <p className="muted">BaseApp</p>
+          <h1>Sign in</h1>
+          <p>
+            Master Admin manages vendors. Vendor owners manage their own services and bookings.
+          </p>
         </div>
         <label>
           Email

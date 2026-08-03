@@ -49,6 +49,12 @@ class MessageDirection(str, enum.Enum):
     outbound = "outbound"
 
 
+class UserRole(str, enum.Enum):
+    platform_admin = "platform_admin"
+    owner = "owner"
+    staff = "staff"
+
+
 class Tenant(Base):
     __tablename__ = "tenants"
 
@@ -58,7 +64,11 @@ class Tenant(Base):
     industry: Mapped[str] = mapped_column(String(80), default="wellness")
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Kuala_Lumpur")
     country: Mapped[str] = mapped_column(String(2), default="MY")
+    is_platform: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Used later to route WhatsApp/LINE traffic to the correct vendor.
+    wa_phone_number_id: Mapped[str | None] = mapped_column(String(64))
+    line_channel_id: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     users: Mapped[list[User]] = relationship(back_populates="tenant")
@@ -70,14 +80,13 @@ class Tenant(Base):
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(40), default="owner")
+    role: Mapped[str] = mapped_column(String(40), default=UserRole.owner.value)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

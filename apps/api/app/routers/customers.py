@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.deps import get_current_user
+from app.deps import require_vendor_user
 from app.models import Customer, User
 from app.schemas import CustomerIn, CustomerOut
 
@@ -10,7 +10,9 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 
 @router.get("", response_model=list[CustomerOut])
-def list_customers(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[Customer]:
+def list_customers(
+    user: User = Depends(require_vendor_user), db: Session = Depends(get_db)
+) -> list[Customer]:
     return (
         db.query(Customer)
         .filter(Customer.tenant_id == user.tenant_id)
@@ -22,7 +24,7 @@ def list_customers(user: User = Depends(get_current_user), db: Session = Depends
 @router.post("", response_model=CustomerOut, status_code=status.HTTP_201_CREATED)
 def create_customer(
     payload: CustomerIn,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_vendor_user),
     db: Session = Depends(get_db),
 ) -> Customer:
     existing = (

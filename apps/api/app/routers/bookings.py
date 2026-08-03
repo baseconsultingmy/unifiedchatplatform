@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.db import get_db
-from app.deps import get_current_user
+from app.deps import require_vendor_user
 from app.models import Booking, Customer, Service, User
 from app.schemas import BookingIn, BookingOut, BookingUpdate
 
@@ -10,7 +10,9 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
 @router.get("", response_model=list[BookingOut])
-def list_bookings(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> list[Booking]:
+def list_bookings(
+    user: User = Depends(require_vendor_user), db: Session = Depends(get_db)
+) -> list[Booking]:
     return (
         db.query(Booking)
         .options(joinedload(Booking.customer), joinedload(Booking.service))
@@ -23,7 +25,7 @@ def list_bookings(user: User = Depends(get_current_user), db: Session = Depends(
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
 def create_booking(
     payload: BookingIn,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_vendor_user),
     db: Session = Depends(get_db),
 ) -> Booking:
     customer = (
@@ -59,7 +61,7 @@ def create_booking(
 def update_booking(
     booking_id: int,
     payload: BookingUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_vendor_user),
     db: Session = Depends(get_db),
 ) -> Booking:
     booking = (

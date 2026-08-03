@@ -5,7 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db import Base, SessionLocal, engine
-from app.routers import auth, bookings, conversations, customers, dashboard, services, whatsapp
+from app.routers import (
+    auth,
+    bookings,
+    conversations,
+    customers,
+    dashboard,
+    services,
+    vendors,
+    whatsapp,
+)
 from app.seed import bootstrap
 
 
@@ -32,6 +41,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/v1")
 app.include_router(dashboard.router, prefix="/v1")
+app.include_router(vendors.router, prefix="/v1")
 app.include_router(services.router, prefix="/v1")
 app.include_router(customers.router, prefix="/v1")
 app.include_router(bookings.router, prefix="/v1")

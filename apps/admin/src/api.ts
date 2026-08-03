@@ -44,4 +44,9 @@ export const api = {
   updateBooking: (token: string, id: number, body: unknown) =>
     request<any>(`/v1/bookings/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
   conversations: (token: string) => request<any[]>("/v1/conversations", {}, token),
+  vendors: (token: string) => request<any[]>("/v1/vendors", {}, token),
+  createVendor: (token: string, body: unknown) =>
+    request<any>("/v1/vendors", { method: "POST", body: JSON.stringify(body) }, token),
+  updateVendor: (token: string, id: number, body: unknown) =>
+    request<any>(`/v1/vendors/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
 };

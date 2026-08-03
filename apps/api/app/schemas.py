@@ -25,6 +25,10 @@ class TenantOut(BaseModel):
     industry: str
     timezone: str
     country: str
+    is_platform: bool = False
+    is_active: bool = True
+    wa_phone_number_id: str | None = None
+    line_channel_id: str | None = None
 
 
 class UserOut(BaseModel):
@@ -35,6 +39,55 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     tenant: TenantOut
+
+
+class VendorCreateIn(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    slug: str | None = Field(default=None, max_length=80)
+    industry: str = "wellness"
+    timezone: str = "Asia/Kuala_Lumpur"
+    country: str = Field(default="MY", min_length=2, max_length=2)
+    owner_full_name: str = Field(min_length=2, max_length=120)
+    owner_email: EmailStr
+    owner_password: str = Field(min_length=8, max_length=128)
+    wa_phone_number_id: str | None = None
+
+
+class VendorUpdateIn(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    industry: str | None = None
+    timezone: str | None = None
+    country: str | None = Field(default=None, min_length=2, max_length=2)
+    is_active: bool | None = None
+    wa_phone_number_id: str | None = None
+    line_channel_id: str | None = None
+
+
+class VendorOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    slug: str
+    industry: str
+    timezone: str
+    country: str
+    is_active: bool
+    wa_phone_number_id: str | None = None
+    line_channel_id: str | None = None
+    created_at: datetime
+    owner_email: str | None = None
+    owner_name: str | None = None
+    services_count: int = 0
+    bookings_count: int = 0
+
+
+class PlatformDashboardOut(BaseModel):
+    vendors_total: int
+    vendors_active: int
+    bookings_total: int
+    open_conversations: int
+    customers_total: int
 
 
 class ServiceIn(BaseModel):
@@ -136,3 +189,5 @@ class DashboardOut(BaseModel):
     open_conversations: int
     services_active: int
     customers_total: int
+    role: str
+    is_platform_admin: bool = False

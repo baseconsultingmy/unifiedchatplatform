@@ -31,10 +31,28 @@ def _verify_signature(raw_body: bytes, signature_header: str | None) -> None:
         raise HTTPException(status_code=403, detail="Invalid signature")
 
 
-def _default_tenant(db: Session) -> Tenant:
-    tenant = db.query(Tenant).order_by(Tenant.id.asc()).first()
+def _resolve_tenant(db: Session, phone_number_id: str | None = None) -> Tenant:
+    if phone_number_id:
+        tenant = (
+            db.query(Tenant)
+            .filter(
+                Tenant.wa_phone_number_id == phone_number_id,
+                Tenant.is_platform.is_(False),
+                Tenant.is_active.is_(True),
+            )
+            .first()
+        )
+        if tenant:
+            return tenant
+
+    tenant = (
+        db.query(Tenant)
+        .filter(Tenant.is_platform.is_(False), Tenant.is_active.is_(True))
+        .order_by(Tenant.id.asc())
+        .first()
+    )
     if tenant is None:
-        raise HTTPException(status_code=500, detail="No tenant configured")
+        raise HTTPException(status_code=500, detail="No vendor tenant configured")
     return tenant
 
 
@@ -63,12 +81,14 @@ async def receive_webhook(
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON") from exc
 
-    tenant = _default_tenant(db)
     stored = 0
 
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
+            metadata = value.get("metadata") or {}
+            phone_number_id = metadata.get("phone_number_id")
+            tenant = _resolve_tenant(db, phone_number_id)
             messages = value.get("messages", [])
             contacts = {c.get("wa_id"): c for c in value.get("contacts", [])}
 

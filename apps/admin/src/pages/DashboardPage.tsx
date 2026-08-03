@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
 export default function DashboardPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
+  const isPlatformAdmin = user?.role === "platform_admin";
 
   useEffect(() => {
     if (!token) return;
@@ -17,6 +19,41 @@ export default function DashboardPage() {
 
   if (error) return <div className="error">{error}</div>;
   if (!data) return <div className="muted">Loading overview…</div>;
+
+  if (isPlatformAdmin) {
+    const cards = [
+      ["Vendors", data.vendors_total],
+      ["Active vendors", data.vendors_active],
+      ["All bookings", data.bookings_total],
+      ["Open chats", data.open_conversations],
+      ["Customers", data.customers_total],
+    ];
+    return (
+      <div className="grid">
+        <div>
+          <h1>Platform overview</h1>
+          <p>Master Admin controls vendors. Each vendor manages their own services and bookings.</p>
+        </div>
+        <div className="grid stats">
+          {cards.map(([label, value]) => (
+            <div className="panel stat" key={label as string}>
+              <span className="muted">{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="panel">
+          <h2>Next</h2>
+          <p className="muted" style={{ marginBottom: "0.8rem" }}>
+            Create a vendor, share their owner login, and let them add services.
+          </p>
+          <Link className="btn" to="/vendors">
+            Manage vendors
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const cards = [
     ["Bookings", data.bookings_total],
@@ -30,8 +67,8 @@ export default function DashboardPage() {
   return (
     <div className="grid">
       <div>
-        <h1>Overview</h1>
-        <p>One booking brain across WhatsApp, LINE (later), and walk-ins.</p>
+        <h1>Vendor overview</h1>
+        <p>Your shop workspace — services, reservations, and WhatsApp inbox.</p>
       </div>
       <div className="grid stats">
         {cards.map(([label, value]) => (
