@@ -31,6 +31,10 @@ services:
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
       PUBLIC_API_BASE: ${PUBLIC_API_BASE:-https://api.baseapp.asia}
       PAYMENT_MODE: ${PAYMENT_MODE:-demo}
+      WA_FLOW_PRIVATE_KEY: ${WA_FLOW_PRIVATE_KEY:-}
+      WA_FLOW_PRIVATE_KEY_PASSWORD: ${WA_FLOW_PRIVATE_KEY_PASSWORD:-}
+      WA_FLOW_PUBLIC_KEY: ${WA_FLOW_PUBLIC_KEY:-}
+      WA_FLOW_DRAFT_MODE: ${WA_FLOW_DRAFT_MODE:-false}
       ENVIRONMENT: production
     depends_on:
       db:
