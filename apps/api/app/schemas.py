@@ -172,6 +172,7 @@ class MessageOut(BaseModel):
     id: int
     direction: str
     body: str | None
+    external_message_id: str | None = None
     created_at: datetime
 
 
@@ -185,6 +186,10 @@ class ConversationOut(BaseModel):
     last_message_at: datetime | None
     customer: CustomerOut | None = None
     messages: list[MessageOut] = []
+
+
+class SendMessageIn(BaseModel):
+    body: str = Field(min_length=1, max_length=4096)
 
 
 class DashboardOut(BaseModel):

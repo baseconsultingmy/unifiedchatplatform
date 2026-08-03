@@ -145,6 +145,64 @@ p {
   font-size: 0.92rem;
 }
 
+.chat-layout {
+  align-items: stretch;
+}
+
+.chat-thread {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 560px;
+}
+
+.chat-thread-head {
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-messages {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  overflow: auto;
+  max-height: 420px;
+  padding-right: 0.25rem;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+}
+
+.chat-bubble.in {
+  justify-self: start;
+  background: rgba(20, 32, 28, 0.06);
+}
+
+.chat-bubble.out {
+  justify-self: end;
+  background: rgba(15, 118, 110, 0.14);
+}
+
+.chat-composer {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line);
+}
+
+.chat-composer textarea {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  resize: vertical;
+  min-height: 84px;
+  background: white;
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
