@@ -12,6 +12,7 @@ from app.booking_flow import handle_inbound_message
 from app.config import settings
 from app.db import get_db
 from app.models import Channel, Conversation, Customer, Message, MessageDirection, Tenant
+from app.whatsapp_creds import resolve_verify_token
 
 router = APIRouter(prefix="/webhooks/whatsapp", tags=["whatsapp"])
 
@@ -43,8 +44,16 @@ def _resolve_tenant(db: Session, phone_number_id: str | None = None) -> Tenant:
             .first()
         )
         if tenant:
+            if tenant.wa_webhook_status != "verified":
+                tenant.wa_webhook_status = "verified"
             return tenant
+        # Phone id present but unmapped — do not guess another shop.
+        raise HTTPException(
+            status_code=404,
+            detail=f"No vendor mapped to WhatsApp phone_number_id={phone_number_id}",
+        )
 
+    # Legacy single-vendor fallback when Meta metadata has no phone id.
     tenant = (
         db.query(Tenant)
         .filter(Tenant.is_platform.is_(False), Tenant.is_active.is_(True))
@@ -77,9 +86,28 @@ def verify_webhook(
     hub_mode: str | None = Query(None, alias="hub.mode"),
     hub_verify_token: str | None = Query(None, alias="hub.verify_token"),
     hub_challenge: str | None = Query(None, alias="hub.challenge"),
+    db: Session = Depends(get_db),
 ) -> Response:
-    if hub_mode == "subscribe" and hub_verify_token == settings.wa_verify_token and hub_challenge:
+    if hub_mode != "subscribe" or not hub_verify_token or not hub_challenge:
+        raise HTTPException(status_code=403, detail="Verification failed")
+
+    if hub_verify_token == settings.wa_verify_token:
         return Response(content=hub_challenge, media_type="text/plain")
+
+    tenant = (
+        db.query(Tenant)
+        .filter(
+            Tenant.is_platform.is_(False),
+            Tenant.is_active.is_(True),
+            Tenant.wa_verify_token == hub_verify_token,
+        )
+        .first()
+    )
+    if tenant:
+        tenant.wa_webhook_status = "verified"
+        db.commit()
+        return Response(content=hub_challenge, media_type="text/plain")
+
     raise HTTPException(status_code=403, detail="Verification failed")
 
 

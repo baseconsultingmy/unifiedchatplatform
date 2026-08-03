@@ -30,6 +30,12 @@ class TenantOut(BaseModel):
     is_platform: bool = False
     is_active: bool = True
     wa_phone_number_id: str | None = None
+    wa_business_account_id: str | None = None
+    wa_display_phone: str | None = None
+    wa_verify_token: str | None = None
+    wa_webhook_status: str = "not_configured"
+    wa_connected_at: datetime | None = None
+    wa_access_token_set: bool = False
     line_channel_id: str | None = None
 
 
@@ -46,6 +52,18 @@ class UserOut(BaseModel):
     impersonator_email: str | None = None
 
 
+class WhatsAppFieldsIn(BaseModel):
+    """Shared WhatsApp credential write fields (token is write-only)."""
+
+    wa_phone_number_id: str | None = None
+    wa_access_token: str | None = None
+    clear_wa_access_token: bool = False
+    wa_business_account_id: str | None = None
+    wa_display_phone: str | None = None
+    wa_verify_token: str | None = None
+    wa_webhook_status: str | None = None
+
+
 class VendorCreateIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     slug: str | None = Field(default=None, max_length=80)
@@ -56,15 +74,18 @@ class VendorCreateIn(BaseModel):
     owner_email: EmailStr
     owner_password: str = Field(min_length=8, max_length=128)
     wa_phone_number_id: str | None = None
+    wa_access_token: str | None = None
+    wa_business_account_id: str | None = None
+    wa_display_phone: str | None = None
+    wa_verify_token: str | None = None
 
 
-class VendorUpdateIn(BaseModel):
+class VendorUpdateIn(WhatsAppFieldsIn):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     industry: str | None = None
     timezone: str | None = None
     country: str | None = Field(default=None, min_length=2, max_length=2)
     is_active: bool | None = None
-    wa_phone_number_id: str | None = None
     line_channel_id: str | None = None
 
 
@@ -79,6 +100,12 @@ class VendorOut(BaseModel):
     country: str
     is_active: bool
     wa_phone_number_id: str | None = None
+    wa_business_account_id: str | None = None
+    wa_display_phone: str | None = None
+    wa_verify_token: str | None = None
+    wa_webhook_status: str = "not_configured"
+    wa_connected_at: datetime | None = None
+    wa_access_token_set: bool = False
     line_channel_id: str | None = None
     created_at: datetime
     owner_email: str | None = None
@@ -93,6 +120,20 @@ class PlatformDashboardOut(BaseModel):
     bookings_total: int
     open_conversations: int
     customers_total: int
+
+
+class PlatformMetaOut(BaseModel):
+    """Master Admin read-only view of platform Meta / WhatsApp defaults."""
+
+    webhook_url: str
+    platform_verify_token: str
+    app_secret_set: bool
+    platform_access_token_set: bool
+    platform_phone_number_id: str | None = None
+    vendors_with_phone_id: int = 0
+    vendors_with_token: int = 0
+    vendors_verified: int = 0
+    notes: list[str] = []
 
 
 class ServiceIn(BaseModel):
@@ -112,10 +153,23 @@ class ServiceOut(ServiceIn):
     id: int
 
 
-class WorkspaceUpdateIn(BaseModel):
+class WorkspaceUpdateIn(WhatsAppFieldsIn):
     industry: str | None = Field(default=None, max_length=80)
     name: str | None = Field(default=None, min_length=2, max_length=120)
     timezone: str | None = None
+
+
+class WhatsAppSetupOut(BaseModel):
+    webhook_url: str
+    verify_token: str
+    phone_number_id: str | None = None
+    display_phone: str | None = None
+    business_account_id: str | None = None
+    access_token_set: bool = False
+    webhook_status: str = "not_configured"
+    connected_at: datetime | None = None
+    using_platform_fallback: bool = False
+    notes: list[str] = []
 
 
 class CustomerIn(BaseModel):

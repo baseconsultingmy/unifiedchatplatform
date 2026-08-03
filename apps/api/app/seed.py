@@ -129,4 +129,10 @@ def bootstrap(db: Session) -> None:
             ]
         )
 
+    # Optional: attach platform Meta phone id to demo shop when unset (dev convenience).
+    if settings.meta_phone_number_id and not (vendor.wa_phone_number_id or "").strip():
+        vendor.wa_phone_number_id = settings.meta_phone_number_id.strip()
+        if not (vendor.wa_webhook_status or "").strip() or vendor.wa_webhook_status == "not_configured":
+            vendor.wa_webhook_status = "pending"
+
     db.commit()

@@ -24,6 +24,7 @@ from app.models import (
 from app.payments import amount_due, attach_payment_link
 from app.schemas import BookingOut, PosReceiptSendIn, PosReceiptSendOut, PosSaleIn, PosSaleItemIn, PosSaleOut
 from app.whatsapp_client import WhatsAppSendError, send_text_message
+from app.whatsapp_creds import resolve_whatsapp_credentials
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -337,13 +338,14 @@ def send_sale_receipt_whatsapp(
     db.commit()
     db.refresh(conversation)
 
-    phone_number_id = user.tenant.wa_phone_number_id if user.tenant else None
+    access_token, phone_number_id = resolve_whatsapp_credentials(user.tenant)
     wa_url = _wa_click_to_chat(phone, body)
     try:
         result = send_text_message(
             to_phone=phone,
             body=body,
             phone_number_id=phone_number_id,
+            access_token=access_token,
         )
     except WhatsAppSendError as exc:
         # Common when Meta token expired or outside 24h session — still give a working send path.

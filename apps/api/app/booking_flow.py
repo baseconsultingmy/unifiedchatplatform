@@ -25,6 +25,7 @@ from app.whatsapp_client import (
     send_service_list,
     send_text_message,
 )
+from app.whatsapp_creds import resolve_whatsapp_credentials
 
 MENU_WORDS = {"hi", "hello", "menu", "book", "start", "help", "services", "hola"}
 CANCEL_WORDS = {"cancel", "stop", "reset"}
@@ -49,8 +50,13 @@ def _set_state(conversation: Conversation, state: str, data: dict | None = None)
         _set_ctx(conversation, data)
 
 
-def _phone_id(tenant: Tenant) -> str | None:
-    return tenant.wa_phone_number_id
+def _wa_creds(tenant: Tenant) -> tuple[str | None, str | None]:
+    return resolve_whatsapp_credentials(tenant)
+
+
+def _send_kwargs(tenant: Tenant) -> dict:
+    token, phone_id = _wa_creds(tenant)
+    return {"access_token": token, "phone_number_id": phone_id}
 
 
 def _store_outbound(
@@ -94,7 +100,7 @@ def send_services_menu(db: Session, tenant: Tenant, conversation: Conversation, 
                 f"Welcome to {tenant.name}!\n\n"
                 "No services are published yet. Please message us again later or chat with our team."
             ),
-            phone_number_id=_phone_id(tenant),
+            **_send_kwargs(tenant),
         )
         _store_outbound(db, conversation, "Welcome — no services published yet.", result)
         _set_state(conversation, "idle", {})
@@ -117,7 +123,7 @@ def send_services_menu(db: Session, tenant: Tenant, conversation: Conversation, 
         body=body,
         button_label="View services",
         rows=rows,
-        phone_number_id=_phone_id(tenant),
+        **_send_kwargs(tenant),
     )
     _store_outbound(db, conversation, body + "\n[service list sent]", result)
     _set_state(conversation, "choosing_service", {})
@@ -165,7 +171,7 @@ def _ask_datetime(db: Session, tenant: Tenant, conversation: Conversation, to_ph
         "• 05/08/2026 15:00\n"
         "• 2026-08-05 15:00"
     )
-    result = send_text_message(to_phone=to_phone, body=body, phone_number_id=_phone_id(tenant))
+    result = send_text_message(to_phone=to_phone, body=body, **_send_kwargs(tenant))
     _store_outbound(db, conversation, body, result)
     _set_state(
         conversation,
@@ -209,7 +215,7 @@ def _ask_confirm(
             {"id": "confirm_yes", "title": "Confirm"},
             {"id": "confirm_no", "title": "Cancel"},
         ],
-        phone_number_id=_phone_id(tenant),
+        **_send_kwargs(tenant),
     )
     _store_outbound(db, conversation, body + "\n[Confirm/Cancel buttons]", result)
     ctx = {
@@ -304,7 +310,7 @@ def handle_inbound_message(
             result = send_text_message(
                 to_phone=to_phone,
                 body="Cancelled. Type *menu* to see services again.",
-                phone_number_id=_phone_id(tenant),
+                **_send_kwargs(tenant),
             )
             _store_outbound(db, conversation, "Cancelled. Type menu to restart.", result)
             _set_state(conversation, "idle", {})
@@ -325,7 +331,7 @@ def handle_inbound_message(
                 result = send_text_message(
                     to_phone=to_phone,
                     body="That service is unavailable. Type *menu* to choose again.",
-                    phone_number_id=_phone_id(tenant),
+                    **_send_kwargs(tenant),
                 )
                 _store_outbound(db, conversation, "Service unavailable.", result)
                 _set_state(conversation, "idle", {})
@@ -363,7 +369,7 @@ def handle_inbound_message(
             result = send_text_message(
                 to_phone=to_phone,
                 body=body,
-                phone_number_id=_phone_id(tenant),
+                **_send_kwargs(tenant),
                 preview_url=True,
             )
             _store_outbound(db, conversation, body, result)
@@ -382,7 +388,7 @@ def handle_inbound_message(
         result = send_text_message(
             to_phone=to_phone,
             body="Type *menu* to browse services, or *cancel* to reset.",
-            phone_number_id=_phone_id(tenant),
+            **_send_kwargs(tenant),
         )
         _store_outbound(db, conversation, "Type menu to browse services.", result)
     except WhatsAppSendError as exc:

@@ -8,6 +8,7 @@ from app.db import get_db
 from app.models import Booking
 from app.payments import mark_booking_paid
 from app.whatsapp_client import WhatsAppSendError, send_text_message
+from app.whatsapp_creds import resolve_whatsapp_credentials
 
 router = APIRouter(tags=["payments"])
 
@@ -201,7 +202,10 @@ def pay_complete(token: str, request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(booking)
 
-        phone_id = booking.tenant.wa_phone_number_id if booking.tenant else None
+        phone_id = None
+        access_token = None
+        if booking.tenant:
+            access_token, phone_id = resolve_whatsapp_credentials(booking.tenant)
         customer_phone = booking.customer.phone if booking.customer else None
         if phone_id and customer_phone:
             currency, amount = _amount_label(booking)
@@ -216,6 +220,7 @@ def pay_complete(token: str, request: Request, db: Session = Depends(get_db)):
                         f"Your booking is confirmed. See you soon!"
                     ),
                     phone_number_id=phone_id,
+                    access_token=access_token,
                 )
             except WhatsAppSendError:
                 # Payment still succeeds even if receipt send fails.

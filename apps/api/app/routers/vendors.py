@@ -6,11 +6,29 @@ from app.db import get_db
 from app.deps import require_platform_admin
 from app.models import Booking, Service, Tenant, User, UserRole
 from app.routers.workspace import normalize_industry
-from app.schemas import TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
+from app.schemas import PlatformMetaOut, TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
 from app.security import create_access_token, hash_password
 from app.seed import slugify
+from app.config import settings
+from app.whatsapp_creds import apply_whatsapp_fields, refresh_whatsapp_status
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
+
+
+def _ensure_unique_phone_id(db: Session, phone_id: str | None, *, exclude_id: int | None = None) -> None:
+    if not phone_id:
+        return
+    q = db.query(Tenant).filter(
+        Tenant.wa_phone_number_id == phone_id,
+        Tenant.is_platform.is_(False),
+    )
+    if exclude_id is not None:
+        q = q.filter(Tenant.id != exclude_id)
+    if q.first():
+        raise HTTPException(
+            status_code=400,
+            detail="Another vendor already uses this WhatsApp phone number ID",
+        )
 
 
 def _vendor_out(db: Session, tenant: Tenant) -> VendorOut:
@@ -35,6 +53,12 @@ def _vendor_out(db: Session, tenant: Tenant) -> VendorOut:
         country=tenant.country,
         is_active=tenant.is_active,
         wa_phone_number_id=tenant.wa_phone_number_id,
+        wa_business_account_id=tenant.wa_business_account_id,
+        wa_display_phone=tenant.wa_display_phone,
+        wa_verify_token=tenant.wa_verify_token,
+        wa_webhook_status=tenant.wa_webhook_status or "not_configured",
+        wa_connected_at=tenant.wa_connected_at,
+        wa_access_token_set=bool(tenant.wa_access_token),
         line_channel_id=tenant.line_channel_id,
         created_at=tenant.created_at,
         owner_email=owner.email if owner else None,
@@ -58,6 +82,38 @@ def list_vendors(
     return [_vendor_out(db, t) for t in tenants]
 
 
+@router.get("/meta", response_model=PlatformMetaOut)
+def platform_meta_overview(
+    _: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+) -> PlatformMetaOut:
+    """Platform-level Meta defaults + how many shops have WhatsApp wired."""
+    vendors = db.query(Tenant).filter(Tenant.is_platform.is_(False)).all()
+    with_phone = sum(1 for t in vendors if (t.wa_phone_number_id or "").strip())
+    with_token = sum(1 for t in vendors if (t.wa_access_token or "").strip())
+    verified = sum(1 for t in vendors if (t.wa_webhook_status or "") == "verified")
+    notes = [
+        "Per-vendor Phone number ID + access token are set on each row via Meta setup (or by the merchant under Settings).",
+        "WA_APP_SECRET and the platform WA_VERIFY_TOKEN live in deploy/.env — rotate there and recreate the API container.",
+        "Platform META_ACCESS_TOKEN / META_PHONE_NUMBER_ID are fallback only; prefer shop-owned credentials.",
+    ]
+    if not settings.wa_app_secret:
+        notes.append("WA_APP_SECRET is empty — webhook signature checks are disabled.")
+    if not settings.meta_access_token:
+        notes.append("No platform fallback access token is configured.")
+    return PlatformMetaOut(
+        webhook_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp",
+        platform_verify_token=settings.wa_verify_token,
+        app_secret_set=bool(settings.wa_app_secret),
+        platform_access_token_set=bool(settings.meta_access_token),
+        platform_phone_number_id=(settings.meta_phone_number_id or "").strip() or None,
+        vendors_with_phone_id=with_phone,
+        vendors_with_token=with_token,
+        vendors_verified=verified,
+        notes=notes,
+    )
+
+
 @router.post("", response_model=VendorOut, status_code=status.HTTP_201_CREATED)
 def create_vendor(
     payload: VendorCreateIn,
@@ -70,6 +126,8 @@ def create_vendor(
     if db.query(User).filter(User.email == payload.owner_email).first():
         raise HTTPException(status_code=400, detail="Owner email already exists")
 
+    _ensure_unique_phone_id(db, payload.wa_phone_number_id)
+
     tenant = Tenant(
         name=payload.name,
         slug=slug,
@@ -78,8 +136,13 @@ def create_vendor(
         country=payload.country.upper(),
         is_platform=False,
         is_active=True,
-        wa_phone_number_id=payload.wa_phone_number_id,
+        wa_phone_number_id=(payload.wa_phone_number_id or "").strip() or None,
+        wa_access_token=(payload.wa_access_token or "").strip() or None,
+        wa_business_account_id=(payload.wa_business_account_id or "").strip() or None,
+        wa_display_phone=(payload.wa_display_phone or "").strip() or None,
+        wa_verify_token=(payload.wa_verify_token or "").strip() or None,
     )
+    refresh_whatsapp_status(tenant)
     db.add(tenant)
     db.flush()
 
@@ -117,6 +180,10 @@ def update_vendor(
         data["country"] = data["country"].upper()
     if "industry" in data and data["industry"]:
         data["industry"] = normalize_industry(data["industry"])
+    if "wa_phone_number_id" in data:
+        _ensure_unique_phone_id(db, data.get("wa_phone_number_id"), exclude_id=tenant.id)
+
+    apply_whatsapp_fields(tenant, data)
     for key, value in data.items():
         setattr(tenant, key, value)
     db.commit()

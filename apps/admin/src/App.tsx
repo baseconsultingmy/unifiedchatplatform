@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import PosPage from "./pages/PosPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import ServicesPage from "./pages/ServicesPage";
+import SettingsPage from "./pages/SettingsPage";
 import VendorsPage from "./pages/VendorsPage";
 
 const SIDEBAR_KEY = "baseapp_sidebar_collapsed";
@@ -148,6 +149,9 @@ function Shell() {
                   {sidebarCollapsed && !compact ? "Rs" : resourcesLabel}
                 </NavLink>
               ) : null}
+              <NavLink to="/settings" title="Settings">
+                {sidebarCollapsed && !compact ? "St" : "Settings"}
+              </NavLink>
             </>
           )}
         </nav>
@@ -226,6 +230,7 @@ export default function App() {
               <Route path="customers" element={<CustomersPage />} />
               <Route path="services" element={<ServicesPage />} />
               <Route path="resources" element={<ResourcesPage />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
         </Route>

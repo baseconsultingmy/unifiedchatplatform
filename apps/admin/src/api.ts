@@ -85,6 +85,7 @@ export const api = {
   workspace: (token: string) => request<any>("/v1/workspace", {}, token),
   updateWorkspace: (token: string, body: unknown) =>
     request<any>("/v1/workspace", { method: "PATCH", body: JSON.stringify(body) }, token),
+  whatsappSetup: (token: string) => request<any>("/v1/workspace/whatsapp", {}, token),
   payStatus: (tokenOrPayToken: string) =>
     request<{
       booking_id: number;
@@ -105,6 +106,7 @@ export const api = {
       token,
     ),
   vendors: (token: string) => request<any[]>("/v1/vendors", {}, token),
+  platformMeta: (token: string) => request<any>("/v1/vendors/meta", {}, token),
   createVendor: (token: string, body: unknown) =>
     request<any>("/v1/vendors", { method: "POST", body: JSON.stringify(body) }, token),
   updateVendor: (token: string, id: number, body: unknown) =>

@@ -66,8 +66,14 @@ class Tenant(Base):
     country: Mapped[str] = mapped_column(String(2), default="MY")
     is_platform: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    # Used later to route WhatsApp/LINE traffic to the correct vendor.
+    # Used to route WhatsApp/LINE traffic and send as the vendor.
     wa_phone_number_id: Mapped[str | None] = mapped_column(String(64))
+    wa_access_token: Mapped[str | None] = mapped_column(Text)
+    wa_business_account_id: Mapped[str | None] = mapped_column(String(64))
+    wa_display_phone: Mapped[str | None] = mapped_column(String(32))
+    wa_verify_token: Mapped[str | None] = mapped_column(String(128))
+    wa_webhook_status: Mapped[str] = mapped_column(String(32), default="not_configured")
+    wa_connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     line_channel_id: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -77,6 +83,10 @@ class Tenant(Base):
     bookings: Mapped[list[Booking]] = relationship(back_populates="tenant")
     conversations: Mapped[list[Conversation]] = relationship(back_populates="tenant")
     resources: Mapped[list[Resource]] = relationship(back_populates="tenant")
+
+    @property
+    def wa_access_token_set(self) -> bool:
+        return bool(self.wa_access_token)
 
 
 class User(Base):
