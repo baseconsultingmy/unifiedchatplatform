@@ -276,7 +276,7 @@ export default function SaleReceipt({
           <p>Booking #{bookingId}</p>
         </div>
         {onClose ? (
-          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close receipt">
+          <button type="button" className="btn secondary" onClick={onClose} aria-label="Close">
             Close
           </button>
         ) : null}
