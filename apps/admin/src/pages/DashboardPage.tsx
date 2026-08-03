@@ -68,7 +68,7 @@ export default function DashboardPage() {
     <div className="grid">
       <div>
         <h1>Vendor overview</h1>
-        <p>Your shop workspace — services, reservations, and WhatsApp inbox.</p>
+        <p>Your shop workspace — services, reservations, walk-in POS, and WhatsApp inbox.</p>
       </div>
       <div className="grid stats">
         {cards.map(([label, value]) => (
@@ -77,6 +77,26 @@ export default function DashboardPage() {
             <strong>{value}</strong>
           </div>
         ))}
+      </div>
+      <div className="grid split-2">
+        <div className="panel">
+          <h2>Bookings calendar</h2>
+          <p className="muted" style={{ marginBottom: "0.8rem" }}>
+            See the week at a glance, update status, and collect deposits with QR.
+          </p>
+          <Link className="btn" to="/bookings">
+            Open bookings
+          </Link>
+        </div>
+        <div className="panel">
+          <h2>Walk-in POS</h2>
+          <p className="muted" style={{ marginBottom: "0.8rem" }}>
+            Ring up a counter sale — cash or show a payment QR.
+          </p>
+          <Link className="btn" to="/pos">
+            Open POS
+          </Link>
+        </div>
       </div>
     </div>
   );

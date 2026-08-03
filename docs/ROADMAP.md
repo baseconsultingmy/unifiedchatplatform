@@ -26,5 +26,9 @@
 - [x] Hosted demo checkout at `/pay/{token}`
 - [x] WhatsApp confirm includes pay link; receipt after pay
 - [x] Admin Bookings shows payment status + pay link
-- [ ] HitPay / Stripe live providers (`PAYMENT_MODE`)
+- [x] Admin calendar + booking detail actions
+- [x] Walk-in POS (cash + QR pay panel)
+- [x] Pay status polling for counter QR (`/pay/{token}/status`)
+- [ ] HitPay / Stripe / DuitNow QR live providers (`PAYMENT_MODE`)
 - [ ] Partial payments / balance due after deposit
+- [ ] Staff schedules / multi-resource calendar

@@ -38,11 +38,30 @@ export const api = {
   customers: (token: string) => request<any[]>("/v1/customers", {}, token),
   createCustomer: (token: string, body: unknown) =>
     request<any>("/v1/customers", { method: "POST", body: JSON.stringify(body) }, token),
-  bookings: (token: string) => request<any[]>("/v1/bookings", {}, token),
+  bookings: (token: string, params?: { from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    const suffix = q.toString() ? `?${q}` : "";
+    return request<any[]>(`/v1/bookings${suffix}`, {}, token);
+  },
   createBooking: (token: string, body: unknown) =>
     request<any>("/v1/bookings", { method: "POST", body: JSON.stringify(body) }, token),
   updateBooking: (token: string, id: number, body: unknown) =>
     request<any>(`/v1/bookings/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+  posSale: (token: string, body: unknown) =>
+    request<any>("/v1/pos/sale", { method: "POST", body: JSON.stringify(body) }, token),
+  payStatus: (tokenOrPayToken: string) =>
+    request<{
+      booking_id: number;
+      status: string;
+      payment_status: string;
+      paid_at: string | null;
+      amount_due: number;
+      currency: string;
+      payment_url: string | null;
+      service_name: string | null;
+    }>(`/pay/${tokenOrPayToken}/status`),
   conversations: (token: string) => request<any[]>("/v1/conversations", {}, token),
   conversation: (token: string, id: number) => request<any>(`/v1/conversations/${id}`, {}, token),
   sendMessage: (token: string, id: number, body: string) =>

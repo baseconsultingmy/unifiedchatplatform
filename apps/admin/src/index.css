@@ -335,6 +335,224 @@ p {
   grid-template-columns: 1.2fr 0.8fr;
 }
 
+.bookings-toolbar,
+.calendar-nav,
+.qr-panel-head,
+.toolbar-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 0.2rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  gap: 0.15rem;
+}
+
+.segmented button {
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.segmented button.active {
+  background: rgba(15, 118, 110, 0.14);
+  color: var(--ink);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.calendar-panel {
+  overflow: auto;
+}
+
+.calendar-nav {
+  margin-bottom: 1rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(7, minmax(120px, 1fr));
+  min-width: 980px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.calendar-hours,
+.calendar-day {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.calendar-corner,
+.calendar-day-head {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(15, 118, 110, 0.05);
+  padding: 0.35rem;
+}
+
+.calendar-day.today .calendar-day-head {
+  background: rgba(15, 118, 110, 0.16);
+}
+
+.calendar-day-body {
+  position: relative;
+  min-height: calc(42px * 14);
+  border-right: 1px solid var(--line);
+}
+
+.calendar-hour {
+  height: 42px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.calendar-slot {
+  height: 42px;
+  border-bottom: 1px solid rgba(20, 32, 28, 0.06);
+}
+
+.calendar-event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border: 0;
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.16);
+  color: var(--ink);
+  text-align: left;
+  padding: 0.3rem 0.4rem;
+  cursor: pointer;
+  overflow: hidden;
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.calendar-event strong {
+  font-size: 0.78rem;
+}
+
+.calendar-event.pay-unpaid,
+.calendar-event.pay-deposit_due {
+  border-left-color: var(--warn);
+  background: rgba(180, 83, 9, 0.14);
+}
+
+.calendar-event.pay-paid,
+.calendar-event.pay-deposit_paid {
+  border-left-color: var(--ok);
+  background: rgba(21, 128, 61, 0.12);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  margin-top: 0.8rem;
+}
+
+.pos-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(15, 118, 110, 0.08);
+  border: 1px solid var(--line);
+}
+
+.pos-total strong {
+  font-size: 1.6rem;
+  font-family: "Literata", serif;
+}
+
+.pos-receipt {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(21, 128, 61, 0.08);
+  border: 1px solid rgba(21, 128, 61, 0.2);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pos-idle {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  min-height: 280px;
+}
+
+.qr-panel {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.qr-panel-head {
+  width: 100%;
+  text-align: left;
+}
+
+.qr-amount {
+  font-family: "Literata", serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.qr-image {
+  width: 240px;
+  height: 240px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: white;
+  padding: 0.5rem;
+}
+
+.qr-status {
+  font-weight: 600;
+  color: var(--warn);
+}
+
+.qr-status.ok {
+  color: var(--ok);
+}
+
+.qr-link {
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -346,7 +564,8 @@ p {
   }
 
   .stats,
-  .split-2 {
+  .split-2,
+  .detail-grid {
     grid-template-columns: 1fr;
   }
 }

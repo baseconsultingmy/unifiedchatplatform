@@ -168,6 +168,28 @@ def pay_page(token: str, db: Session = Depends(get_db)) -> HTMLResponse:
     )
 
 
+@router.get("/pay/{token}/status")
+def pay_status(token: str, db: Session = Depends(get_db)) -> dict:
+    booking = _load_booking(db, token)
+    if not booking:
+        raise HTTPException(status_code=404, detail="Payment link not found")
+    currency, amount = _amount_label(booking)
+    return {
+        "booking_id": booking.id,
+        "status": booking.status.value if hasattr(booking.status, "value") else booking.status,
+        "payment_status": (
+            booking.payment_status.value
+            if hasattr(booking.payment_status, "value")
+            else booking.payment_status
+        ),
+        "paid_at": booking.paid_at.isoformat() if booking.paid_at else None,
+        "amount_due": amount,
+        "currency": currency,
+        "payment_url": booking.payment_url,
+        "service_name": booking.service.name if booking.service else None,
+    }
+
+
 @router.post("/pay/{token}/complete")
 def pay_complete(token: str, request: Request, db: Session = Depends(get_db)):
     booking = _load_booking(db, token)

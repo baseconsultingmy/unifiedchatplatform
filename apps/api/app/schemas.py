@@ -206,3 +206,22 @@ class DashboardOut(BaseModel):
     customers_total: int
     role: str
     is_platform_admin: bool = False
+
+
+class PosSaleIn(BaseModel):
+    service_id: int
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    payment_method: str = Field(pattern="^(cash|qr)$")
+    charge_mode: str = Field(default="full", pattern="^(full|deposit)$")
+    notes: str | None = None
+    starts_at: datetime | None = None
+
+
+class PosSaleOut(BaseModel):
+    booking: BookingOut
+    payment_method: str
+    amount_due: Decimal
+    currency: str
+    payment_url: str | None = None
+    already_paid: bool = False

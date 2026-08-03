@@ -4,6 +4,7 @@ import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
+import PosPage from "./pages/PosPage";
 import ServicesPage from "./pages/ServicesPage";
 import VendorsPage from "./pages/VendorsPage";
 
@@ -46,6 +47,7 @@ function Shell() {
           ) : (
             <>
               <NavLink to="/bookings">Bookings</NavLink>
+              <NavLink to="/pos">POS</NavLink>
               <NavLink to="/conversations">Inbox</NavLink>
               <NavLink to="/services">Services</NavLink>
             </>
@@ -108,6 +110,7 @@ export default function App() {
             <Route path="vendors" element={<VendorsPage />} />
             <Route element={<VendorOnly />}>
               <Route path="bookings" element={<BookingsPage />} />
+              <Route path="pos" element={<PosPage />} />
               <Route path="conversations" element={<ConversationsPage />} />
               <Route path="services" element={<ServicesPage />} />
             </Route>
