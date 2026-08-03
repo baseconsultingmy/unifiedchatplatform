@@ -11,8 +11,9 @@
 ## Walk-in POS
 
 - Nav: **POS**
-- Pick a service, charge **full** or **deposit**
-- **Cash paid** — records booking as paid immediately
+- Tap service tiles (full / deposit mode)
+- Cash calculator: keypad + quick notes (+1/+5/+10…), shows cash received, still due, and change
+- **Take cash** enabled when tender ≥ amount due (notes store tendered + change)
 - **Show QR pay** — creates sale + on-screen QR for the customer’s phone
 - API: `POST /v1/pos/sale`
 
