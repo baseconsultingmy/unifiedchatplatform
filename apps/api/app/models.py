@@ -121,6 +121,7 @@ class Service(Base):
     price_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     currency: Mapped[str] = mapped_column(String(3), default="MYR")
     deposit_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    category: Mapped[str | None] = mapped_column(String(80))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

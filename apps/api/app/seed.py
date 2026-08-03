@@ -48,13 +48,15 @@ def bootstrap(db: Session) -> None:
         vendor = Tenant(
             name=settings.bootstrap_tenant_name,
             slug="demo-studio",
-            industry="wellness",
+            industry="health_beauty",
             timezone="Asia/Kuala_Lumpur",
             country="MY",
             is_platform=False,
         )
         db.add(vendor)
         db.flush()
+    elif vendor.industry in {"wellness", "beauty", "spa"}:
+        vendor.industry = "health_beauty"
 
     vendor_owner_email = "owner@demo-studio.baseapp.asia"
     vendor_owner = db.query(User).filter(User.email == vendor_owner_email).first()
@@ -80,6 +82,7 @@ def bootstrap(db: Session) -> None:
                     price_amount=120,
                     deposit_amount=30,
                     currency="MYR",
+                    category="Treatments",
                 ),
                 Service(
                     tenant_id=vendor.id,
@@ -89,6 +92,7 @@ def bootstrap(db: Session) -> None:
                     price_amount=180,
                     deposit_amount=50,
                     currency="MYR",
+                    category="Treatments",
                 ),
                 Service(
                     tenant_id=vendor.id,
@@ -98,8 +102,19 @@ def bootstrap(db: Session) -> None:
                     price_amount=250,
                     deposit_amount=80,
                     currency="MYR",
+                    category="Tattoo",
                 ),
             ]
         )
+    else:
+        # Backfill categories for demo catalog when missing.
+        for svc in db.query(Service).filter(Service.tenant_id == vendor.id, Service.category.is_(None)):
+            lowered = (svc.name or "").lower()
+            if "tattoo" in lowered:
+                svc.category = "Tattoo"
+            elif "massage" in lowered or "tissue" in lowered:
+                svc.category = "Treatments"
+            else:
+                svc.category = "General"
 
     db.commit()

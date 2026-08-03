@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import QrPayPanel from "../components/QrPayPanel";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { industryProfile } from "../industry";
+
+type CartLine = { serviceId: number; quantity: number };
 
 function parseMoney(raw: string): number {
   if (!raw || raw === ".") return 0;
@@ -14,14 +17,19 @@ function formatMoney(n: number): string {
 }
 
 export default function PosPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const profile = industryProfile(user?.tenant?.industry);
   const [services, setServices] = useState<any[]>([]);
-  const [serviceId, setServiceId] = useState("");
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [category, setCategory] = useState("All");
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [chargeMode, setChargeMode] = useState<"full" | "deposit">("full");
+  const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [chargeMode, setChargeMode] = useState<"full" | "deposit">("full");
   const [notes, setNotes] = useState("");
   const [customerOpen, setCustomerOpen] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
   const [draftName, setDraftName] = useState("");
   const [draftPhone, setDraftPhone] = useState("");
   const [draftNotes, setDraftNotes] = useState("");
@@ -34,78 +42,167 @@ export default function PosPage() {
 
   useEffect(() => {
     if (!token) return;
-    api
-      .services(token)
-      .then((s) => {
-        const active = s.filter((x: any) => x.is_active);
-        setServices(active);
-        if (!serviceId && active[0]) setServiceId(String(active[0].id));
+    Promise.all([api.services(token), api.customers(token)])
+      .then(([s, c]) => {
+        setServices(s.filter((x: any) => x.is_active));
+        setCustomers(c);
       })
       .catch((err) => setError(err.message));
   }, [token]);
 
-  const service = services.find((s) => String(s.id) === serviceId);
-  const amountDue = useMemo(() => {
-    if (!service) return 0;
-    if (chargeMode === "deposit" && Number(service.deposit_amount || 0) > 0) {
-      return Number(service.deposit_amount || 0);
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of services) {
+      if (s.category) set.add(String(s.category));
     }
-    return Number(service.price_amount || 0);
-  }, [service, chargeMode]);
-  const currency = service?.currency || "MYR";
+    return ["All", ...Array.from(set).sort()];
+  }, [services]);
+
+  const visibleServices = useMemo(() => {
+    if (category === "All") return services;
+    return services.filter((s) => (s.category || "General") === category);
+  }, [services, category]);
+
+  const cartDetails = useMemo(() => {
+    return cart
+      .map((line) => {
+        const service = services.find((s) => s.id === line.serviceId);
+        if (!service) return null;
+        const unit = Number(service.price_amount || 0);
+        return {
+          ...line,
+          service,
+          unit,
+          lineTotal: unit * line.quantity,
+        };
+      })
+      .filter(Boolean) as Array<{
+      serviceId: number;
+      quantity: number;
+      service: any;
+      unit: number;
+      lineTotal: number;
+    }>;
+  }, [cart, services]);
+
+  const amountDue = useMemo(() => {
+    if (
+      profile.showDeposit &&
+      chargeMode === "deposit" &&
+      cartDetails.length === 1 &&
+      cartDetails[0].quantity === 1 &&
+      Number(cartDetails[0].service.deposit_amount || 0) > 0
+    ) {
+      return Number(cartDetails[0].service.deposit_amount || 0);
+    }
+    return cartDetails.reduce((sum, line) => sum + line.lineTotal, 0);
+  }, [cartDetails, chargeMode, profile.showDeposit]);
+
+  const currency = cartDetails[0]?.service?.currency || "MYR";
   const tendered = parseMoney(tenderInput);
   const changeDue = Math.max(0, tendered - amountDue);
   const balanceDue = Math.max(0, amountDue - tendered);
-  const canTakeCash = Boolean(serviceId) && tendered + 1e-9 >= amountDue && amountDue > 0;
+  const canTakeCash = cartDetails.length > 0 && tendered + 1e-9 >= amountDue && amountDue > 0;
+  const depositAllowed =
+    profile.showDeposit &&
+    cartDetails.length === 1 &&
+    cartDetails[0].quantity === 1 &&
+    Number(cartDetails[0].service.deposit_amount || 0) > 0;
 
-  const customerLabel = customerName.trim() || "Walk-in customer";
-  const customerMeta = [
-    customerPhone.trim() || "No phone",
-    notes.trim() ? "Has note" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const selectedCustomer = customerId
+    ? customers.find((c) => c.id === customerId)
+    : null;
+  const customerLabel =
+    selectedCustomer?.name ||
+    customerName.trim() ||
+    (customerPhone.trim() ? customerPhone.trim() : "Walk-in guest");
+  const customerMeta = selectedCustomer
+    ? selectedCustomer.phone
+    : customerPhone.trim() || "No phone on ticket";
 
-  function resetSaleForm(keepService = true) {
+  const filteredCustomers = useMemo(() => {
+    const q = customerQuery.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+    return customers
+      .filter(
+        (c) =>
+          String(c.name || "")
+            .toLowerCase()
+            .includes(q) || String(c.phone || "").includes(q),
+      )
+      .slice(0, 8);
+  }, [customers, customerQuery]);
+
+  function resetTicket(keepCart = false) {
+    if (!keepCart) setCart([]);
+    setCustomerId(null);
     setCustomerName("");
     setCustomerPhone("");
     setNotes("");
     setTenderInput("");
     setCustomerOpen(false);
-    if (!keepService) setServiceId(services[0] ? String(services[0].id) : "");
+    setCustomerQuery("");
   }
 
-  function openCustomer() {
-    setDraftName(customerName);
-    setDraftPhone(customerPhone);
-    setDraftNotes(notes);
-    setCustomerOpen(true);
-  }
-
-  function saveCustomer() {
-    setCustomerName(draftName.trim());
-    setCustomerPhone(draftPhone.trim());
-    setNotes(draftNotes.trim());
-    setCustomerOpen(false);
-  }
-
-  function clearCustomer() {
-    setDraftName("");
-    setDraftPhone("");
-    setDraftNotes("");
-    setCustomerName("");
-    setCustomerPhone("");
-    setNotes("");
-    setCustomerOpen(false);
-  }
-
-  function selectService(id: number) {
-    setServiceId(String(id));
+  function addToCart(serviceId: number) {
     setResult(null);
     setShowQr(false);
     setLastCash(null);
-    setError("");
-    setTenderInput("");
+    setCart((prev) => {
+      const existing = prev.find((l) => l.serviceId === serviceId);
+      if (existing) {
+        return prev.map((l) =>
+          l.serviceId === serviceId ? { ...l, quantity: Math.min(99, l.quantity + 1) } : l,
+        );
+      }
+      return [...prev, { serviceId, quantity: 1 }];
+    });
+  }
+
+  function setQty(serviceId: number, quantity: number) {
+    setCart((prev) => {
+      if (quantity <= 0) return prev.filter((l) => l.serviceId !== serviceId);
+      return prev.map((l) => (l.serviceId === serviceId ? { ...l, quantity } : l));
+    });
+  }
+
+  function openCustomer() {
+    setDraftName(selectedCustomer?.name || customerName);
+    setDraftPhone(selectedCustomer?.phone || customerPhone);
+    setDraftNotes(notes);
+    setCustomerQuery("");
+    setCustomerOpen(true);
+  }
+
+  function pickCustomer(c: any) {
+    setCustomerId(c.id);
+    setCustomerName(c.name || "");
+    setCustomerPhone(c.phone || "");
+    setDraftName(c.name || "");
+    setDraftPhone(c.phone || "");
+    setCustomerQuery("");
+  }
+
+  function saveCustomerDetails() {
+    setCustomerName(draftName.trim());
+    setCustomerPhone(draftPhone.trim());
+    setNotes(draftNotes.trim());
+    if (customerId) {
+      const match = customers.find((c) => c.id === customerId);
+      if (match && draftPhone.trim() && match.phone !== draftPhone.trim()) {
+        setCustomerId(null);
+      }
+    }
+    setCustomerOpen(false);
+  }
+
+  function setWalkIn() {
+    setCustomerId(null);
+    setCustomerName("Walk-in");
+    setCustomerPhone("");
+    setDraftName("Walk-in");
+    setDraftPhone("");
+    setDraftNotes(notes);
   }
 
   function appendDigit(digit: string) {
@@ -122,20 +219,8 @@ export default function PosPage() {
     });
   }
 
-  function backspace() {
-    setTenderInput((prev) => prev.slice(0, -1));
-  }
-
-  function clearTender() {
-    setTenderInput("");
-  }
-
-  function setExact() {
-    setTenderInput(formatMoney(amountDue));
-  }
-
   async function checkout(method: "cash" | "qr") {
-    if (!token || !serviceId) return;
+    if (!token || cartDetails.length === 0) return;
     if (method === "cash" && !canTakeCash) {
       setError("Cash received must cover the amount due");
       return;
@@ -156,11 +241,15 @@ export default function PosPage() {
         .join(" · ");
 
       const sale = await api.posSale(token, {
-        service_id: Number(serviceId),
+        items: cartDetails.map((l) => ({
+          service_id: l.serviceId,
+          quantity: l.quantity,
+        })),
+        customer_id: customerId,
         customer_name: customerName || null,
         customer_phone: customerPhone || null,
         payment_method: method,
-        charge_mode: chargeMode,
+        charge_mode: depositAllowed && chargeMode === "deposit" ? "deposit" : "full",
         notes: saleNotes || null,
       });
       setResult(sale);
@@ -168,7 +257,7 @@ export default function PosPage() {
         setShowQr(true);
       } else {
         setLastCash({ tendered, change: changeDue });
-        resetSaleForm(true);
+        resetTicket(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sale failed");
@@ -178,71 +267,123 @@ export default function PosPage() {
   }
 
   return (
-    <div className="grid pos-shell">
+    <div className="grid pos-shell pos-shell-3">
       <section className="panel pos-services-panel">
         <div className="bookings-toolbar">
           <div>
-            <h1>Walk-in POS</h1>
-            <p>Tap a service, then settle with cash or QR.</p>
+            <h1>{profile.posTitle}</h1>
+            <p>{profile.posHint}</p>
           </div>
-          <div className="segmented">
-            <button
-              type="button"
-              className={chargeMode === "full" ? "active" : ""}
-              onClick={() => {
-                setChargeMode("full");
-                setTenderInput("");
-              }}
-            >
-              Full
-            </button>
-            <button
-              type="button"
-              className={chargeMode === "deposit" ? "active" : ""}
-              onClick={() => {
-                setChargeMode("deposit");
-                setTenderInput("");
-              }}
-              disabled={!services.some((s) => Number(s.deposit_amount || 0) > 0)}
-            >
-              Deposit
-            </button>
-          </div>
+          {depositAllowed ? (
+            <div className="segmented">
+              <button
+                type="button"
+                className={chargeMode === "full" ? "active" : ""}
+                onClick={() => {
+                  setChargeMode("full");
+                  setTenderInput("");
+                }}
+              >
+                Full
+              </button>
+              <button
+                type="button"
+                className={chargeMode === "deposit" ? "active" : ""}
+                onClick={() => {
+                  setChargeMode("deposit");
+                  setTenderInput("");
+                }}
+              >
+                Deposit
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        {services.length === 0 ? (
-          <p className="muted">No active services yet. Add some under Services.</p>
+        <div className="pos-category-row">
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className={`pos-chip ${category === c ? "active" : ""}`}
+              onClick={() => setCategory(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        {visibleServices.length === 0 ? (
+          <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
         ) : (
           <div className="pos-service-grid">
-            {services.map((s) => {
-              const selected = String(s.id) === serviceId;
-              const price =
-                chargeMode === "deposit" && Number(s.deposit_amount || 0) > 0
-                  ? Number(s.deposit_amount)
-                  : Number(s.price_amount);
-              const disabled = chargeMode === "deposit" && Number(s.deposit_amount || 0) <= 0;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`pos-service-btn ${selected ? "selected" : ""}`}
-                  disabled={disabled}
-                  onClick={() => selectService(s.id)}
-                >
-                  <strong>{s.name}</strong>
-                  <span className="pos-service-meta">
-                    {s.duration_minutes} min · {s.currency} {Number(s.price_amount).toFixed(2)}
-                  </span>
-                  <span className="pos-service-price">
-                    {chargeMode === "deposit" && Number(s.deposit_amount || 0) > 0
-                      ? `Deposit ${s.currency} ${price.toFixed(2)}`
-                      : `${s.currency} ${price.toFixed(2)}`}
-                  </span>
-                </button>
-              );
-            })}
+            {visibleServices.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="pos-service-btn"
+                onClick={() => addToCart(s.id)}
+              >
+                <strong>{s.name}</strong>
+                <span className="pos-service-meta">
+                  {s.category || "General"}
+                  {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
+                </span>
+                <span className="pos-service-price">
+                  {s.currency} {Number(s.price_amount).toFixed(2)}
+                </span>
+              </button>
+            ))}
           </div>
         )}
+      </section>
+
+      <section className="panel pos-ticket-panel">
+        <div className="bookings-toolbar">
+          <div>
+            <h2>Ticket</h2>
+            <p className="muted">{cartDetails.length ? `${cartDetails.length} line(s)` : "Empty"}</p>
+          </div>
+          <button type="button" className="btn secondary" onClick={() => resetTicket(false)} disabled={!cart.length}>
+            Clear
+          </button>
+        </div>
+
+        {cartDetails.length === 0 ? (
+          <p className="muted">Tap catalog items to add them here.</p>
+        ) : (
+          <div className="pos-ticket-lines">
+            {cartDetails.map((line) => (
+              <div key={line.serviceId} className="pos-ticket-line">
+                <div>
+                  <strong>{line.service.name}</strong>
+                  <div className="muted">
+                    {currency} {formatMoney(line.unit)} each
+                  </div>
+                </div>
+                <div className="pos-qty">
+                  <button type="button" onClick={() => setQty(line.serviceId, line.quantity - 1)}>
+                    −
+                  </button>
+                  <span>{line.quantity}</span>
+                  <button type="button" onClick={() => setQty(line.serviceId, line.quantity + 1)}>
+                    +
+                  </button>
+                </div>
+                <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="pos-due-board">
+          <div className="pos-due-amount">
+            <span className="muted">Amount due</span>
+            <em>
+              {currency} {formatMoney(amountDue)}
+            </em>
+          </div>
+        </div>
       </section>
 
       <section className="panel pos-checkout-panel">
@@ -250,7 +391,7 @@ export default function PosPage() {
           <QrPayPanel
             paymentUrl={result.payment_url}
             amountLabel={`${result.currency} ${Number(result.amount_due).toFixed(2)}`}
-            subtitle={`${result.booking?.service?.name || "Sale"} · Ref #${result.booking?.id}`}
+            subtitle={(result.line_items || []).join(", ") || `Sale #${result.booking?.id}`}
             onPaid={() => {
               setResult((prev: any) =>
                 prev
@@ -260,7 +401,7 @@ export default function PosPage() {
                       booking: {
                         ...prev.booking,
                         payment_status:
-                          chargeMode === "deposit" ? "deposit_paid" : "paid",
+                          chargeMode === "deposit" && depositAllowed ? "deposit_paid" : "paid",
                       },
                     }
                   : prev,
@@ -268,24 +409,11 @@ export default function PosPage() {
             }}
             onClose={() => {
               setShowQr(false);
-              resetSaleForm(true);
+              resetTicket(false);
             }}
           />
         ) : (
           <>
-            <div className="pos-due-board">
-              <div>
-                <span className="muted">Selected</span>
-                <strong>{service?.name || "Choose a service"}</strong>
-              </div>
-              <div className="pos-due-amount">
-                <span className="muted">Amount due</span>
-                <em>
-                  {currency} {formatMoney(amountDue)}
-                </em>
-              </div>
-            </div>
-
             <div className="pos-customer-card">
               <button type="button" className="pos-customer-summary" onClick={openCustomer}>
                 <div>
@@ -293,24 +421,56 @@ export default function PosPage() {
                   <strong>{customerLabel}</strong>
                   <span className="muted">{customerMeta}</span>
                 </div>
-                <span className="pos-customer-edit">Edit</span>
+                <span className="pos-customer-edit">Open</span>
               </button>
 
               {customerOpen ? (
                 <div className="pos-customer-form">
                   <div className="pos-customer-form-head">
-                    <strong>Customer details</strong>
+                    <strong>Customer</strong>
                     <button type="button" className="btn secondary" onClick={() => setCustomerOpen(false)}>
                       Close
                     </button>
                   </div>
+
+                  <div className="btn-row">
+                    <button type="button" className="btn secondary" onClick={setWalkIn}>
+                      Walk-in
+                    </button>
+                  </div>
+
+                  <label>
+                    Search existing
+                    <input
+                      value={customerQuery}
+                      onChange={(e) => setCustomerQuery(e.target.value)}
+                      placeholder="Name or phone"
+                    />
+                  </label>
+
+                  <div className="pos-customer-results">
+                    {filteredCustomers.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`pos-customer-result ${customerId === c.id ? "selected" : ""}`}
+                        onClick={() => pickCustomer(c)}
+                      >
+                        <strong>{c.name || "Unnamed"}</strong>
+                        <span className="muted">{c.phone}</span>
+                      </button>
+                    ))}
+                    {filteredCustomers.length === 0 ? (
+                      <div className="muted">No matches — save a new guest below.</div>
+                    ) : null}
+                  </div>
+
                   <label>
                     Name
                     <input
                       value={draftName}
                       onChange={(e) => setDraftName(e.target.value)}
                       placeholder="Walk-in"
-                      autoFocus
                     />
                   </label>
                   <label>
@@ -330,11 +490,8 @@ export default function PosPage() {
                     />
                   </label>
                   <div className="btn-row">
-                    <button type="button" className="btn" onClick={saveCustomer}>
-                      Save customer
-                    </button>
-                    <button type="button" className="btn secondary" onClick={clearCustomer}>
-                      Clear
+                    <button type="button" className="btn" onClick={saveCustomerDetails}>
+                      Use on ticket
                     </button>
                   </div>
                 </div>
@@ -364,7 +521,7 @@ export default function PosPage() {
                     type="button"
                     className="pos-key"
                     onClick={() => {
-                      if (key === "⌫") backspace();
+                      if (key === "⌫") setTenderInput((prev) => prev.slice(0, -1));
                       else appendDigit(key);
                     }}
                   >
@@ -373,10 +530,14 @@ export default function PosPage() {
                 ))}
               </div>
               <div className="btn-row pos-calc-tools">
-                <button type="button" className="btn secondary" onClick={setExact}>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setTenderInput(formatMoney(amountDue))}
+                >
                   Exact
                 </button>
-                <button type="button" className="btn secondary" onClick={clearTender}>
+                <button type="button" className="btn secondary" onClick={() => setTenderInput("")}>
                   Clear
                 </button>
               </div>
@@ -396,7 +557,7 @@ export default function PosPage() {
               <button
                 type="button"
                 className="btn secondary"
-                disabled={busy || !serviceId || amountDue <= 0}
+                disabled={busy || cartDetails.length === 0 || amountDue <= 0}
                 onClick={() => checkout("qr")}
               >
                 Show QR pay
@@ -405,22 +566,11 @@ export default function PosPage() {
 
             {lastCash && result?.already_paid ? (
               <div className="pos-receipt">
-                <strong>Cash sale recorded</strong>
-                <div>
-                  #{result.booking?.id} · {result.booking?.service?.name}
-                </div>
+                <strong>Sale recorded</strong>
+                <div>#{result.booking?.id}</div>
                 <div className="muted">
-                  Tendered {currency} {formatMoney(lastCash.tendered)} · Change {currency}{" "}
+                  {(result.line_items || []).join(", ")} · Change {currency}{" "}
                   {formatMoney(lastCash.change)}
-                </div>
-              </div>
-            ) : null}
-
-            {result && !result.already_paid && !showQr ? (
-              <div className="pos-receipt">
-                <strong>Sale created</strong>
-                <div className="muted">
-                  #{result.booking?.id} · {result.booking?.payment_status}
                 </div>
               </div>
             ) : null}

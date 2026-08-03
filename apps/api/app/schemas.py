@@ -49,7 +49,7 @@ class UserOut(BaseModel):
 class VendorCreateIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     slug: str | None = Field(default=None, max_length=80)
-    industry: str = "wellness"
+    industry: str = "health_beauty"
     timezone: str = "Asia/Kuala_Lumpur"
     country: str = Field(default="MY", min_length=2, max_length=2)
     owner_full_name: str = Field(min_length=2, max_length=120)
@@ -102,6 +102,7 @@ class ServiceIn(BaseModel):
     price_amount: Decimal = Decimal("0")
     currency: str = "MYR"
     deposit_amount: Decimal = Decimal("0")
+    category: str | None = Field(default=None, max_length=80)
     is_active: bool = True
 
 
@@ -109,6 +110,12 @@ class ServiceOut(ServiceIn):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+
+
+class WorkspaceUpdateIn(BaseModel):
+    industry: str | None = Field(default=None, max_length=80)
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    timezone: str | None = None
 
 
 class CustomerIn(BaseModel):
@@ -208,8 +215,16 @@ class DashboardOut(BaseModel):
     is_platform_admin: bool = False
 
 
-class PosSaleIn(BaseModel):
+class PosSaleItemIn(BaseModel):
     service_id: int
+    quantity: int = Field(default=1, ge=1, le=99)
+
+
+class PosSaleIn(BaseModel):
+    items: list[PosSaleItemIn] | None = None
+    service_id: int | None = None  # legacy single-item
+    quantity: int = Field(default=1, ge=1, le=99)
+    customer_id: int | None = None
     customer_name: str | None = None
     customer_phone: str | None = None
     payment_method: str = Field(pattern="^(cash|qr)$")
@@ -225,3 +240,4 @@ class PosSaleOut(BaseModel):
     currency: str
     payment_url: str | None = None
     already_paid: bool = False
+    line_items: list[str] = []

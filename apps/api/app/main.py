@@ -16,6 +16,7 @@ from app.routers import (
     services,
     vendors,
     whatsapp,
+    workspace,
 )
 from app.schema_migrate import ensure_schema
 from app.seed import bootstrap
@@ -50,6 +51,7 @@ app.include_router(services.router, prefix="/v1")
 app.include_router(customers.router, prefix="/v1")
 app.include_router(bookings.router, prefix="/v1")
 app.include_router(pos.router, prefix="/v1")
+app.include_router(workspace.router, prefix="/v1")
 app.include_router(conversations.router, prefix="/v1")
 app.include_router(whatsapp.router, prefix="/v1")
 # Hosted checkout lives at /pay/{token} (not under /v1)

@@ -10,7 +10,7 @@ from app.db import get_db
 from app.deps import require_vendor_user
 from app.models import Booking, BookingStatus, Channel, Customer, PaymentStatus, Service, User
 from app.payments import amount_due, attach_payment_link
-from app.schemas import BookingOut, PosSaleIn, PosSaleOut
+from app.schemas import BookingOut, PosSaleIn, PosSaleItemIn, PosSaleOut
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -24,33 +24,77 @@ def _booking_out(db: Session, booking_id: int) -> Booking:
     )
 
 
+def _normalize_items(payload: PosSaleIn) -> list[PosSaleItemIn]:
+    if payload.items:
+        return payload.items
+    if payload.service_id is not None:
+        return [PosSaleItemIn(service_id=payload.service_id, quantity=payload.quantity)]
+    raise HTTPException(status_code=400, detail="Add at least one item to the cart")
+
+
 @router.post("/sale", response_model=PosSaleOut, status_code=status.HTTP_201_CREATED)
 def create_walkin_sale(
     payload: PosSaleIn,
     user: User = Depends(require_vendor_user),
     db: Session = Depends(get_db),
 ) -> PosSaleOut:
-    service = (
+    raw_items = _normalize_items(payload)
+    # Merge duplicate service lines
+    qty_by_id: dict[int, int] = {}
+    for item in raw_items:
+        qty_by_id[item.service_id] = qty_by_id.get(item.service_id, 0) + int(item.quantity)
+
+    services = (
         db.query(Service)
         .filter(
-            Service.id == payload.service_id,
             Service.tenant_id == user.tenant_id,
             Service.is_active.is_(True),
+            Service.id.in_(list(qty_by_id.keys())),
         )
-        .first()
+        .all()
     )
-    if service is None:
-        raise HTTPException(status_code=404, detail="Service not found")
+    by_id = {s.id: s for s in services}
+    if len(by_id) != len(qty_by_id):
+        raise HTTPException(status_code=404, detail="One or more catalog items were not found")
 
-    phone = (payload.customer_phone or "").strip()
+    line_labels: list[str] = []
+    amount = Decimal("0")
+    duration_total = 0
+    currency = "MYR"
+    primary: Service | None = None
+    for service_id, qty in qty_by_id.items():
+        service = by_id[service_id]
+        if primary is None:
+            primary = service
+        currency = service.currency or currency
+        unit = Decimal(str(service.price_amount or 0))
+        amount += unit * qty
+        duration_total += int(service.duration_minutes or 0) * qty
+        line_labels.append(f"{qty}× {service.name}")
+
+    assert primary is not None
+
+    # Resolve customer
+    customer: Customer | None = None
+    if payload.customer_id is not None:
+        customer = (
+            db.query(Customer)
+            .filter(Customer.id == payload.customer_id, Customer.tenant_id == user.tenant_id)
+            .first()
+        )
+        if customer is None:
+            raise HTTPException(status_code=404, detail="Customer not found")
+
+    phone = (payload.customer_phone or (customer.phone if customer else "") or "").strip()
     if not phone:
         phone = f"walkin-{int(datetime.now(timezone.utc).timestamp())}"
 
-    customer = (
-        db.query(Customer)
-        .filter(Customer.tenant_id == user.tenant_id, Customer.phone == phone)
-        .first()
-    )
+    if customer is None:
+        customer = (
+            db.query(Customer)
+            .filter(Customer.tenant_id == user.tenant_id, Customer.phone == phone)
+            .first()
+        )
     if customer is None:
         customer = Customer(
             tenant_id=user.tenant_id,
@@ -59,54 +103,63 @@ def create_walkin_sale(
         )
         db.add(customer)
         db.flush()
-    elif payload.customer_name and not customer.name:
-        customer.name = payload.customer_name
+    else:
+        if payload.customer_name:
+            customer.name = payload.customer_name
+        if payload.customer_phone and customer.phone.startswith("walkin-"):
+            # keep walk-in phone unless a real phone is provided via payload matching
+            pass
 
     starts_at = payload.starts_at or datetime.now(timezone.utc)
     if starts_at.tzinfo is None:
         starts_at = starts_at.replace(tzinfo=timezone.utc)
-    ends_at = starts_at + timedelta(minutes=int(service.duration_minutes or 60))
+    ends_at = starts_at + timedelta(minutes=max(duration_total, 15))
 
-    amount = Decimal(str(service.price_amount or 0))
-    deposit = Decimal(str(service.deposit_amount or 0))
-    if payload.charge_mode == "deposit" and deposit > 0:
+    deposit = Decimal(str(primary.deposit_amount or 0))
+    single_item = len(qty_by_id) == 1 and next(iter(qty_by_id.values())) == 1
+    use_deposit = payload.charge_mode == "deposit" and single_item and deposit > 0
+    if use_deposit:
         due_deposit = deposit
         payment_status = PaymentStatus.deposit_due
     else:
-        # Full amount due via pay link / cash
         due_deposit = Decimal("0")
         payment_status = PaymentStatus.unpaid
+
+    cart_note = "POS · " + ", ".join(line_labels)
+    notes = " · ".join([x for x in [payload.notes, cart_note] if x])
 
     booking = Booking(
         tenant_id=user.tenant_id,
         customer_id=customer.id,
-        service_id=service.id,
+        service_id=primary.id,
         channel=Channel.manual,
         status=BookingStatus.confirmed,
         payment_status=payment_status,
         starts_at=starts_at,
         ends_at=ends_at,
-        amount=amount,
-        deposit_amount=due_deposit if payload.charge_mode == "deposit" else Decimal("0"),
-        currency=service.currency or "MYR",
-        notes=payload.notes or "Walk-in POS sale",
+        amount=amount if not use_deposit else Decimal(str(primary.price_amount or 0)),
+        deposit_amount=due_deposit,
+        currency=currency,
+        notes=notes,
         external_ref=f"pos-{int(datetime.now(timezone.utc).timestamp())}",
     )
+    # For deposit on single item, amount should still be full price
+    if use_deposit:
+        booking.amount = Decimal(str(primary.price_amount or 0))
+
     db.add(booking)
     db.flush()
     attach_payment_link(db, booking)
 
     already_paid = False
     if payload.payment_method == "cash":
-        # Cash always settles the charged amount in full for this sale.
-        if payload.charge_mode == "deposit" and deposit > 0 and deposit < amount:
+        if use_deposit and due_deposit > 0 and due_deposit < Decimal(str(booking.amount or 0)):
             booking.payment_status = PaymentStatus.deposit_paid
         else:
             booking.payment_status = PaymentStatus.paid
         booking.status = BookingStatus.confirmed
         booking.paid_at = datetime.now(timezone.utc)
         already_paid = True
-    # qr: leave unpaid/deposit_due; staff shows QR for customer to scan
 
     db.commit()
     booking = _booking_out(db, booking.id)
@@ -118,4 +171,5 @@ def create_walkin_sale(
         currency=booking.currency,
         payment_url=booking.payment_url,
         already_paid=already_paid,
+        line_items=line_labels,
     )

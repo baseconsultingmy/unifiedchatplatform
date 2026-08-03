@@ -15,6 +15,7 @@ def ensure_schema() -> None:
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_url VARCHAR(500)",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ",
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_bookings_payment_token ON bookings (payment_token)",
+        "ALTER TABLE services ADD COLUMN IF NOT EXISTS category VARCHAR(80)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

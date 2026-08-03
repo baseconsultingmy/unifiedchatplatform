@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import require_platform_admin
 from app.models import Booking, Service, Tenant, User, UserRole
+from app.routers.workspace import normalize_industry
 from app.schemas import TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
 from app.security import create_access_token, hash_password
 from app.seed import slugify
@@ -72,7 +73,7 @@ def create_vendor(
     tenant = Tenant(
         name=payload.name,
         slug=slug,
-        industry=payload.industry,
+        industry=normalize_industry(payload.industry),
         timezone=payload.timezone,
         country=payload.country.upper(),
         is_platform=False,

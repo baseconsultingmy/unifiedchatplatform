@@ -1,6 +1,7 @@
 import { Navigate, NavLink, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./auth";
+import { industryProfile } from "./industry";
 import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -22,6 +23,7 @@ function Shell() {
   const { user, logout, impersonating, exitViewAs } = useAuth();
   const navigate = useNavigate();
   const isPlatformAdmin = user?.role === "platform_admin" && !impersonating;
+  const catalogLabel = industryProfile(user?.tenant?.industry).catalogNoun;
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_KEY) === "1";
@@ -88,8 +90,8 @@ function Shell() {
               <NavLink to="/conversations" title="Inbox">
                 {sidebarCollapsed ? "In" : "Inbox"}
               </NavLink>
-              <NavLink to="/services" title="Services">
-                {sidebarCollapsed ? "Sv" : "Services"}
+              <NavLink to="/services" title={catalogLabel}>
+                {sidebarCollapsed ? catalogLabel.slice(0, 2) : catalogLabel}
               </NavLink>
             </>
           )}

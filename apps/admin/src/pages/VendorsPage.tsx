@@ -10,7 +10,7 @@ export default function VendorsPage() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [name, setName] = useState("");
-  const [industry, setIndustry] = useState("wellness");
+  const [industry, setIndustry] = useState("health_beauty");
   const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
@@ -136,10 +136,10 @@ export default function VendorsPage() {
         <label>
           Industry
           <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-            <option value="wellness">Health & wellness / massage</option>
-            <option value="tattoo">Tattoo</option>
-            <option value="beauty">Beauty / salon</option>
-            <option value="other">Other SME</option>
+            <option value="health_beauty">Health & Beauty</option>
+            <option value="fnb">Food & Beverage</option>
+            <option value="retail">Retail</option>
+            <option value="general">General</option>
           </select>
         </label>
         <label>
