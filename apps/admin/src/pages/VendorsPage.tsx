@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
 export default function VendorsPage() {
-  const { token, user } = useAuth();
+  const { token, user, viewAsVendor } = useAuth();
+  const navigate = useNavigate();
   const [vendors, setVendors] = useState<any[]>([]);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("wellness");
   const [ownerName, setOwnerName] = useState("");
@@ -14,7 +16,7 @@ export default function VendorsPage() {
   const [ownerPassword, setOwnerPassword] = useState("");
   const [country, setCountry] = useState("MY");
 
-  const isPlatformAdmin = user?.role === "platform_admin";
+  const isPlatformAdmin = user?.role === "platform_admin" && !user?.impersonating;
 
   async function refresh() {
     if (!token) return;
@@ -57,6 +59,19 @@ export default function VendorsPage() {
     await refresh();
   }
 
+  async function onViewAs(vendor: any) {
+    setError("");
+    setBusyId(vendor.id);
+    try {
+      await viewAsVendor(vendor.id);
+      navigate("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not view as vendor");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="grid split-2">
       <section className="panel">
@@ -94,7 +109,14 @@ export default function VendorsPage() {
                     {v.is_active ? "active" : "disabled"}
                   </span>
                 </td>
-                <td>
+                <td style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+                  <button
+                    className="btn"
+                    disabled={!v.is_active || busyId === v.id}
+                    onClick={() => onViewAs(v)}
+                  >
+                    {busyId === v.id ? "Opening…" : "View as"}
+                  </button>
                   <button className="btn secondary" onClick={() => toggleActive(v)}>
                     {v.is_active ? "Disable" : "Enable"}
                   </button>

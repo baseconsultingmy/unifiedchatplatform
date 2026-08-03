@@ -7,7 +7,7 @@ export default function DashboardPage() {
   const { token, user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
-  const isPlatformAdmin = user?.role === "platform_admin";
+  const isPlatformAdmin = user?.role === "platform_admin" && !user?.impersonating;
 
   useEffect(() => {
     if (!token) return;

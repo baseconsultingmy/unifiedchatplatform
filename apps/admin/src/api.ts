@@ -49,4 +49,10 @@ export const api = {
     request<any>("/v1/vendors", { method: "POST", body: JSON.stringify(body) }, token),
   updateVendor: (token: string, id: number, body: unknown) =>
     request<any>(`/v1/vendors/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
+  viewAsVendor: (token: string, id: number) =>
+    request<{ access_token: string; impersonating: boolean; vendor_name?: string }>(
+      `/v1/vendors/${id}/view-as`,
+      { method: "POST" },
+      token,
+    ),
 };

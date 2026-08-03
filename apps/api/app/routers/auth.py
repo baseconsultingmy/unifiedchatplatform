@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
 from app.models import User
 from app.schemas import LoginIn, TokenOut, UserOut
-from app.security import authenticate_user, create_access_token
+from app.security import authenticate_user, create_access_token, get_impersonation_meta
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -20,5 +20,28 @@ def login(payload: LoginIn, db: Session = Depends(get_db)) -> TokenOut:
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: User = Depends(get_current_user)) -> User:
-    return user
+def me(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserOut:
+    auth = request.headers.get("Authorization") or ""
+    token = auth.removeprefix("Bearer ").strip()
+    meta = get_impersonation_meta(token) if token else {"impersonating": False, "impersonator_id": None}
+
+    impersonator_email = None
+    impersonator_id = meta.get("impersonator_id")
+    if impersonator_id:
+        impersonator = db.query(User).filter(User.id == int(impersonator_id)).first()
+        impersonator_email = impersonator.email if impersonator else None
+
+    return UserOut(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        tenant=user.tenant,
+        impersonating=bool(meta.get("impersonating")),
+        impersonator_id=int(impersonator_id) if impersonator_id else None,
+        impersonator_email=impersonator_email,
+    )

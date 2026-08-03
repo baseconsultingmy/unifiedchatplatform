@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import require_platform_admin
 from app.models import Booking, Service, Tenant, User, UserRole
-from app.schemas import VendorCreateIn, VendorOut, VendorUpdateIn
-from app.security import hash_password
+from app.schemas import TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
+from app.security import create_access_token, hash_password
 from app.seed import slugify
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -119,3 +119,43 @@ def update_vendor(
     db.commit()
     db.refresh(tenant)
     return _vendor_out(db, tenant)
+
+
+@router.post("/{vendor_id}/view-as", response_model=TokenOut)
+def view_as_vendor(
+    vendor_id: int,
+    admin: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+) -> TokenOut:
+    """Issue a short-lived vendor-owner token so Master Admin can inspect a shop."""
+    tenant = (
+        db.query(Tenant)
+        .filter(Tenant.id == vendor_id, Tenant.is_platform.is_(False))
+        .first()
+    )
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    if not tenant.is_active:
+        raise HTTPException(status_code=400, detail="Vendor is disabled")
+
+    owner = (
+        db.query(User)
+        .filter(
+            User.tenant_id == tenant.id,
+            User.role == UserRole.owner.value,
+            User.is_active.is_(True),
+        )
+        .order_by(User.id.asc())
+        .first()
+    )
+    if owner is None:
+        raise HTTPException(status_code=400, detail="Vendor has no active owner login")
+
+    token = create_access_token(
+        user_id=owner.id,
+        tenant_id=tenant.id,
+        email=owner.email,
+        impersonator_id=admin.id,
+        expire_minutes=60 * 4,
+    )
+    return TokenOut(access_token=token, impersonating=True, vendor_name=tenant.name)

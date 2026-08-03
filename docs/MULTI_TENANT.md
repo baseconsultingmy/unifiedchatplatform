@@ -20,3 +20,14 @@ Created on first API boot from `deploy/.env`:
 
 - Master Admin: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`
 - Sample vendor owner: `owner@demo-studio.baseapp.asia` (same bootstrap password)
+
+## View as (Master Admin)
+
+Master Admin can open a vendor workspace without knowing their password:
+
+1. Vendors → **View as**
+2. Inspect bookings / services / inbox as that vendor
+3. Click **Exit view as** to restore Master Admin session
+
+API: `POST /v1/vendors/{id}/view-as` returns a short-lived impersonation JWT
+(`impersonator_id` + `impersonating` claims).

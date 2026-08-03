@@ -19,14 +19,25 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(*, user_id: int, tenant_id: int, email: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+def create_access_token(
+    *,
+    user_id: int,
+    tenant_id: int,
+    email: str,
+    impersonator_id: int | None = None,
+    expire_minutes: int | None = None,
+) -> str:
+    minutes = expire_minutes if expire_minutes is not None else settings.jwt_expire_minutes
+    expire = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     payload = {
         "sub": str(user_id),
         "tenant_id": tenant_id,
         "email": email,
         "exp": expire,
     }
+    if impersonator_id is not None:
+        payload["impersonator_id"] = impersonator_id
+        payload["impersonating"] = True
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
@@ -48,3 +59,14 @@ def get_user_from_token(db: Session, token: str) -> User | None:
     except (JWTError, ValueError, TypeError):
         return None
     return db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+
+
+def get_impersonation_meta(token: str) -> dict:
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        return {"impersonating": False, "impersonator_id": None}
+    return {
+        "impersonating": bool(payload.get("impersonating")),
+        "impersonator_id": payload.get("impersonator_id"),
+    }

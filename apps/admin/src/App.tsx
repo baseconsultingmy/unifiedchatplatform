@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./auth";
 import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
@@ -15,8 +15,14 @@ function Protected() {
 }
 
 function Shell() {
-  const { user, logout } = useAuth();
-  const isPlatformAdmin = user?.role === "platform_admin";
+  const { user, logout, impersonating, exitViewAs } = useAuth();
+  const navigate = useNavigate();
+  const isPlatformAdmin = user?.role === "platform_admin" && !impersonating;
+
+  function onExitViewAs() {
+    exitViewAs();
+    navigate("/vendors");
+  }
 
   return (
     <div className="app-shell">
@@ -24,7 +30,11 @@ function Shell() {
         <div className="brand">
           <strong>BaseApp</strong>
           <span>
-            {isPlatformAdmin ? "Master Admin" : user?.tenant?.name || "Vendor workspace"}
+            {isPlatformAdmin
+              ? "Master Admin"
+              : impersonating
+                ? `Viewing: ${user?.tenant?.name || "vendor"}`
+                : user?.tenant?.name || "Vendor workspace"}
           </span>
         </div>
         <nav className="nav">
@@ -43,12 +53,30 @@ function Shell() {
         </nav>
       </aside>
       <main className="main">
+        {impersonating ? (
+          <div className="impersonation-banner">
+            <div>
+              <strong>Viewing as vendor</strong>
+              <span>
+                {user?.tenant?.name} · {user?.email}
+                {user?.impersonator_email ? ` · via ${user.impersonator_email}` : ""}
+              </span>
+            </div>
+            <button className="btn secondary" onClick={onExitViewAs}>
+              Exit view as
+            </button>
+          </div>
+        ) : null}
         <div className="topbar">
           <div>
             <h2 style={{ margin: 0 }}>{user?.full_name}</h2>
             <p className="muted">
               {user?.email}
-              {isPlatformAdmin ? " · platform admin" : " · vendor owner"}
+              {isPlatformAdmin
+                ? " · platform admin"
+                : impersonating
+                  ? " · view-as mode"
+                  : " · vendor owner"}
             </p>
           </div>
           <button className="btn secondary" onClick={logout}>
@@ -62,8 +90,10 @@ function Shell() {
 }
 
 function VendorOnly() {
-  const { user } = useAuth();
-  if (user?.role === "platform_admin") return <Navigate to="/vendors" replace />;
+  const { user, impersonating } = useAuth();
+  if (user?.role === "platform_admin" && !impersonating) {
+    return <Navigate to="/vendors" replace />;
+  }
   return <Outlet />;
 }
 

@@ -9,6 +9,8 @@ from app.models import BookingStatus, Channel, PaymentStatus
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    impersonating: bool = False
+    vendor_name: str | None = None
 
 
 class LoginIn(BaseModel):
@@ -39,6 +41,9 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     tenant: TenantOut
+    impersonating: bool = False
+    impersonator_id: int | None = None
+    impersonator_email: str | None = None
 
 
 class VendorCreateIn(BaseModel):
