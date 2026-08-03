@@ -62,6 +62,18 @@ Prefer shop-owned token + phone id. Platform values are fallback only.
 - Unmapped phone ids return **404** (no silent wrong-shop fallback)
 - Outbound sends prefer the shop token/phone id, else platform env
 
+## Booking chatbot (one WhatsApp flow)
+
+Customers book inside a single chat:
+
+1. **Package** — interactive list of active services  
+2. **Date** — next 7 days (Today / Tomorrow / weekday)  
+3. **Time slot** — available slots 10:00–20:00 shop-local time (skips taken slots; “More times” if needed)  
+4. **Confirm** — Confirm / Cancel buttons  
+5. **Pay** — hosted pay link; shared receipt after payment  
+
+Type `menu` / `book` to start, `cancel` to reset.
+
 ## Policy note
 
 Keep the WABA on legitimate appointment businesses (spa/massage/tattoo studios). Do not mix adult services on the same number.

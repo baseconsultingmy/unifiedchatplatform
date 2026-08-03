@@ -99,11 +99,12 @@ def send_reply_buttons(
     )
 
 
-def send_service_list(
+def send_list_message(
     *,
     to_phone: str,
     body: str,
     button_label: str,
+    section_title: str,
     rows: list[dict[str, str]],
     phone_number_id: str | None = None,
     access_token: str | None = None,
@@ -121,7 +122,7 @@ def send_service_list(
                     "button": button_label[:20],
                     "sections": [
                         {
-                            "title": "Services",
+                            "title": section_title[:24],
                             "rows": [
                                 {
                                     "id": r["id"][:200],
@@ -135,6 +136,27 @@ def send_service_list(
                 },
             },
         },
+        phone_number_id=phone_number_id,
+        access_token=access_token,
+    )
+
+
+def send_service_list(
+    *,
+    to_phone: str,
+    body: str,
+    button_label: str,
+    rows: list[dict[str, str]],
+    phone_number_id: str | None = None,
+    access_token: str | None = None,
+) -> dict:
+    """Backward-compatible alias for package/service lists."""
+    return send_list_message(
+        to_phone=to_phone,
+        body=body,
+        button_label=button_label,
+        section_title="Packages",
+        rows=rows,
         phone_number_id=phone_number_id,
         access_token=access_token,
     )
