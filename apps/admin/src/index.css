@@ -1484,45 +1484,10 @@ p {
   gap: 0.35rem;
 }
 
+/* Legacy in-page print styles kept as a no-op fallback; SaleReceipt prints via iframe. */
 @media print {
-  body.printing-receipt * {
-    visibility: hidden !important;
-  }
-
-  body.printing-receipt .receipt-print-root,
-  body.printing-receipt .receipt-print-root * {
-    visibility: visible !important;
-  }
-
-  body.printing-receipt .receipt-print-root {
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 80mm;
-    max-width: 100%;
-    padding: 0;
-    background: white;
-  }
-
-  body.printing-receipt .no-print {
+  .no-print {
     display: none !important;
-  }
-
-  body.printing-receipt .modal-backdrop,
-  body.printing-receipt .receipt-modal {
-    position: static;
-    inset: auto;
-    background: transparent;
-    box-shadow: none;
-    border: 0;
-    padding: 0;
-    max-height: none;
-    overflow: visible;
-  }
-
-  body.printing-receipt .pos-receipt-sheet {
-    border: 0;
-    box-shadow: none;
-    background: white;
   }
 }
 

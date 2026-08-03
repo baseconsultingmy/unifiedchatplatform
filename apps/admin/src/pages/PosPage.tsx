@@ -56,9 +56,7 @@ export default function PosPage() {
       if (step === "cash") setStep("payment");
       else if (step === "payment") setStep("customer");
       else if (step === "customer") setStep(null);
-      else if (step === "qr" || step === "done") {
-        /* keep open until explicit close */
-      }
+      else if (step === "qr" || step === "done") resetSale();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -791,7 +789,11 @@ export default function PosPage() {
 
       {/* Receipt / done */}
       {step === "done" && result ? (
-        <div className="modal-backdrop" role="presentation">
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={resetSale}
+        >
           <div
             className="modal-card booking-modal pos-flow-modal receipt-modal"
             role="dialog"
@@ -812,6 +814,7 @@ export default function PosPage() {
               cash={lastCash}
               paidAt={result.booking?.paid_at}
               onDone={resetSale}
+              onClose={resetSale}
             />
           </div>
         </div>
