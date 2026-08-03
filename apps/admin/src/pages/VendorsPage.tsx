@@ -73,7 +73,7 @@ export default function VendorsPage() {
   }
 
   return (
-    <div className="grid split-2">
+    <div className="grid split-2 page-scroll">
       <section className="panel">
         <h1>Vendors</h1>
         <p>Each vendor is an isolated shop with its own login, services, and bookings.</p>

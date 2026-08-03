@@ -237,8 +237,8 @@ export default function PosPage() {
   }
 
   return (
-    <div className="grid pos-shell pos-shell-3">
-      <section className="panel pos-services-panel">
+    <div className="grid pos-shell pos-shell-3 page-fill">
+      <section className="panel pos-services-panel page-panel">
         <div className="bookings-toolbar">
           <div>
             <h1>{profile.posTitle}</h1>
@@ -288,7 +288,7 @@ export default function PosPage() {
         )}
       </section>
 
-      <section className="panel pos-customer-panel">
+      <section className="panel pos-customer-panel page-panel">
         <div className="bookings-toolbar">
           <div>
             <h2>Customer</h2>
@@ -375,7 +375,7 @@ export default function PosPage() {
         </div>
       </section>
 
-      <section className="panel pos-register-panel">
+      <section className="panel pos-register-panel page-panel">
         {showQr && result?.payment_url ? (
           <QrPayPanel
             paymentUrl={result.payment_url}

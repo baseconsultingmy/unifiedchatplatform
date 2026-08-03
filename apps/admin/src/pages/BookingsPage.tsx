@@ -272,8 +272,8 @@ export default function BookingsPage() {
   const bookedCount = dayBookings.length;
 
   return (
-    <div className="grid">
-      <div className="bookings-toolbar">
+    <div className={`grid page-fill ${view === "day" ? "bookings-day" : "bookings-list"}`}>
+      <div className="bookings-toolbar page-head">
         <div>
           <h1>Bookings</h1>
           <p>
@@ -317,7 +317,7 @@ export default function BookingsPage() {
       {error && !showCreate ? <div className="error">{error}</div> : null}
 
       {view === "day" ? (
-        <section className="panel calendar-panel">
+        <section className="panel calendar-panel page-panel">
           <div className="calendar-nav">
             <button
               type="button"
@@ -437,7 +437,7 @@ export default function BookingsPage() {
           </div>
         </section>
       ) : (
-        <section className="panel">
+        <section className="panel page-panel table-panel">
           <table className="table">
             <thead>
               <tr>

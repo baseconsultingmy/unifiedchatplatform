@@ -73,7 +73,7 @@ export default function ServicesPage() {
   }
 
   return (
-    <div className="grid split-2">
+    <div className="grid split-2 page-scroll">
       <section className="panel">
         <div className="bookings-toolbar">
           <div>

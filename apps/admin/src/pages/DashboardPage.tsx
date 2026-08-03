@@ -29,7 +29,7 @@ export default function DashboardPage() {
       ["Customers", data.customers_total],
     ];
     return (
-      <div className="grid">
+      <div className="grid page-scroll">
         <div>
           <h1>Platform overview</h1>
           <p>Master Admin controls vendors. Each vendor manages their own services and bookings.</p>
@@ -65,7 +65,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="grid">
+    <div className="grid page-scroll">
       <div>
         <h1>Vendor overview</h1>
         <p>Your shop workspace — services, reservations, walk-in POS, and WhatsApp inbox.</p>

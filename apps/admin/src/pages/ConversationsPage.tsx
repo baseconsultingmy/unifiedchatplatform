@@ -92,8 +92,8 @@ export default function ConversationsPage() {
   }
 
   return (
-    <div className="grid">
-      <div className="topbar" style={{ marginBottom: 0 }}>
+    <div className="grid page-fill inbox-page">
+      <div className="bookings-toolbar page-head">
         <div>
           <h1>Inbox</h1>
           <p>Live WhatsApp chat. Reply within the 24-hour customer care window.</p>
@@ -103,8 +103,8 @@ export default function ConversationsPage() {
         </button>
       </div>
       {error ? <div className="error">{error}</div> : null}
-      <div className="grid split-2 chat-layout">
-        <section className="panel">
+      <div className="grid split-2 chat-layout page-panel">
+        <section className="panel table-panel">
           <table className="table">
             <thead>
               <tr>
@@ -155,7 +155,7 @@ export default function ConversationsPage() {
           </table>
         </section>
 
-        <section className="panel chat-thread">
+        <section className="panel chat-thread page-panel">
           <div className="chat-thread-head">
             <div>
               <h2 style={{ margin: 0 }}>

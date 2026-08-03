@@ -65,7 +65,7 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="grid split-2">
+    <div className="grid split-2 page-scroll">
       <section className="panel">
         <h1>{profile.resourcesNoun}</h1>
         <p>

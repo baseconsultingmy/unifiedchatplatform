@@ -20,6 +20,20 @@ function Protected() {
   return <Outlet />;
 }
 
+function useCompactLayout() {
+  const [compact, setCompact] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 1100px)").matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1100px)");
+    const onChange = () => setCompact(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return compact;
+}
+
 function Shell() {
   const { user, logout, impersonating, exitViewAs } = useAuth();
   const navigate = useNavigate();
@@ -27,8 +41,12 @@ function Shell() {
   const catalogLabel = industryProfile(user?.tenant?.industry).catalogNoun;
   const resourcesLabel = industryProfile(user?.tenant?.industry).resourcesNoun;
   const supportsResources = industryProfile(user?.tenant?.industry).supportsResources;
+  const compact = useCompactLayout();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
+      if (typeof window !== "undefined" && window.matchMedia("(max-width: 1100px)").matches) {
+        return true;
+      }
       return localStorage.getItem(SIDEBAR_KEY) === "1";
     } catch {
       return false;
@@ -36,25 +54,50 @@ function Shell() {
   });
 
   useEffect(() => {
+    if (compact) setSidebarCollapsed(true);
+  }, [compact]);
+
+  useEffect(() => {
+    if (compact) return;
     try {
       localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed ? "1" : "0");
     } catch {
       /* ignore */
     }
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, compact]);
 
   function onExitViewAs() {
     exitViewAs();
     navigate("/vendors");
   }
 
+  function closeSidebarIfCompact() {
+    if (compact) setSidebarCollapsed(true);
+  }
+
+  const shellClass = [
+    "app-shell",
+    sidebarCollapsed ? "sidebar-collapsed" : "",
+    compact ? "compact" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <div className={shellClass}>
+      {!sidebarCollapsed && compact ? (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close menu"
+          onClick={() => setSidebarCollapsed(true)}
+        />
+      ) : null}
       <aside className="sidebar">
         <div className="sidebar-top">
           <div className="brand">
             <strong>BaseApp</strong>
-            {!sidebarCollapsed ? (
+            {!sidebarCollapsed || compact ? (
               <span>
                 {isPlatformAdmin
                   ? "Master Admin"
@@ -74,31 +117,31 @@ function Shell() {
             {sidebarCollapsed ? "»" : "«"}
           </button>
         </div>
-        <nav className="nav">
+        <nav className="nav" onClick={closeSidebarIfCompact}>
           <NavLink to="/" end title="Overview">
-            {sidebarCollapsed ? "Ov" : "Overview"}
+            {sidebarCollapsed && !compact ? "Ov" : "Overview"}
           </NavLink>
           {isPlatformAdmin ? (
             <NavLink to="/vendors" title="Vendors">
-              {sidebarCollapsed ? "Ve" : "Vendors"}
+              {sidebarCollapsed && !compact ? "Ve" : "Vendors"}
             </NavLink>
           ) : (
             <>
               <NavLink to="/bookings" title="Bookings">
-                {sidebarCollapsed ? "Bk" : "Bookings"}
+                {sidebarCollapsed && !compact ? "Bk" : "Bookings"}
               </NavLink>
               <NavLink to="/pos" title="POS">
-                {sidebarCollapsed ? "POS" : "POS"}
+                POS
               </NavLink>
               <NavLink to="/conversations" title="Inbox">
-                {sidebarCollapsed ? "In" : "Inbox"}
+                {sidebarCollapsed && !compact ? "In" : "Inbox"}
               </NavLink>
               <NavLink to="/services" title={catalogLabel}>
-                {sidebarCollapsed ? catalogLabel.slice(0, 2) : catalogLabel}
+                {sidebarCollapsed && !compact ? catalogLabel.slice(0, 2) : catalogLabel}
               </NavLink>
               {supportsResources ? (
                 <NavLink to="/resources" title={resourcesLabel}>
-                  {sidebarCollapsed ? "Rs" : resourcesLabel}
+                  {sidebarCollapsed && !compact ? "Rs" : resourcesLabel}
                 </NavLink>
               ) : null}
             </>
@@ -122,7 +165,7 @@ function Shell() {
         ) : null}
         <div className="topbar">
           <div className="topbar-left">
-            {sidebarCollapsed ? (
+            {sidebarCollapsed || compact ? (
               <button
                 type="button"
                 className="btn secondary sidebar-open-btn"
@@ -131,7 +174,7 @@ function Shell() {
                 Menu
               </button>
             ) : null}
-            <div>
+            <div className="topbar-identity">
               <h2 style={{ margin: 0 }}>{user?.full_name}</h2>
               <p className="muted">
                 {user?.email}
@@ -147,7 +190,9 @@ function Shell() {
             Sign out
           </button>
         </div>
-        <Outlet />
+        <div className="page-frame">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

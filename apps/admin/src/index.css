@@ -27,12 +27,14 @@
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
-  min-height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   background:
     radial-gradient(1200px 600px at 10% -10%, rgba(15, 118, 110, 0.18), transparent 55%),
     radial-gradient(900px 500px at 100% 0%, rgba(194, 65, 12, 0.12), transparent 50%),
@@ -66,13 +68,15 @@ p {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
-  min-height: 100vh;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: 100%;
+  max-height: 100dvh;
+  overflow: hidden;
   transition: grid-template-columns 0.2s ease;
 }
 
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 72px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -80,7 +84,19 @@ p {
   border-right: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(10px);
-  overflow: hidden;
+  overflow: auto;
+  min-height: 0;
+}
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(20, 32, 28, 0.35);
+  cursor: pointer;
 }
 
 .sidebar-top {
@@ -158,7 +174,56 @@ p {
 }
 
 .main {
-  padding: 1.5rem 1.75rem 2.5rem;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.25rem 1rem;
+  gap: 0.75rem;
+}
+
+.page-frame {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-frame > * {
+  min-height: 0;
+}
+
+.page-fill {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.page-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+}
+
+.page-head {
+  flex-shrink: 0;
+}
+
+.page-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.table-panel {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .topbar {
@@ -166,7 +231,8 @@ p {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.4rem;
+  flex-shrink: 0;
+  margin-bottom: 0;
 }
 
 .topbar-left {
@@ -174,6 +240,23 @@ p {
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
+}
+
+.topbar-identity {
+  min-width: 0;
+}
+
+.topbar-identity h2 {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-identity .muted {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-open-btn {
@@ -185,8 +268,8 @@ p {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 0.85rem 1rem;
+  flex-shrink: 0;
+  padding: 0.7rem 0.9rem;
   border-radius: 14px;
   border: 1px solid rgba(194, 65, 12, 0.25);
   background: rgba(194, 65, 12, 0.1);
@@ -204,18 +287,27 @@ p {
 
 .chat-layout {
   align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.inbox-page {
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
 
 .chat-thread {
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  min-height: 560px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .chat-thread-head {
   margin-bottom: 0.8rem;
   padding-bottom: 0.8rem;
   border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .chat-messages {
@@ -223,7 +315,8 @@ p {
   gap: 0.7rem;
   align-content: start;
   overflow: auto;
-  max-height: 420px;
+  min-height: 0;
+  max-height: none;
   padding-right: 0.25rem;
 }
 
@@ -254,9 +347,10 @@ p {
 .chat-composer textarea {
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0.75rem 0.85rem;
-  resize: vertical;
-  min-height: 84px;
+  padding: 0.65rem 0.85rem;
+  resize: none;
+  min-height: 64px;
+  max-height: 96px;
   background: white;
 }
 
@@ -364,7 +458,9 @@ p {
 }
 
 .login-page {
-  min-height: 100vh;
+  height: 100%;
+  max-height: 100dvh;
+  overflow: auto;
   display: grid;
   place-items: center;
   padding: 1.5rem;
@@ -434,21 +530,50 @@ p {
 }
 
 .calendar-panel {
-  overflow: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.bookings-day,
+.bookings-list,
+.inbox-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bookings-day > .calendar-panel,
+.bookings-list > .table-panel,
+.inbox-page > .chat-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.page-fill > .modal-backdrop {
+  /* keep dialogs out of the page flex flow sizing */
+  flex: none;
 }
 
 .calendar-nav {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 .day-board-scroll {
-  overflow-x: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .day-board {
   display: grid;
-  min-width: 720px;
+  min-width: max(100%, 640px);
+  height: 100%;
+  min-height: 360px;
   border: 1px solid var(--line);
   border-radius: 14px;
   overflow: hidden;
@@ -460,6 +585,8 @@ p {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
 }
 
 .day-board-corner,
@@ -467,11 +594,12 @@ p {
   display: grid;
   gap: 0.1rem;
   place-content: center;
-  height: 56px;
+  height: 48px;
+  flex: 0 0 48px;
   border-bottom: 1px solid var(--line);
   border-right: 1px solid var(--line);
   background: rgba(15, 118, 110, 0.08);
-  padding: 0.35rem 0.5rem;
+  padding: 0.3rem 0.45rem;
   text-align: center;
 }
 
@@ -480,29 +608,35 @@ p {
 }
 
 .day-board-col-head strong {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
 }
 
 .day-board-col-head .muted {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
 }
 
 .day-board-col-body {
   position: relative;
   border-right: 1px solid var(--line);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .day-board-hour,
 .day-board-slot {
-  height: 28px;
+  flex: 1 1 0;
+  min-height: 12px;
+  height: auto;
   border-bottom: 1px solid rgba(20, 32, 28, 0.06);
 }
 
 .day-board-hour {
   border-right: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.72rem;
-  padding: 0.15rem 0.35rem;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.3rem;
 }
 
 .day-board-hour.hour,
@@ -661,9 +795,10 @@ p {
 }
 
 .modal-card {
-  width: min(560px, 100%);
-  max-height: min(88vh, 760px);
+  width: min(560px, calc(100vw - 1.5rem));
+  max-height: min(88dvh, 760px);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   background: #f7faf8;
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -717,12 +852,14 @@ p {
 }
 
 .pos-shell {
-  grid-template-columns: 1.25fr 0.9fr;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.85fr) minmax(0, 0.95fr);
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
 }
 
 .pos-shell-3 {
-  grid-template-columns: 1.2fr 0.85fr 0.95fr;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.85fr) minmax(0, 0.95fr);
 }
 
 .pos-services-panel,
@@ -731,12 +868,28 @@ p {
 .pos-checkout-panel,
 .pos-register-panel {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
   align-content: start;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .pos-customer-panel {
   align-content: start;
+}
+
+.pos-services-panel {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.pos-services-panel .pos-service-grid {
+  overflow: auto;
+  min-height: 0;
+  align-content: start;
+  -webkit-overflow-scrolling: touch;
 }
 
 .pos-field {
@@ -767,8 +920,10 @@ p {
 }
 
 .pos-register-panel {
-  grid-template-rows: auto 1fr auto;
-  min-height: 640px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .pos-register-head {
@@ -779,7 +934,7 @@ p {
 }
 
 .pos-register-body {
-  min-height: 180px;
+  min-height: 0;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.7);
@@ -951,21 +1106,21 @@ p {
 
 .pos-service-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.55rem;
 }
 
 .pos-service-btn {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.3rem;
   text-align: left;
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 0.9rem 0.95rem;
+  padding: 0.75rem 0.8rem;
   background: rgba(255, 255, 255, 0.78);
   cursor: pointer;
   color: var(--ink);
-  min-height: 110px;
+  min-height: 88px;
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
 }
 
@@ -1194,7 +1349,7 @@ p {
   display: grid;
   gap: 0.5rem;
   align-content: start;
-  min-height: 280px;
+  min-height: 0;
 }
 
 .qr-panel {
@@ -1238,39 +1393,136 @@ p {
   word-break: break-all;
 }
 
-@media (max-width: 900px) {
-  .app-shell {
-    grid-template-columns: 1fr;
+@media (max-width: 1100px) {
+  .app-shell.compact,
+  .app-shell.compact.sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .sidebar {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
+  .app-shell.compact .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 35;
+    width: min(280px, 84vw);
+    border-right: 1px solid var(--line);
+    border-bottom: 0;
+    background: rgba(247, 250, 248, 0.98);
+    box-shadow: 12px 0 40px rgba(20, 32, 28, 0.18);
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+    padding: 1.15rem 1rem;
   }
 
-  .stats,
+  .app-shell.compact:not(.sidebar-collapsed) .sidebar {
+    transform: translateX(0);
+  }
+
+  .app-shell.compact .sidebar .brand span {
+    display: block;
+  }
+
+  .app-shell.compact .nav a {
+    text-align: left;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .main {
+    padding: 0.85rem 0.95rem 0.85rem;
+  }
+
+  .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .split-2,
+  .detail-grid,
+  .booking-assign-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pos-shell,
+  .pos-shell-3 {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
+    grid-template-areas:
+      "services register"
+      "customer register";
+  }
+
+  .pos-services-panel {
+    grid-area: services;
+  }
+
+  .pos-customer-panel {
+    grid-area: customer;
+  }
+
+  .pos-register-panel {
+    grid-area: register;
+  }
+
+  .pos-service-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .day-board {
+    min-width: max(100%, 560px);
+  }
+
+  .panel {
+    padding: 0.9rem 0.95rem;
+  }
+
+  h1 {
+    font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+  }
+}
+
+@media (max-width: 760px) {
   .stats,
   .split-2,
   .detail-grid,
   .booking-assign-row,
   .pos-shell,
   .pos-shell-3,
-  .pos-calc-readout {
+  .pos-calc-readout,
+  .chat-layout {
     grid-template-columns: 1fr;
   }
 
-  .pos-calc.compact {
-    max-width: none;
-    justify-self: stretch;
+  .pos-shell,
+  .pos-shell-3 {
+    grid-template-areas:
+      "services"
+      "customer"
+      "register";
+    overflow: auto;
   }
 
-  .app-shell,
-  .app-shell.sidebar-collapsed {
-    grid-template-columns: 1fr;
+  .pos-register-panel {
+    min-height: min(52dvh, 420px);
   }
 
-  .sidebar-top {
-    align-items: center;
+  .inbox-page .chat-layout {
+    grid-template-rows: minmax(160px, 34%) minmax(0, 1fr);
+  }
+
+  .bookings-toolbar,
+  .calendar-nav,
+  .toolbar-actions {
+    gap: 0.55rem;
+  }
+
+  .topbar-identity .muted {
+    display: none;
+  }
+
+  .qr-image {
+    width: min(220px, 70vw);
+    height: auto;
+    aspect-ratio: 1;
   }
 }
