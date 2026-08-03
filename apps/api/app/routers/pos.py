@@ -188,7 +188,7 @@ def create_walkin_sale(
     )
 
 
-def _normalize_phone(raw: str | None) -> str | None:
+def _normalize_phone(raw: str | None, *, default_country: str = "60") -> str | None:
     if not raw:
         return None
     phone = raw.strip()
@@ -197,7 +197,16 @@ def _normalize_phone(raw: str | None) -> str | None:
     digits = "".join(ch for ch in phone if ch.isdigit())
     if len(digits) < 8:
         return None
+    # Local MY numbers like 0123456789 → 60123456789
+    if digits.startswith("0") and len(digits) >= 9:
+        digits = default_country + digits[1:]
     return digits
+
+
+def _wa_click_to_chat(phone: str, body: str) -> str:
+    from urllib.parse import quote
+
+    return f"https://wa.me/{phone}?text={quote(body)}"
 
 
 def _line_items_from_booking(booking: Booking) -> list[str]:
@@ -324,7 +333,12 @@ def send_sale_receipt_whatsapp(
     elif booking.customer_id and not conversation.customer_id:
         conversation.customer_id = booking.customer_id
 
+    # Persist customer/conversation updates even if Cloud API send fails.
+    db.commit()
+    db.refresh(conversation)
+
     phone_number_id = user.tenant.wa_phone_number_id if user.tenant else None
+    wa_url = _wa_click_to_chat(phone, body)
     try:
         result = send_text_message(
             to_phone=phone,
@@ -332,7 +346,16 @@ def send_sale_receipt_whatsapp(
             phone_number_id=phone_number_id,
         )
     except WhatsAppSendError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        # Common when Meta token expired or outside 24h session — still give a working send path.
+        return PosReceiptSendOut(
+            ok=True,
+            booking_id=booking.id,
+            sent_to=phone,
+            body=body,
+            delivered_via="wa_link",
+            wa_url=wa_url,
+            message=str(exc) or "Opened WhatsApp link instead of Cloud API",
+        )
 
     external_id = None
     messages = result.get("messages") or []
@@ -352,4 +375,12 @@ def send_sale_receipt_whatsapp(
     db.add(message)
     db.commit()
 
-    return PosReceiptSendOut(ok=True, booking_id=booking.id, sent_to=phone, body=body)
+    return PosReceiptSendOut(
+        ok=True,
+        booking_id=booking.id,
+        sent_to=phone,
+        body=body,
+        delivered_via="api",
+        wa_url=wa_url,
+        message="Receipt sent via WhatsApp Business API",
+    )

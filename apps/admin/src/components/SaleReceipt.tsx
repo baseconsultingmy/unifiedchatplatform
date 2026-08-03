@@ -22,6 +22,50 @@ function formatMoney(n: number) {
   return n.toFixed(2);
 }
 
+function normalizePhone(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("0") && digits.length >= 9) {
+    digits = `60${digits.slice(1)}`;
+  }
+  return digits;
+}
+
+function buildReceiptText(props: {
+  shopName: string;
+  bookingId: number;
+  customerName: string;
+  customerPhone: string;
+  lineItems: string[];
+  currency: string;
+  amountDue: number;
+  paymentLabel: string;
+  cash: CashInfo;
+  paidAt?: string | null;
+}) {
+  const when = props.paidAt
+    ? new Date(props.paidAt).toLocaleString()
+    : new Date().toLocaleString();
+  const lines = [
+    `${props.shopName} — receipt`,
+    `Booking #${props.bookingId}`,
+    `When: ${when}`,
+    `Customer: ${props.customerName}`,
+  ];
+  if (props.customerPhone && !props.customerPhone.toLowerCase().startsWith("walkin-")) {
+    lines.push(`Phone: ${props.customerPhone}`);
+  }
+  lines.push("", "Items:");
+  for (const item of props.lineItems) lines.push(`• ${item}`);
+  lines.push("", `Total: ${props.currency} ${formatMoney(props.amountDue)}`);
+  lines.push(`Payment: ${props.paymentLabel}`);
+  if (props.cash) {
+    lines.push(`Cash received: ${props.currency} ${formatMoney(props.cash.tendered)}`);
+    lines.push(`Change: ${props.currency} ${formatMoney(props.cash.change)}`);
+  }
+  lines.push("", "Thank you!");
+  return lines.join("\n");
+}
+
 export default function SaleReceipt({
   token,
   shopName = "BaseApp",
@@ -40,11 +84,13 @@ export default function SaleReceipt({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [sentInfo, setSentInfo] = useState("");
-  const [phoneOverride, setPhoneOverride] = useState("");
+  const [phoneOverride, setPhoneOverride] = useState(() =>
+    customerPhone && !customerPhone.toLowerCase().startsWith("walkin-") ? customerPhone : "",
+  );
 
-  const effectivePhone = (phoneOverride || customerPhone || "").trim();
-  const canWhatsApp =
-    effectivePhone.length >= 8 && !effectivePhone.toLowerCase().startsWith("walkin-");
+  const effectivePhone = phoneOverride.trim();
+  const normalized = normalizePhone(effectivePhone);
+  const canWhatsApp = normalized.length >= 8;
 
   function onPrint() {
     document.body.classList.add("printing-receipt");
@@ -52,20 +98,56 @@ export default function SaleReceipt({
     window.setTimeout(() => document.body.classList.remove("printing-receipt"), 300);
   }
 
+  function openWaLink(phone: string, body: string, apiWaUrl?: string | null) {
+    const url =
+      apiWaUrl || `https://wa.me/${phone}?text=${encodeURIComponent(body)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   async function onSendWhatsApp() {
-    if (!token) return;
+    if (!canWhatsApp) {
+      setError("Enter a valid WhatsApp number (e.g. 60123456789)");
+      return;
+    }
     setError("");
     setSentInfo("");
     setBusy(true);
+
+    const localBody = buildReceiptText({
+      shopName,
+      bookingId,
+      customerName,
+      customerPhone: effectivePhone,
+      lineItems,
+      currency,
+      amountDue,
+      paymentLabel,
+      cash,
+      paidAt,
+    });
+
     try {
+      if (!token) throw new Error("Not signed in");
       const res = await api.sendPosReceipt(token, bookingId, {
-        phone: canWhatsApp ? effectivePhone : undefined,
+        phone: normalized,
         cash_received: cash ? cash.tendered : undefined,
         change: cash ? cash.change : undefined,
       });
-      setSentInfo(`Sent to WhatsApp ${res.sent_to}`);
+      if (res.delivered_via === "api") {
+        setSentInfo(res.message || `Sent to WhatsApp ${res.sent_to}`);
+      } else {
+        openWaLink(res.sent_to || normalized, res.body || localBody, res.wa_url);
+        setSentInfo(
+          res.message
+            ? `WhatsApp opened — tap Send. (${res.message})`
+            : "WhatsApp opened with the receipt — tap Send to deliver.",
+        );
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send receipt");
+      // Last-resort local fallback if the API call itself fails
+      openWaLink(normalized, localBody);
+      setSentInfo("WhatsApp opened with the receipt — tap Send to deliver.");
+      setError(err instanceof Error ? err.message : "");
     } finally {
       setBusy(false);
     }
@@ -140,16 +222,14 @@ export default function SaleReceipt({
       </div>
 
       <div className="no-print pos-receipt-actions">
-        {!canWhatsApp ? (
-          <label className="pos-field">
-            WhatsApp number to send
-            <input
-              value={phoneOverride}
-              onChange={(e) => setPhoneOverride(e.target.value)}
-              placeholder="6012…"
-            />
-          </label>
-        ) : null}
+        <label className="pos-field">
+          WhatsApp number
+          <input
+            value={phoneOverride}
+            onChange={(e) => setPhoneOverride(e.target.value)}
+            placeholder="60123456789"
+          />
+        </label>
 
         {error ? <div className="error">{error}</div> : null}
         {sentInfo ? <div className="pos-receipt ok">{sentInfo}</div> : null}

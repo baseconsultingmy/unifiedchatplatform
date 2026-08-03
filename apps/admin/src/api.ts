@@ -49,6 +49,8 @@ export const api = {
   customers: (token: string) => request<any[]>("/v1/customers", {}, token),
   createCustomer: (token: string, body: unknown) =>
     request<any>("/v1/customers", { method: "POST", body: JSON.stringify(body) }, token),
+  updateCustomer: (token: string, id: number, body: unknown) =>
+    request<any>(`/v1/customers/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
   bookings: (token: string, params?: { from?: string; to?: string }) => {
     const q = new URLSearchParams();
     if (params?.from) q.set("from", params.from);
@@ -67,7 +69,15 @@ export const api = {
     bookingId: number,
     body: { phone?: string; cash_received?: number; change?: number },
   ) =>
-    request<{ ok: boolean; booking_id: number; sent_to: string; body: string }>(
+    request<{
+      ok: boolean;
+      booking_id: number;
+      sent_to: string;
+      body: string;
+      delivered_via?: string;
+      wa_url?: string | null;
+      message?: string | null;
+    }>(
       `/v1/pos/sale/${bookingId}/receipt/whatsapp`,
       { method: "POST", body: JSON.stringify(body) },
       token,

@@ -121,7 +121,7 @@ class WorkspaceUpdateIn(BaseModel):
 class CustomerIn(BaseModel):
     name: str | None = None
     phone: str = Field(min_length=6, max_length=32)
-    email: EmailStr | None = None
+    email: str | None = None
     notes: str | None = None
 
 
@@ -129,6 +129,14 @@ class CustomerOut(CustomerIn):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    created_at: datetime | None = None
+
+
+class CustomerUpdateIn(BaseModel):
+    name: str | None = None
+    phone: str | None = Field(default=None, min_length=6, max_length=32)
+    email: str | None = None
+    notes: str | None = None
 
 
 class ResourceIn(BaseModel):
@@ -275,3 +283,6 @@ class PosReceiptSendOut(BaseModel):
     booking_id: int
     sent_to: str
     body: str
+    delivered_via: str = "api"  # api | wa_link
+    wa_url: str | None = None
+    message: str | None = None

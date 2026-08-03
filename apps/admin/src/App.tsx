@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./auth";
 import { industryProfile } from "./industry";
 import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
+import CustomersPage from "./pages/CustomersPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import PosPage from "./pages/PosPage";
@@ -136,6 +137,9 @@ function Shell() {
               <NavLink to="/conversations" title="Inbox">
                 {sidebarCollapsed && !compact ? "In" : "Inbox"}
               </NavLink>
+              <NavLink to="/customers" title="Customers">
+                {sidebarCollapsed && !compact ? "Cu" : "Customers"}
+              </NavLink>
               <NavLink to="/services" title={catalogLabel}>
                 {sidebarCollapsed && !compact ? catalogLabel.slice(0, 2) : catalogLabel}
               </NavLink>
@@ -219,6 +223,7 @@ export default function App() {
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="pos" element={<PosPage />} />
               <Route path="conversations" element={<ConversationsPage />} />
+              <Route path="customers" element={<CustomersPage />} />
               <Route path="services" element={<ServicesPage />} />
               <Route path="resources" element={<ResourcesPage />} />
             </Route>
