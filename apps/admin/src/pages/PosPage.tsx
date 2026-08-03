@@ -28,11 +28,7 @@ export default function PosPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
-  const [customerOpen, setCustomerOpen] = useState(false);
   const [customerQuery, setCustomerQuery] = useState("");
-  const [draftName, setDraftName] = useState("");
-  const [draftPhone, setDraftPhone] = useState("");
-  const [draftNotes, setDraftNotes] = useState("");
   const [tenderInput, setTenderInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -85,6 +81,7 @@ export default function PosPage() {
     }>;
   }, [cart, services]);
 
+  const itemCount = cartDetails.reduce((n, l) => n + l.quantity, 0);
   const amountDue = useMemo(() => {
     if (
       profile.showDeposit &&
@@ -109,20 +106,11 @@ export default function PosPage() {
     cartDetails[0].quantity === 1 &&
     Number(cartDetails[0].service.deposit_amount || 0) > 0;
 
-  const selectedCustomer = customerId
-    ? customers.find((c) => c.id === customerId)
-    : null;
-  const customerLabel =
-    selectedCustomer?.name ||
-    customerName.trim() ||
-    (customerPhone.trim() ? customerPhone.trim() : "Walk-in guest");
-  const customerMeta = selectedCustomer
-    ? selectedCustomer.phone
-    : customerPhone.trim() || "No phone on ticket";
+  const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : null;
 
   const filteredCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
-    if (!q) return customers.slice(0, 8);
+    if (!q) return customers.slice(0, 10);
     return customers
       .filter(
         (c) =>
@@ -130,17 +118,16 @@ export default function PosPage() {
             .toLowerCase()
             .includes(q) || String(c.phone || "").includes(q),
       )
-      .slice(0, 8);
+      .slice(0, 10);
   }, [customers, customerQuery]);
 
-  function resetTicket(keepCart = false) {
+  function resetSale(keepCart = false) {
     if (!keepCart) setCart([]);
     setCustomerId(null);
     setCustomerName("");
     setCustomerPhone("");
     setNotes("");
     setTenderInput("");
-    setCustomerOpen(false);
     setCustomerQuery("");
   }
 
@@ -166,43 +153,26 @@ export default function PosPage() {
     });
   }
 
-  function openCustomer() {
-    setDraftName(selectedCustomer?.name || customerName);
-    setDraftPhone(selectedCustomer?.phone || customerPhone);
-    setDraftNotes(notes);
-    setCustomerQuery("");
-    setCustomerOpen(true);
-  }
-
   function pickCustomer(c: any) {
     setCustomerId(c.id);
     setCustomerName(c.name || "");
     setCustomerPhone(c.phone || "");
-    setDraftName(c.name || "");
-    setDraftPhone(c.phone || "");
     setCustomerQuery("");
-  }
-
-  function saveCustomerDetails() {
-    setCustomerName(draftName.trim());
-    setCustomerPhone(draftPhone.trim());
-    setNotes(draftNotes.trim());
-    if (customerId) {
-      const match = customers.find((c) => c.id === customerId);
-      if (match && draftPhone.trim() && match.phone !== draftPhone.trim()) {
-        setCustomerId(null);
-      }
-    }
-    setCustomerOpen(false);
   }
 
   function setWalkIn() {
     setCustomerId(null);
     setCustomerName("Walk-in");
     setCustomerPhone("");
-    setDraftName("Walk-in");
-    setDraftPhone("");
-    setDraftNotes(notes);
+    setCustomerQuery("");
+  }
+
+  function clearCustomer() {
+    setCustomerId(null);
+    setCustomerName("");
+    setCustomerPhone("");
+    setNotes("");
+    setCustomerQuery("");
   }
 
   function appendDigit(digit: string) {
@@ -257,7 +227,7 @@ export default function PosPage() {
         setShowQr(true);
       } else {
         setLastCash({ tendered, change: changeDue });
-        resetTicket(false);
+        resetSale(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sale failed");
@@ -274,30 +244,6 @@ export default function PosPage() {
             <h1>{profile.posTitle}</h1>
             <p>{profile.posHint}</p>
           </div>
-          {depositAllowed ? (
-            <div className="segmented">
-              <button
-                type="button"
-                className={chargeMode === "full" ? "active" : ""}
-                onClick={() => {
-                  setChargeMode("full");
-                  setTenderInput("");
-                }}
-              >
-                Full
-              </button>
-              <button
-                type="button"
-                className={chargeMode === "deposit" ? "active" : ""}
-                onClick={() => {
-                  setChargeMode("deposit");
-                  setTenderInput("");
-                }}
-              >
-                Deposit
-              </button>
-            </div>
-          ) : null}
         </div>
 
         <div className="pos-category-row">
@@ -317,76 +263,119 @@ export default function PosPage() {
           <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
         ) : (
           <div className="pos-service-grid">
-            {visibleServices.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                className="pos-service-btn"
-                onClick={() => addToCart(s.id)}
-              >
-                <strong>{s.name}</strong>
-                <span className="pos-service-meta">
-                  {s.category || "General"}
-                  {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
-                </span>
-                <span className="pos-service-price">
-                  {s.currency} {Number(s.price_amount).toFixed(2)}
-                </span>
-              </button>
-            ))}
+            {visibleServices.map((s) => {
+              const inCart = cart.find((l) => l.serviceId === s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`pos-service-btn ${inCart ? "selected" : ""}`}
+                  onClick={() => addToCart(s.id)}
+                >
+                  <strong>{s.name}</strong>
+                  <span className="pos-service-meta">
+                    {s.category || "General"}
+                    {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
+                    {inCart ? ` · ×${inCart.quantity}` : ""}
+                  </span>
+                  <span className="pos-service-price">
+                    {s.currency} {Number(s.price_amount).toFixed(2)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
       </section>
 
-      <section className="panel pos-ticket-panel">
+      <section className="panel pos-customer-panel">
         <div className="bookings-toolbar">
           <div>
-            <h2>Ticket</h2>
-            <p className="muted">{cartDetails.length ? `${cartDetails.length} line(s)` : "Empty"}</p>
+            <h2>Customer</h2>
+            <p className="muted">Optional — walk-in or look up an existing guest.</p>
           </div>
-          <button type="button" className="btn secondary" onClick={() => resetTicket(false)} disabled={!cart.length}>
+          <button type="button" className="btn secondary" onClick={clearCustomer}>
             Clear
           </button>
         </div>
 
-        {cartDetails.length === 0 ? (
-          <p className="muted">Tap catalog items to add them here.</p>
-        ) : (
-          <div className="pos-ticket-lines">
-            {cartDetails.map((line) => (
-              <div key={line.serviceId} className="pos-ticket-line">
-                <div>
-                  <strong>{line.service.name}</strong>
-                  <div className="muted">
-                    {currency} {formatMoney(line.unit)} each
-                  </div>
-                </div>
-                <div className="pos-qty">
-                  <button type="button" onClick={() => setQty(line.serviceId, line.quantity - 1)}>
-                    −
-                  </button>
-                  <span>{line.quantity}</span>
-                  <button type="button" onClick={() => setQty(line.serviceId, line.quantity + 1)}>
-                    +
-                  </button>
-                </div>
-                <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="btn-row">
+          <button type="button" className="btn secondary" onClick={setWalkIn}>
+            Walk-in
+          </button>
+        </div>
 
-        <div className="pos-due-board">
-          <div className="pos-due-amount">
-            <span className="muted">Amount due</span>
-            <em>
-              {currency} {formatMoney(amountDue)}
-            </em>
-          </div>
+        <label className="pos-field">
+          Search existing
+          <input
+            value={customerQuery}
+            onChange={(e) => setCustomerQuery(e.target.value)}
+            placeholder="Name or phone"
+          />
+        </label>
+
+        <div className="pos-customer-results">
+          {filteredCustomers.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`pos-customer-result ${customerId === c.id ? "selected" : ""}`}
+              onClick={() => pickCustomer(c)}
+            >
+              <strong>{c.name || "Unnamed"}</strong>
+              <span className="muted">{c.phone}</span>
+            </button>
+          ))}
+          {filteredCustomers.length === 0 ? (
+            <div className="muted">No matches — enter a new guest below.</div>
+          ) : null}
+        </div>
+
+        <div className="pos-customer-fields">
+          <label className="pos-field">
+            Name
+            <input
+              value={customerName}
+              onChange={(e) => {
+                setCustomerName(e.target.value);
+                setCustomerId(null);
+              }}
+              placeholder="Walk-in"
+            />
+          </label>
+          <label className="pos-field">
+            Phone
+            <input
+              value={customerPhone}
+              onChange={(e) => {
+                setCustomerPhone(e.target.value);
+                setCustomerId(null);
+              }}
+              placeholder="6012…"
+            />
+          </label>
+          <label className="pos-field">
+            Note
+            <input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional"
+            />
+          </label>
+        </div>
+
+        <div className="pos-customer-active">
+          <span className="muted">On this sale</span>
+          <strong>
+            {selectedCustomer?.name || customerName.trim() || "Walk-in guest"}
+          </strong>
+          <span className="muted">
+            {selectedCustomer?.phone || customerPhone.trim() || "No phone"}
+          </span>
         </div>
       </section>
 
-      <section className="panel pos-checkout-panel">
+      <section className="panel pos-register-panel">
         {showQr && result?.payment_url ? (
           <QrPayPanel
             paymentUrl={result.payment_url}
@@ -409,171 +398,167 @@ export default function PosPage() {
             }}
             onClose={() => {
               setShowQr(false);
-              resetTicket(false);
+              resetSale(false);
             }}
           />
         ) : (
           <>
-            <div className="pos-customer-card">
-              <button type="button" className="pos-customer-summary" onClick={openCustomer}>
-                <div>
-                  <span className="muted">Customer</span>
-                  <strong>{customerLabel}</strong>
-                  <span className="muted">{customerMeta}</span>
-                </div>
-                <span className="pos-customer-edit">Open</span>
+            <div className="pos-register-head">
+              <div>
+                <h2>Cart</h2>
+                <p className="muted">
+                  {itemCount ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty"}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => resetSale(false)}
+                disabled={!cart.length}
+              >
+                Clear
               </button>
+            </div>
 
-              {customerOpen ? (
-                <div className="pos-customer-form">
-                  <div className="pos-customer-form-head">
-                    <strong>Customer</strong>
-                    <button type="button" className="btn secondary" onClick={() => setCustomerOpen(false)}>
-                      Close
-                    </button>
+            <div className="pos-register-body">
+              {cartDetails.length === 0 ? (
+                <div className="pos-register-empty muted">Tap items on the left to build the cart.</div>
+              ) : (
+                <div className="pos-register-lines">
+                  {cartDetails.map((line) => (
+                    <div key={line.serviceId} className="pos-register-line">
+                      <div className="pos-register-line-main">
+                        <strong>{line.service.name}</strong>
+                        <span className="muted">
+                          {currency} {formatMoney(line.unit)}
+                        </span>
+                      </div>
+                      <div className="pos-qty">
+                        <button type="button" onClick={() => setQty(line.serviceId, line.quantity - 1)}>
+                          −
+                        </button>
+                        <span>{line.quantity}</span>
+                        <button type="button" onClick={() => setQty(line.serviceId, line.quantity + 1)}>
+                          +
+                        </button>
+                      </div>
+                      <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pos-register-footer">
+              {depositAllowed ? (
+                <div className="segmented">
+                  <button
+                    type="button"
+                    className={chargeMode === "full" ? "active" : ""}
+                    onClick={() => {
+                      setChargeMode("full");
+                      setTenderInput("");
+                    }}
+                  >
+                    Full
+                  </button>
+                  <button
+                    type="button"
+                    className={chargeMode === "deposit" ? "active" : ""}
+                    onClick={() => {
+                      setChargeMode("deposit");
+                      setTenderInput("");
+                    }}
+                  >
+                    Deposit
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="pos-register-total">
+                <span>Total due</span>
+                <strong>
+                  {currency} {formatMoney(amountDue)}
+                </strong>
+              </div>
+
+              <div className="pos-calc compact">
+                <div className="pos-calc-readout">
+                  <div>
+                    <span className="muted">Cash</span>
+                    <strong>
+                      {currency} {tenderInput ? tenderInput : "0"}
+                    </strong>
                   </div>
-
-                  <div className="btn-row">
-                    <button type="button" className="btn secondary" onClick={setWalkIn}>
-                      Walk-in
-                    </button>
+                  <div className={balanceDue > 0 ? "pos-balance warn" : "pos-balance ok"}>
+                    <span className="muted">{balanceDue > 0 ? "Due" : "Change"}</span>
+                    <strong>
+                      {currency} {formatMoney(balanceDue > 0 ? balanceDue : changeDue)}
+                    </strong>
                   </div>
+                </div>
 
-                  <label>
-                    Search existing
-                    <input
-                      value={customerQuery}
-                      onChange={(e) => setCustomerQuery(e.target.value)}
-                      placeholder="Name or phone"
-                    />
-                  </label>
-
-                  <div className="pos-customer-results">
-                    {filteredCustomers.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className={`pos-customer-result ${customerId === c.id ? "selected" : ""}`}
-                        onClick={() => pickCustomer(c)}
-                      >
-                        <strong>{c.name || "Unnamed"}</strong>
-                        <span className="muted">{c.phone}</span>
-                      </button>
-                    ))}
-                    {filteredCustomers.length === 0 ? (
-                      <div className="muted">No matches — save a new guest below.</div>
-                    ) : null}
-                  </div>
-
-                  <label>
-                    Name
-                    <input
-                      value={draftName}
-                      onChange={(e) => setDraftName(e.target.value)}
-                      placeholder="Walk-in"
-                    />
-                  </label>
-                  <label>
-                    Phone
-                    <input
-                      value={draftPhone}
-                      onChange={(e) => setDraftPhone(e.target.value)}
-                      placeholder="6012…"
-                    />
-                  </label>
-                  <label>
-                    Note
-                    <input
-                      value={draftNotes}
-                      onChange={(e) => setDraftNotes(e.target.value)}
-                      placeholder="Optional"
-                    />
-                  </label>
-                  <div className="btn-row">
-                    <button type="button" className="btn" onClick={saveCustomerDetails}>
-                      Use on ticket
+                <div className="pos-keypad compact">
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className="pos-key"
+                      onClick={() => {
+                        if (key === "⌫") setTenderInput((prev) => prev.slice(0, -1));
+                        else appendDigit(key);
+                      }}
+                    >
+                      {key}
                     </button>
+                  ))}
+                </div>
+                <div className="btn-row pos-calc-tools">
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => setTenderInput(formatMoney(amountDue))}
+                  >
+                    Exact
+                  </button>
+                  <button type="button" className="btn secondary" onClick={() => setTenderInput("")}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              {error ? <div className="error">{error}</div> : null}
+
+              <div className="btn-row pos-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy || !canTakeCash}
+                  onClick={() => checkout("cash")}
+                >
+                  Take cash
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={busy || cartDetails.length === 0 || amountDue <= 0}
+                  onClick={() => checkout("qr")}
+                >
+                  QR pay
+                </button>
+              </div>
+
+              {lastCash && result?.already_paid ? (
+                <div className="pos-receipt">
+                  <strong>Sale recorded</strong>
+                  <div>#{result.booking?.id}</div>
+                  <div className="muted">
+                    {(result.line_items || []).join(", ")} · Change {currency}{" "}
+                    {formatMoney(lastCash.change)}
                   </div>
                 </div>
               ) : null}
             </div>
-
-            <div className="pos-calc compact">
-              <div className="pos-calc-readout">
-                <div>
-                  <span className="muted">Cash received</span>
-                  <strong>
-                    {currency} {tenderInput ? tenderInput : "0"}
-                  </strong>
-                </div>
-                <div className={balanceDue > 0 ? "pos-balance warn" : "pos-balance ok"}>
-                  <span className="muted">{balanceDue > 0 ? "Still due" : "Change"}</span>
-                  <strong>
-                    {currency} {formatMoney(balanceDue > 0 ? balanceDue : changeDue)}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="pos-keypad compact">
-                {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className="pos-key"
-                    onClick={() => {
-                      if (key === "⌫") setTenderInput((prev) => prev.slice(0, -1));
-                      else appendDigit(key);
-                    }}
-                  >
-                    {key}
-                  </button>
-                ))}
-              </div>
-              <div className="btn-row pos-calc-tools">
-                <button
-                  type="button"
-                  className="btn secondary"
-                  onClick={() => setTenderInput(formatMoney(amountDue))}
-                >
-                  Exact
-                </button>
-                <button type="button" className="btn secondary" onClick={() => setTenderInput("")}>
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            {error ? <div className="error">{error}</div> : null}
-
-            <div className="btn-row pos-actions">
-              <button
-                type="button"
-                className="btn"
-                disabled={busy || !canTakeCash}
-                onClick={() => checkout("cash")}
-              >
-                Take cash
-              </button>
-              <button
-                type="button"
-                className="btn secondary"
-                disabled={busy || cartDetails.length === 0 || amountDue <= 0}
-                onClick={() => checkout("qr")}
-              >
-                Show QR pay
-              </button>
-            </div>
-
-            {lastCash && result?.already_paid ? (
-              <div className="pos-receipt">
-                <strong>Sale recorded</strong>
-                <div>#{result.booking?.id}</div>
-                <div className="muted">
-                  {(result.line_items || []).join(", ")} · Change {currency}{" "}
-                  {formatMoney(lastCash.change)}
-                </div>
-              </div>
-            ) : null}
           </>
         )}
       </section>
