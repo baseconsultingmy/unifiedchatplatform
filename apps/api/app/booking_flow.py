@@ -83,6 +83,28 @@ def _store_outbound(
     )
 
 
+def _try_send(
+    db: Session,
+    conversation: Conversation,
+    *,
+    body_for_inbox: str,
+    send_fn,
+) -> dict | None:
+    """Send WhatsApp message without aborting the booking state machine on API errors."""
+    try:
+        result = send_fn()
+        _store_outbound(db, conversation, body_for_inbox, result)
+        return result
+    except WhatsAppSendError as exc:
+        _store_outbound(
+            db,
+            conversation,
+            f"{body_for_inbox}\n\n[send failed: {exc}]",
+            {"error": exc.payload or str(exc)},
+        )
+        return None
+
+
 def _active_services(db: Session, tenant_id: int) -> list[Service]:
     return (
         db.query(Service)
@@ -95,16 +117,17 @@ def _active_services(db: Session, tenant_id: int) -> list[Service]:
 def send_services_menu(db: Session, tenant: Tenant, conversation: Conversation, to_phone: str) -> None:
     services = _active_services(db, tenant.id)
     if not services:
-        result = send_text_message(
-            to_phone=to_phone,
-            body=(
-                f"Welcome to {tenant.name}!\n\n"
-                "No services are published yet. Please message us again later or chat with our team."
-            ),
-            **_send_kwargs(tenant),
+        body = (
+            f"Welcome to {tenant.name}!\n\n"
+            "No services are published yet. Please message us again later or chat with our team."
         )
-        _store_outbound(db, conversation, "Welcome — no services published yet.", result)
         _set_state(conversation, "idle", {})
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox="Welcome — no services published yet.",
+            send_fn=lambda: send_text_message(to_phone=to_phone, body=body, **_send_kwargs(tenant)),
+        )
         return
 
     rows = []
@@ -119,15 +142,19 @@ def send_services_menu(db: Session, tenant: Tenant, conversation: Conversation, 
         f"Welcome to {tenant.name}!\n\n"
         "Choose a service to book. You can type *menu* anytime to restart."
     )
-    result = send_service_list(
-        to_phone=to_phone,
-        body=body,
-        button_label="View services",
-        rows=rows,
-        **_send_kwargs(tenant),
-    )
-    _store_outbound(db, conversation, body + "\n[service list sent]", result)
     _set_state(conversation, "choosing_service", {})
+    _try_send(
+        db,
+        conversation,
+        body_for_inbox=body + "\n[service list sent]",
+        send_fn=lambda: send_service_list(
+            to_phone=to_phone,
+            body=body,
+            button_label="View services",
+            rows=rows,
+            **_send_kwargs(tenant),
+        ),
+    )
 
 
 def _parse_datetime(text: str) -> datetime | None:
@@ -140,6 +167,25 @@ def _parse_datetime(text: str) -> datetime | None:
     if lowered in {"tomorrow"}:
         dt = now + timedelta(days=1)
         return dt.replace(hour=15, minute=0, second=0, microsecond=0)
+
+    # tomorrow 3pm / tomorrow 15:00 / tomorrow 3:30 pm
+    m = re.match(
+        r"^(today|tomorrow)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$",
+        lowered,
+    )
+    if m:
+        base = now if m.group(1) == "today" else now + timedelta(days=1)
+        hour = int(m.group(2))
+        minute = int(m.group(3) or 0)
+        ampm = m.group(4)
+        if ampm == "pm" and hour < 12:
+            hour += 12
+        if ampm == "am" and hour == 12:
+            hour = 0
+        if not ampm and hour <= 7:
+            # bare small hours in chat usually mean afternoon/evening
+            hour += 12
+        return base.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
     for fmt in (
         "%Y-%m-%d %H:%M",
@@ -172,8 +218,6 @@ def _ask_datetime(db: Session, tenant: Tenant, conversation: Conversation, to_ph
         "• 05/08/2026 15:00\n"
         "• 2026-08-05 15:00"
     )
-    result = send_text_message(to_phone=to_phone, body=body, **_send_kwargs(tenant))
-    _store_outbound(db, conversation, body, result)
     _set_state(
         conversation,
         "awaiting_datetime",
@@ -185,6 +229,12 @@ def _ask_datetime(db: Session, tenant: Tenant, conversation: Conversation, to_ph
             "deposit_amount": str(service.deposit_amount),
             "duration_minutes": service.duration_minutes,
         },
+    )
+    _try_send(
+        db,
+        conversation,
+        body_for_inbox=body,
+        send_fn=lambda: send_text_message(to_phone=to_phone, body=body, **_send_kwargs(tenant)),
     )
 
 
@@ -209,22 +259,26 @@ def _ask_confirm(
         body += f"• Deposit due later: {ctx.get('currency')} {deposit}\n"
     body += "\nConfirm?"
 
-    result = send_reply_buttons(
-        to_phone=to_phone,
-        body=body,
-        buttons=[
-            {"id": "confirm_yes", "title": "Confirm"},
-            {"id": "confirm_no", "title": "Cancel"},
-        ],
-        **_send_kwargs(tenant),
-    )
-    _store_outbound(db, conversation, body + "\n[Confirm/Cancel buttons]", result)
     ctx = {
         **ctx,
         "preferred_text": preferred_text,
         "starts_at": starts_at.isoformat() if starts_at else None,
     }
     _set_state(conversation, "awaiting_confirm", ctx)
+    _try_send(
+        db,
+        conversation,
+        body_for_inbox=body + "\n[Confirm/Cancel buttons]",
+        send_fn=lambda: send_reply_buttons(
+            to_phone=to_phone,
+            body=body,
+            buttons=[
+                {"id": "confirm_yes", "title": "Confirm"},
+                {"id": "confirm_no", "title": "Cancel"},
+            ],
+            **_send_kwargs(tenant),
+        ),
+    )
 
 
 def _create_booking(
@@ -306,102 +360,108 @@ def handle_inbound_message(
     normalized = re.sub(r"\s+", " ", text.lower()).strip()
     state = conversation.flow_state or "idle"
 
-    try:
-        if normalized in CANCEL_WORDS or button_id == "confirm_no":
-            result = send_text_message(
+    if normalized in CANCEL_WORDS or button_id == "confirm_no":
+        _set_state(conversation, "idle", {})
+        _try_send(
+            db,
+            conversation,
+            body_for_inbox="Cancelled. Type menu to restart.",
+            send_fn=lambda: send_text_message(
                 to_phone=to_phone,
                 body="Cancelled. Type *menu* to see services again.",
                 **_send_kwargs(tenant),
-            )
-            _store_outbound(db, conversation, "Cancelled. Type menu to restart.", result)
-            _set_state(conversation, "idle", {})
-            return
+            ),
+        )
+        return
 
-        if list_id and list_id.startswith("svc_"):
-            service_id = int(list_id.split("_", 1)[1])
-            service = (
-                db.query(Service)
-                .filter(
-                    Service.id == service_id,
-                    Service.tenant_id == tenant.id,
-                    Service.is_active.is_(True),
-                )
-                .first()
+    if list_id and list_id.startswith("svc_"):
+        service_id = int(list_id.split("_", 1)[1])
+        service = (
+            db.query(Service)
+            .filter(
+                Service.id == service_id,
+                Service.tenant_id == tenant.id,
+                Service.is_active.is_(True),
             )
-            if not service:
-                result = send_text_message(
+            .first()
+        )
+        if not service:
+            _set_state(conversation, "idle", {})
+            _try_send(
+                db,
+                conversation,
+                body_for_inbox="Service unavailable.",
+                send_fn=lambda: send_text_message(
                     to_phone=to_phone,
                     body="That service is unavailable. Type *menu* to choose again.",
                     **_send_kwargs(tenant),
-                )
-                _store_outbound(db, conversation, "Service unavailable.", result)
-                _set_state(conversation, "idle", {})
-                return
-            _ask_datetime(db, tenant, conversation, to_phone, service)
-            return
-
-        if state == "awaiting_datetime" and text and normalized not in MENU_WORDS:
-            ctx = _ctx(conversation)
-            starts_at = _parse_datetime(text)
-            _ask_confirm(db, tenant, conversation, to_phone, ctx, text, starts_at)
-            return
-
-        if state == "awaiting_confirm" and button_id == "confirm_yes":
-            ctx = _ctx(conversation)
-            booking = _create_booking(db, tenant, conversation, ctx)
-            when = (
-                booking.starts_at.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
-                if booking.starts_at
-                else (booking.notes or "TBD")
+                ),
             )
-            due = amount_due(booking)
-            if due <= 0:
-                mark_booking_paid(db, booking)
-                db.flush()
-                deliver_booking_receipt(db, booking, to_phone=to_phone, persist=True)
-            else:
-                pay_url = booking.payment_url or ""
-                body = (
-                    f"Booked! ✅\n\n"
-                    f"Ref: #{booking.id}\n"
-                    f"Service: {ctx.get('service_name')}\n"
-                    f"When: {when}\n"
-                    f"Amount due: {booking.currency} {due}\n\n"
-                    f"Pay here to confirm your slot:\n{pay_url}\n\n"
-                    f"You'll get your receipt on WhatsApp after payment.\n"
-                    f"Type *menu* to book another."
-                )
-                result = send_text_message(
+            return
+        _ask_datetime(db, tenant, conversation, to_phone, service)
+        return
+
+    if state == "awaiting_datetime" and text and normalized not in MENU_WORDS:
+        ctx = _ctx(conversation)
+        starts_at = _parse_datetime(text)
+        _ask_confirm(db, tenant, conversation, to_phone, ctx, text, starts_at)
+        return
+
+    if state == "awaiting_confirm" and button_id == "confirm_yes":
+        ctx = _ctx(conversation)
+        booking = _create_booking(db, tenant, conversation, ctx)
+        when = (
+            booking.starts_at.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
+            if booking.starts_at
+            else (booking.notes or "TBD")
+        )
+        due = amount_due(booking)
+        _set_state(conversation, "idle", {})
+        if due <= 0:
+            mark_booking_paid(db, booking)
+            db.flush()
+            deliver_booking_receipt(db, booking, to_phone=to_phone, persist=True)
+        else:
+            pay_url = booking.payment_url or ""
+            body = (
+                f"Booked! ✅\n\n"
+                f"Ref: #{booking.id}\n"
+                f"Service: {ctx.get('service_name')}\n"
+                f"When: {when}\n"
+                f"Amount due: {booking.currency} {due}\n\n"
+                f"Pay here to confirm your slot:\n{pay_url}\n\n"
+                f"You'll get your receipt on WhatsApp after payment.\n"
+                f"Type *menu* to book another."
+            )
+            _try_send(
+                db,
+                conversation,
+                body_for_inbox=body,
+                send_fn=lambda: send_text_message(
                     to_phone=to_phone,
                     body=body,
                     **_send_kwargs(tenant),
                     preview_url=True,
-                )
-                _store_outbound(db, conversation, body, result)
-            _set_state(conversation, "idle", {})
-            return
+                ),
+            )
+        return
 
-        if (
-            normalized in MENU_WORDS
-            or state in {"idle", "choosing_service"}
-            or (state == "awaiting_confirm" and normalized in MENU_WORDS)
-        ):
-            send_services_menu(db, tenant, conversation, to_phone)
-            return
+    if (
+        normalized in MENU_WORDS
+        or state in {"idle", "choosing_service"}
+        or (state == "awaiting_confirm" and normalized in MENU_WORDS)
+    ):
+        send_services_menu(db, tenant, conversation, to_phone)
+        return
 
-        # Fallback help
-        result = send_text_message(
+    # Fallback help
+    _try_send(
+        db,
+        conversation,
+        body_for_inbox="Type menu to browse services.",
+        send_fn=lambda: send_text_message(
             to_phone=to_phone,
             body="Type *menu* to browse services, or *cancel* to reset.",
             **_send_kwargs(tenant),
-        )
-        _store_outbound(db, conversation, "Type menu to browse services.", result)
-    except WhatsAppSendError as exc:
-        db.add(
-            Message(
-                conversation_id=conversation.id,
-                direction=MessageDirection.outbound,
-                body=f"[bot error] {exc}",
-                raw_payload=json.dumps(exc.payload),
-            )
-        )
+        ),
+    )
