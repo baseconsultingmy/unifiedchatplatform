@@ -262,3 +262,16 @@ class PosSaleOut(BaseModel):
     payment_url: str | None = None
     already_paid: bool = False
     line_items: list[str] = []
+
+
+class PosReceiptSendIn(BaseModel):
+    cash_received: Decimal | None = None
+    change: Decimal | None = None
+    phone: str | None = None
+
+
+class PosReceiptSendOut(BaseModel):
+    ok: bool = True
+    booking_id: int
+    sent_to: str
+    body: str

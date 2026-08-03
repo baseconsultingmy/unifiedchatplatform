@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -8,9 +9,21 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.db import get_db
 from app.deps import require_vendor_user
-from app.models import Booking, BookingStatus, Channel, Customer, PaymentStatus, Service, User
+from app.models import (
+    Booking,
+    BookingStatus,
+    Channel,
+    Conversation,
+    Customer,
+    Message,
+    MessageDirection,
+    PaymentStatus,
+    Service,
+    User,
+)
 from app.payments import amount_due, attach_payment_link
-from app.schemas import BookingOut, PosSaleIn, PosSaleItemIn, PosSaleOut
+from app.schemas import BookingOut, PosReceiptSendIn, PosReceiptSendOut, PosSaleIn, PosSaleItemIn, PosSaleOut
+from app.whatsapp_client import WhatsAppSendError, send_text_message
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -173,3 +186,170 @@ def create_walkin_sale(
         already_paid=already_paid,
         line_items=line_labels,
     )
+
+
+def _normalize_phone(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    phone = raw.strip()
+    if phone.lower().startswith("walkin-"):
+        return None
+    digits = "".join(ch for ch in phone if ch.isdigit())
+    if len(digits) < 8:
+        return None
+    return digits
+
+
+def _line_items_from_booking(booking: Booking) -> list[str]:
+    notes = booking.notes or ""
+    if "POS · " in notes:
+        cart = notes.split("POS · ", 1)[1].strip()
+        # strip trailing cash note if present after another ·
+        cart = cart.split(" · Cash ")[0].strip()
+        if cart:
+            return [part.strip() for part in cart.split(",") if part.strip()]
+    if booking.service:
+        return [booking.service.name]
+    return ["Sale"]
+
+
+def _format_receipt_text(
+    *,
+    booking: Booking,
+    line_items: list[str],
+    cash_received: Decimal | None,
+    change: Decimal | None,
+) -> str:
+    shop = booking.tenant.name if booking.tenant else "BaseApp"
+    customer = booking.customer.name if booking.customer else "Guest"
+    phone = booking.customer.phone if booking.customer else ""
+    currency = booking.currency or "MYR"
+    due = amount_due(booking)
+    when = booking.starts_at.strftime("%d %b %Y %H:%M") if booking.starts_at else "now"
+    pay = (
+        booking.payment_status.value
+        if hasattr(booking.payment_status, "value")
+        else str(booking.payment_status)
+    )
+    lines = [
+        f"*{shop} — receipt*",
+        f"Booking #{booking.id}",
+        f"When: {when}",
+        f"Customer: {customer}",
+    ]
+    if phone and not phone.startswith("walkin-"):
+        lines.append(f"Phone: {phone}")
+    lines.append("")
+    lines.append("Items:")
+    for item in line_items:
+        lines.append(f"• {item}")
+    lines.append("")
+    lines.append(f"Total: {currency} {Decimal(str(due)):.2f}")
+    lines.append(f"Status: {pay.replace('_', ' ')}")
+    if cash_received is not None:
+        lines.append(f"Cash received: {currency} {Decimal(str(cash_received)):.2f}")
+        lines.append(f"Change: {currency} {Decimal(str(change or 0)):.2f}")
+    lines.append("")
+    lines.append("Thank you!")
+    return "\n".join(lines)
+
+
+@router.post(
+    "/sale/{booking_id}/receipt/whatsapp",
+    response_model=PosReceiptSendOut,
+)
+def send_sale_receipt_whatsapp(
+    booking_id: int,
+    payload: PosReceiptSendIn,
+    user: User = Depends(require_vendor_user),
+    db: Session = Depends(get_db),
+) -> PosReceiptSendOut:
+    booking = (
+        db.query(Booking)
+        .options(
+            joinedload(Booking.customer),
+            joinedload(Booking.service),
+            joinedload(Booking.tenant),
+        )
+        .filter(Booking.id == booking_id, Booking.tenant_id == user.tenant_id)
+        .first()
+    )
+    if booking is None:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    phone = _normalize_phone(payload.phone) or _normalize_phone(
+        booking.customer.phone if booking.customer else None
+    )
+    if not phone:
+        raise HTTPException(
+            status_code=400,
+            detail="Add a valid customer WhatsApp number before sending the receipt",
+        )
+
+    if booking.customer and (
+        not booking.customer.phone or booking.customer.phone.startswith("walkin-")
+    ):
+        booking.customer.phone = phone
+        if payload.phone and not booking.customer.name:
+            booking.customer.name = "WhatsApp guest"
+
+    line_items = _line_items_from_booking(booking)
+    body = _format_receipt_text(
+        booking=booking,
+        line_items=line_items,
+        cash_received=payload.cash_received,
+        change=payload.change,
+    )
+
+    conversation = (
+        db.query(Conversation)
+        .filter(
+            Conversation.tenant_id == user.tenant_id,
+            Conversation.channel == Channel.whatsapp,
+            Conversation.external_thread_id == phone,
+        )
+        .first()
+    )
+    if conversation is None:
+        conversation = Conversation(
+            tenant_id=user.tenant_id,
+            customer_id=booking.customer_id,
+            channel=Channel.whatsapp,
+            external_thread_id=phone,
+            status="open",
+            flow_state="idle",
+        )
+        db.add(conversation)
+        db.flush()
+    elif booking.customer_id and not conversation.customer_id:
+        conversation.customer_id = booking.customer_id
+
+    phone_number_id = user.tenant.wa_phone_number_id if user.tenant else None
+    try:
+        result = send_text_message(
+            to_phone=phone,
+            body=body,
+            phone_number_id=phone_number_id,
+        )
+    except WhatsAppSendError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    external_id = None
+    messages = result.get("messages") or []
+    if messages:
+        external_id = messages[0].get("id")
+
+    now = datetime.now(timezone.utc)
+    message = Message(
+        conversation_id=conversation.id,
+        direction=MessageDirection.outbound,
+        body=body,
+        raw_payload=json.dumps(result),
+        external_message_id=external_id,
+    )
+    conversation.last_message_at = now
+    conversation.status = "open"
+    db.add(message)
+    db.commit()
+
+    return PosReceiptSendOut(ok=True, booking_id=booking.id, sent_to=phone, body=body)

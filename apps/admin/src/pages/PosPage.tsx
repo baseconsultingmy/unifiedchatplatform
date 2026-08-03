@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import QrPayPanel from "../components/QrPayPanel";
+import SaleReceipt from "../components/SaleReceipt";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
@@ -744,7 +745,7 @@ export default function PosPage() {
                 disabled={busy || !canTakeCash}
                 onClick={() => checkout("cash")}
               >
-                Take cash &amp; print receipt
+                Take cash &amp; issue receipt
               </button>
             </div>
           </div>
@@ -792,69 +793,26 @@ export default function PosPage() {
       {step === "done" && result ? (
         <div className="modal-backdrop" role="presentation">
           <div
-            className="modal-card booking-modal pos-flow-modal"
+            className="modal-card booking-modal pos-flow-modal receipt-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="pos-receipt-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="bookings-toolbar">
-              <div>
-                <h2 id="pos-receipt-title">Sale receipt</h2>
-                <p>Booking #{result.booking?.id}</p>
-              </div>
-            </div>
-
-            <div className="pos-receipt-sheet">
-              <div className="pos-receipt-row">
-                <span className="muted">Customer</span>
-                <strong>{guestLabel}</strong>
-              </div>
-              <div className="pos-receipt-row">
-                <span className="muted">Phone</span>
-                <span>{guestPhone || "—"}</span>
-              </div>
-              <ul className="pos-confirmed-list">
-                {(result.line_items || []).map((line: string, idx: number) => (
-                  <li key={`${line}-${idx}`}>
-                    <span>{line}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="pos-receipt-row total">
-                <span>Total</span>
-                <strong>
-                  {result.currency} {Number(result.amount_due).toFixed(2)}
-                </strong>
-              </div>
-              {lastCash ? (
-                <>
-                  <div className="pos-receipt-row">
-                    <span className="muted">Cash received</span>
-                    <strong>
-                      {currency} {formatMoney(lastCash.tendered)}
-                    </strong>
-                  </div>
-                  <div className="pos-receipt-row">
-                    <span className="muted">Change</span>
-                    <strong>
-                      {currency} {formatMoney(lastCash.change)}
-                    </strong>
-                  </div>
-                </>
-              ) : (
-                <div className="pos-receipt-row">
-                  <span className="muted">Payment</span>
-                  <strong>QR / online</strong>
-                </div>
-              )}
-            </div>
-
-            <div className="btn-row pos-actions">
-              <button type="button" className="btn" onClick={resetSale}>
-                New sale
-              </button>
-            </div>
+            <SaleReceipt
+              token={token}
+              shopName={user?.tenant?.name || "BaseApp"}
+              bookingId={result.booking?.id}
+              customerName={guestLabel}
+              customerPhone={guestPhone}
+              lineItems={result.line_items || []}
+              currency={result.currency || currency}
+              amountDue={Number(result.amount_due || 0)}
+              paymentLabel={lastCash ? "Cash" : "QR / online"}
+              cash={lastCash}
+              paidAt={result.booking?.paid_at}
+              onDone={resetSale}
+            />
           </div>
         </div>
       ) : null}

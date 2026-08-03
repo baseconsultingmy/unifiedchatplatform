@@ -62,6 +62,16 @@ export const api = {
     request<any>(`/v1/bookings/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
   posSale: (token: string, body: unknown) =>
     request<any>("/v1/pos/sale", { method: "POST", body: JSON.stringify(body) }, token),
+  sendPosReceipt: (
+    token: string,
+    bookingId: number,
+    body: { phone?: string; cash_received?: number; change?: number },
+  ) =>
+    request<{ ok: boolean; booking_id: number; sent_to: string; body: string }>(
+      `/v1/pos/sale/${bookingId}/receipt/whatsapp`,
+      { method: "POST", body: JSON.stringify(body) },
+      token,
+    ),
   workspace: (token: string) => request<any>("/v1/workspace", {}, token),
   updateWorkspace: (token: string, body: unknown) =>
     request<any>("/v1/workspace", { method: "PATCH", body: JSON.stringify(body) }, token),
