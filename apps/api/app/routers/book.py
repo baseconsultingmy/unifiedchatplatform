@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -18,8 +16,7 @@ from app.availability import (
     slot_conflicts,
     tenant_tz,
 )
-from app.book_links import booking_url, verify_book_sig
-from app.config import settings
+from app.book_links import verify_book_sig
 from app.db import get_db
 from app.models import (
     Booking,
