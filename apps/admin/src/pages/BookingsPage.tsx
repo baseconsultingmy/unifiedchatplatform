@@ -57,6 +57,7 @@ export default function BookingsPage() {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -97,7 +98,8 @@ export default function BookingsPage() {
     setResources(r);
     if (!serviceId && s[0]) setServiceId(String(s[0].id));
     if (selected) {
-      const fresh = all.find((b: any) => b.id === selected.id) || week.find((b: any) => b.id === selected.id);
+      const fresh =
+        all.find((b: any) => b.id === selected.id) || week.find((b: any) => b.id === selected.id);
       setSelected(fresh || null);
     }
   }
@@ -105,6 +107,28 @@ export default function BookingsPage() {
   useEffect(() => {
     refresh().catch((err) => setError(err.message));
   }, [token, weekAnchor]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setSelected(null);
+      setShowQr(false);
+      setShowCreate(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  function openBooking(b: any) {
+    setSelected(b);
+    setShowQr(false);
+    setShowCreate(false);
+  }
+
+  function closeBooking() {
+    setSelected(null);
+    setShowQr(false);
+  }
 
   async function onCreate(e: FormEvent) {
     e.preventDefault();
@@ -137,6 +161,7 @@ export default function BookingsPage() {
       setStartsAt("");
       setRoomId("");
       setPersonId("");
+      setShowCreate(false);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create booking");
@@ -181,7 +206,7 @@ export default function BookingsPage() {
       <div className="bookings-toolbar">
         <div>
           <h1>Bookings</h1>
-          <p>Calendar and list for WhatsApp + walk-in reservations.</p>
+          <p>Tap a booking to assign and manage — no scrolling past the calendar.</p>
         </div>
         <div className="toolbar-actions">
           <div className="segmented">
@@ -200,10 +225,21 @@ export default function BookingsPage() {
               List
             </button>
           </div>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setShowCreate(true);
+              setSelected(null);
+              setShowQr(false);
+            }}
+          >
+            New booking
+          </button>
         </div>
       </div>
 
-      {error ? <div className="error">{error}</div> : null}
+      {error && !showCreate ? <div className="error">{error}</div> : null}
 
       {view === "calendar" ? (
         <section className="panel calendar-panel">
@@ -276,15 +312,16 @@ export default function BookingsPage() {
                         type="button"
                         className={`calendar-event pay-${b.payment_status}`}
                         style={blockStyle(b)}
-                        onClick={() => {
-                          setSelected(b);
-                          setShowQr(false);
-                        }}
+                        onClick={() => openBooking(b)}
                         title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}${assignmentLabel(b) ? ` · ${assignmentLabel(b)}` : ""}`}
                       >
                         <strong>{b.service?.name || "Booking"}</strong>
                         <span>{b.customer?.name || b.customer?.phone}</span>
-                        {assignmentLabel(b) ? <span className="calendar-assign">{assignmentLabel(b)}</span> : null}
+                        {assignmentLabel(b) ? (
+                          <span className="calendar-assign">{assignmentLabel(b)}</span>
+                        ) : profile.supportsResources ? (
+                          <span className="calendar-assign warn">Unassigned</span>
+                        ) : null}
                       </button>
                     ))}
                   </div>
@@ -328,13 +365,7 @@ export default function BookingsPage() {
                     </div>
                   </td>
                   <td>
-                    <button
-                      className="btn secondary"
-                      onClick={() => {
-                        setSelected(b);
-                        setShowQr(false);
-                      }}
-                    >
+                    <button className="btn secondary" onClick={() => openBooking(b)}>
                       Open
                     </button>
                   </td>
@@ -345,222 +376,231 @@ export default function BookingsPage() {
         </section>
       )}
 
-      <div className="grid split-2">
-        <section className="panel">
-          {selected ? (
-            <>
-              <div className="bookings-toolbar">
-                <div>
-                  <h2>Booking #{selected.id}</h2>
-                  <p>
-                    {selected.service?.name || "Service"} ·{" "}
-                    {selected.customer?.name || selected.customer?.phone}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="btn secondary"
-                  onClick={() => {
-                    setSelected(null);
-                    setShowQr(false);
-                  }}
-                >
-                  Close
-                </button>
+      {selected ? (
+        <div className="modal-backdrop" onClick={closeBooking} role="presentation">
+          <div
+            className="modal-card booking-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="booking-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2 id="booking-modal-title">Booking #{selected.id}</h2>
+                <p>
+                  {selected.service?.name || "Service"} ·{" "}
+                  {selected.customer?.name || selected.customer?.phone}
+                </p>
               </div>
-              <div className="detail-grid">
-                <div>
-                  <span className="muted">When</span>
-                  <div>
-                    {selected.starts_at
-                      ? new Date(selected.starts_at).toLocaleString()
-                      : "TBD"}
-                  </div>
-                </div>
-                <div>
-                  <span className="muted">Channel</span>
-                  <div>{selected.channel}</div>
-                </div>
-                <div>
-                  <span className="muted">Status</span>
-                  <div>
-                    <span className="badge">{selected.status}</span>
-                  </div>
-                </div>
-                <div>
-                  <span className="muted">Payment</span>
-                  <div>
-                    <span className={`badge ${isPaid(selected.payment_status) ? "" : "warn"}`}>
-                      {selected.payment_status}
-                    </span>
-                    <div className="muted">
-                      {selected.currency} {amountDue(selected)}
-                      {selected.paid_at
-                        ? ` · ${new Date(selected.paid_at).toLocaleString()}`
-                        : ""}
-                    </div>
-                  </div>
-                </div>
-                {profile.supportsResources ? (
-                  <>
-                    <label>
-                      {profile.personNoun}
-                      <select
-                        value={selected.person_id ? String(selected.person_id) : ""}
-                        onChange={(e) =>
-                          patchSelected({
-                            person_id: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                      >
-                        <option value="">Unassigned</option>
-                        {people.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      {profile.roomNoun}
-                      <select
-                        value={selected.room_id ? String(selected.room_id) : ""}
-                        onChange={(e) =>
-                          patchSelected({
-                            room_id: e.target.value ? Number(e.target.value) : null,
-                          })
-                        }
-                      >
-                        <option value="">Unassigned</option>
-                        {rooms.map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </>
-                ) : null}
-              </div>
+              <button type="button" className="btn secondary" onClick={closeBooking}>
+                Close
+              </button>
+            </div>
 
-              <div className="btn-row" style={{ marginTop: "1rem" }}>
-                {!isPaid(selected.payment_status) ? (
-                  <>
-                    <button
-                      className="btn"
-                      onClick={() =>
-                        patchSelected({ payment_status: "paid", status: "confirmed" })
-                      }
-                    >
-                      Mark paid
+            {profile.supportsResources ? (
+              <div className="booking-assign-row">
+                <label>
+                  {profile.personNoun}
+                  <select
+                    value={selected.person_id ? String(selected.person_id) : ""}
+                    onChange={(e) =>
+                      patchSelected({
+                        person_id: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                  >
+                    <option value="">Unassigned</option>
+                    {people.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {profile.roomNoun}
+                  <select
+                    value={selected.room_id ? String(selected.room_id) : ""}
+                    onChange={(e) =>
+                      patchSelected({
+                        room_id: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                  >
+                    <option value="">Unassigned</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            <div className="detail-grid">
+              <div>
+                <span className="muted">When</span>
+                <div>
+                  {selected.starts_at ? new Date(selected.starts_at).toLocaleString() : "TBD"}
+                </div>
+              </div>
+              <div>
+                <span className="muted">Channel</span>
+                <div>{selected.channel}</div>
+              </div>
+              <div>
+                <span className="muted">Status</span>
+                <div>
+                  <span className="badge">{selected.status}</span>
+                </div>
+              </div>
+              <div>
+                <span className="muted">Payment</span>
+                <div>
+                  <span className={`badge ${isPaid(selected.payment_status) ? "" : "warn"}`}>
+                    {selected.payment_status}
+                  </span>
+                  <div className="muted">
+                    {selected.currency} {amountDue(selected)}
+                    {selected.paid_at ? ` · ${new Date(selected.paid_at).toLocaleString()}` : ""}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="btn-row" style={{ marginTop: "0.85rem" }}>
+              {!isPaid(selected.payment_status) ? (
+                <>
+                  <button
+                    className="btn"
+                    onClick={() => patchSelected({ payment_status: "paid", status: "confirmed" })}
+                  >
+                    Mark paid
+                  </button>
+                  {selected.payment_url ? (
+                    <button className="btn secondary" onClick={() => setShowQr((v) => !v)}>
+                      {showQr ? "Hide QR" : "Show QR pay"}
                     </button>
-                    {selected.payment_url ? (
-                      <button className="btn secondary" onClick={() => setShowQr(true)}>
-                        Show QR pay
-                      </button>
-                    ) : null}
-                  </>
-                ) : null}
-                {selected.status !== "completed" ? (
-                  <button
-                    className="btn secondary"
-                    onClick={() => patchSelected({ status: "completed" })}
-                  >
-                    Complete
-                  </button>
-                ) : null}
-                {selected.status !== "cancelled" ? (
-                  <button
-                    className="btn secondary"
-                    onClick={() => patchSelected({ status: "cancelled" })}
-                  >
-                    Cancel
-                  </button>
-                ) : null}
-              </div>
-
-              {showQr && selected.payment_url ? (
-                <div style={{ marginTop: "1rem" }}>
-                  <QrPayPanel
-                    paymentUrl={selected.payment_url}
-                    amountLabel={`${selected.currency} ${amountDue(selected).toFixed(2)}`}
-                    subtitle={`Booking #${selected.id}`}
-                    onPaid={() => refresh()}
-                    onClose={() => setShowQr(false)}
-                  />
-                </div>
+                  ) : null}
+                </>
               ) : null}
-            </>
-          ) : (
-            <>
-              <h2>Select a booking</h2>
-              <p>Click a calendar block or open a list row to manage status and payments.</p>
-            </>
-          )}
-        </section>
+              {selected.status !== "completed" ? (
+                <button
+                  className="btn secondary"
+                  onClick={() => patchSelected({ status: "completed" })}
+                >
+                  Complete
+                </button>
+              ) : null}
+              {selected.status !== "cancelled" ? (
+                <button
+                  className="btn secondary"
+                  onClick={() => patchSelected({ status: "cancelled" })}
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
 
-        <form className="panel form" onSubmit={onCreate}>
-          <h2>New booking</h2>
-          <label>
-            Customer name
-            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          </label>
-          <label>
-            WhatsApp / phone
-            <input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              required
-              placeholder="60123456789"
-            />
-          </label>
-          <label>
-            Service
-            <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} required>
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} · {s.currency} {s.price_amount}
-                </option>
-              ))}
-            </select>
-          </label>
-          {profile.supportsResources ? (
-            <>
-              <label>
-                {profile.personNoun}
-                <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
-                  <option value="">Unassigned</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {profile.roomNoun}
-                <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-                  <option value="">Unassigned</option>
-                  {rooms.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </>
-          ) : null}
-          <label>
-            Starts at
-            <input
-              type="datetime-local"
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-            />
-          </label>
-          <button className="btn">Create booking</button>
-        </form>
-      </div>
+            {showQr && selected.payment_url ? (
+              <div style={{ marginTop: "0.85rem" }}>
+                <QrPayPanel
+                  paymentUrl={selected.payment_url}
+                  amountLabel={`${selected.currency} ${amountDue(selected).toFixed(2)}`}
+                  subtitle={`Booking #${selected.id}`}
+                  onPaid={() => refresh()}
+                  onClose={() => setShowQr(false)}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {showCreate ? (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowCreate(false)}
+          role="presentation"
+        >
+          <form
+            className="modal-card form booking-modal"
+            onSubmit={onCreate}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2>New booking</h2>
+                <p>Create a reservation and optionally assign room/staff.</p>
+              </div>
+              <button type="button" className="btn secondary" onClick={() => setShowCreate(false)}>
+                Close
+              </button>
+            </div>
+            <label>
+              Customer name
+              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+            </label>
+            <label>
+              WhatsApp / phone
+              <input
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                required
+                placeholder="60123456789"
+              />
+            </label>
+            <label>
+              Service
+              <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} required>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} · {s.currency} {s.price_amount}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {profile.supportsResources ? (
+              <div className="booking-assign-row">
+                <label>
+                  {profile.personNoun}
+                  <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {people.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {profile.roomNoun}
+                  <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+            <label>
+              Starts at
+              <input
+                type="datetime-local"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </label>
+            {error ? <div className="error">{error}</div> : null}
+            <button className="btn">Create booking</button>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
