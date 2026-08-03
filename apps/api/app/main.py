@@ -7,6 +7,7 @@ from app.config import settings
 from app.db import Base, SessionLocal, engine
 from app.routers import (
     auth,
+    book,
     bookings,
     conversations,
     customers,
@@ -56,7 +57,8 @@ app.include_router(pos.router, prefix="/v1")
 app.include_router(workspace.router, prefix="/v1")
 app.include_router(conversations.router, prefix="/v1")
 app.include_router(whatsapp.router, prefix="/v1")
-# Hosted checkout lives at /pay/{token} (not under /v1)
+# Hosted booking + checkout (not under /v1)
+app.include_router(book.router)
 app.include_router(payments.router)
 
 

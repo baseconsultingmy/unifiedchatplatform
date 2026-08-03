@@ -99,6 +99,46 @@ def send_reply_buttons(
     )
 
 
+def send_cta_url(
+    *,
+    to_phone: str,
+    body: str,
+    display_text: str,
+    url: str,
+    header: str | None = None,
+    footer: str | None = None,
+    phone_number_id: str | None = None,
+    access_token: str | None = None,
+) -> dict:
+    """Single-tap CTA that opens a URL (booking window) inside WhatsApp."""
+    interactive: dict[str, Any] = {
+        "type": "cta_url",
+        "body": {"text": body},
+        "action": {
+            "name": "cta_url",
+            "parameters": {
+                "display_text": display_text[:20],
+                "url": url,
+            },
+        },
+    }
+    if header:
+        interactive["header"] = {"type": "text", "text": header[:60]}
+    if footer:
+        interactive["footer"] = {"text": footer[:60]}
+    return _post_message(
+        {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to_phone,
+            "type": "interactive",
+            "interactive": interactive,
+        },
+        phone_number_id=phone_number_id,
+        access_token=access_token,
+    )
+
+
 def send_list_message(
     *,
     to_phone: str,
