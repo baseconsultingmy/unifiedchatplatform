@@ -29,6 +29,7 @@ export default function PosPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [tenderInput, setTenderInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -107,10 +108,12 @@ export default function PosPage() {
     Number(cartDetails[0].service.deposit_amount || 0) > 0;
 
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : null;
+  const guestLabel = selectedCustomer?.name || customerName.trim() || "Walk-in guest";
+  const guestPhone = selectedCustomer?.phone || customerPhone.trim() || "";
 
   const filteredCustomers = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
-    if (!q) return customers.slice(0, 10);
+    if (!q) return customers.slice(0, 6);
     return customers
       .filter(
         (c) =>
@@ -118,7 +121,7 @@ export default function PosPage() {
             .toLowerCase()
             .includes(q) || String(c.phone || "").includes(q),
       )
-      .slice(0, 10);
+      .slice(0, 6);
   }, [customers, customerQuery]);
 
   function resetSale(keepCart = false) {
@@ -129,6 +132,7 @@ export default function PosPage() {
     setNotes("");
     setTenderInput("");
     setCustomerQuery("");
+    setShowCustomerSearch(false);
   }
 
   function addToCart(serviceId: number) {
@@ -158,6 +162,7 @@ export default function PosPage() {
     setCustomerName(c.name || "");
     setCustomerPhone(c.phone || "");
     setCustomerQuery("");
+    setShowCustomerSearch(false);
   }
 
   function setWalkIn() {
@@ -165,6 +170,7 @@ export default function PosPage() {
     setCustomerName("Walk-in");
     setCustomerPhone("");
     setCustomerQuery("");
+    setShowCustomerSearch(false);
   }
 
   function clearCustomer() {
@@ -237,143 +243,145 @@ export default function PosPage() {
   }
 
   return (
-    <div className="grid pos-shell pos-shell-3 page-fill">
-      <section className="panel pos-services-panel page-panel">
-        <div className="bookings-toolbar">
-          <div>
-            <h1>{profile.posTitle}</h1>
-            <p>{profile.posHint}</p>
+    <div className="pos-shell page-fill">
+      <div className="pos-left">
+        <section className="panel pos-services-panel page-panel">
+          <div className="pos-services-head">
+            <div>
+              <h1>{profile.posTitle}</h1>
+              <p>{profile.posHint}</p>
+            </div>
           </div>
-        </div>
 
-        <div className="pos-category-row">
-          {categories.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`pos-chip ${category === c ? "active" : ""}`}
-              onClick={() => setCategory(c)}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {visibleServices.length === 0 ? (
-          <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
-        ) : (
-          <div className="pos-service-grid">
-            {visibleServices.map((s) => {
-              const inCart = cart.find((l) => l.serviceId === s.id);
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  className={`pos-service-btn ${inCart ? "selected" : ""}`}
-                  onClick={() => addToCart(s.id)}
-                >
-                  <strong>{s.name}</strong>
-                  <span className="pos-service-meta">
-                    {s.category || "General"}
-                    {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
-                    {inCart ? ` · ×${inCart.quantity}` : ""}
-                  </span>
-                  <span className="pos-service-price">
-                    {s.currency} {Number(s.price_amount).toFixed(2)}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="pos-category-row">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`pos-chip ${category === c ? "active" : ""}`}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
           </div>
-        )}
-      </section>
 
-      <section className="panel pos-customer-panel page-panel">
-        <div className="bookings-toolbar">
-          <div>
-            <h2>Customer</h2>
-            <p className="muted">Optional — walk-in or look up an existing guest.</p>
+          {visibleServices.length === 0 ? (
+            <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
+          ) : (
+            <div className="pos-service-grid">
+              {visibleServices.map((s) => {
+                const inCart = cart.find((l) => l.serviceId === s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    className={`pos-service-btn ${inCart ? "selected" : ""}`}
+                    onClick={() => addToCart(s.id)}
+                  >
+                    <strong>{s.name}</strong>
+                    <span className="pos-service-meta">
+                      {s.category || "General"}
+                      {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
+                      {inCart ? ` · ×${inCart.quantity}` : ""}
+                    </span>
+                    <span className="pos-service-price">
+                      {s.currency} {Number(s.price_amount).toFixed(2)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="panel pos-customer-bar">
+          <div className="pos-customer-bar-main">
+            <div className="pos-customer-who">
+              <span className="muted">Customer</span>
+              <strong>{guestLabel}</strong>
+              <span className="muted">{guestPhone || "No phone"}</span>
+            </div>
+            <div className="btn-row pos-customer-bar-actions">
+              <button type="button" className="btn secondary" onClick={setWalkIn}>
+                Walk-in
+              </button>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => setShowCustomerSearch((v) => !v)}
+              >
+                {showCustomerSearch ? "Hide" : "Find / edit"}
+              </button>
+              <button type="button" className="btn secondary" onClick={clearCustomer}>
+                Clear
+              </button>
+            </div>
           </div>
-          <button type="button" className="btn secondary" onClick={clearCustomer}>
-            Clear
-          </button>
-        </div>
 
-        <div className="btn-row">
-          <button type="button" className="btn secondary" onClick={setWalkIn}>
-            Walk-in
-          </button>
-        </div>
-
-        <label className="pos-field">
-          Search existing
-          <input
-            value={customerQuery}
-            onChange={(e) => setCustomerQuery(e.target.value)}
-            placeholder="Name or phone"
-          />
-        </label>
-
-        <div className="pos-customer-results">
-          {filteredCustomers.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={`pos-customer-result ${customerId === c.id ? "selected" : ""}`}
-              onClick={() => pickCustomer(c)}
-            >
-              <strong>{c.name || "Unnamed"}</strong>
-              <span className="muted">{c.phone}</span>
-            </button>
-          ))}
-          {filteredCustomers.length === 0 ? (
-            <div className="muted">No matches — enter a new guest below.</div>
+          {showCustomerSearch ? (
+            <div className="pos-customer-expand">
+              <label className="pos-field">
+                Search existing
+                <input
+                  value={customerQuery}
+                  onChange={(e) => setCustomerQuery(e.target.value)}
+                  placeholder="Name or phone"
+                  autoFocus
+                />
+              </label>
+              <div className="pos-customer-results">
+                {filteredCustomers.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`pos-customer-result ${customerId === c.id ? "selected" : ""}`}
+                    onClick={() => pickCustomer(c)}
+                  >
+                    <strong>{c.name || "Unnamed"}</strong>
+                    <span className="muted">{c.phone}</span>
+                  </button>
+                ))}
+                {filteredCustomers.length === 0 ? (
+                  <div className="muted">No matches — enter a new guest below.</div>
+                ) : null}
+              </div>
+              <div className="pos-customer-fields inline">
+                <label className="pos-field">
+                  Name
+                  <input
+                    value={customerName}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value);
+                      setCustomerId(null);
+                    }}
+                    placeholder="Walk-in"
+                  />
+                </label>
+                <label className="pos-field">
+                  Phone
+                  <input
+                    value={customerPhone}
+                    onChange={(e) => {
+                      setCustomerPhone(e.target.value);
+                      setCustomerId(null);
+                    }}
+                    placeholder="6012…"
+                  />
+                </label>
+                <label className="pos-field">
+                  Note
+                  <input
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </label>
+              </div>
+            </div>
           ) : null}
-        </div>
-
-        <div className="pos-customer-fields">
-          <label className="pos-field">
-            Name
-            <input
-              value={customerName}
-              onChange={(e) => {
-                setCustomerName(e.target.value);
-                setCustomerId(null);
-              }}
-              placeholder="Walk-in"
-            />
-          </label>
-          <label className="pos-field">
-            Phone
-            <input
-              value={customerPhone}
-              onChange={(e) => {
-                setCustomerPhone(e.target.value);
-                setCustomerId(null);
-              }}
-              placeholder="6012…"
-            />
-          </label>
-          <label className="pos-field">
-            Note
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
-            />
-          </label>
-        </div>
-
-        <div className="pos-customer-active">
-          <span className="muted">On this sale</span>
-          <strong>
-            {selectedCustomer?.name || customerName.trim() || "Walk-in guest"}
-          </strong>
-          <span className="muted">
-            {selectedCustomer?.phone || customerPhone.trim() || "No phone"}
-          </span>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <section className="panel pos-register-panel page-panel">
         {showQr && result?.payment_url ? (
@@ -407,7 +415,9 @@ export default function PosPage() {
               <div>
                 <h2>Cart</h2>
                 <p className="muted">
-                  {itemCount ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty"}
+                  {itemCount
+                    ? `${itemCount} item${itemCount === 1 ? "" : "s"} · confirm before payment`
+                    : "Add services from the left"}
                 </p>
               </div>
               <button
@@ -416,13 +426,15 @@ export default function PosPage() {
                 onClick={() => resetSale(false)}
                 disabled={!cart.length}
               >
-                Clear
+                Clear cart
               </button>
             </div>
 
             <div className="pos-register-body">
               {cartDetails.length === 0 ? (
-                <div className="pos-register-empty muted">Tap items on the left to build the cart.</div>
+                <div className="pos-register-empty muted">
+                  Tap a service to start the sale. The summary below is your check before cash or QR.
+                </div>
               ) : (
                 <div className="pos-register-lines">
                   {cartDetails.map((line) => (
@@ -430,15 +442,23 @@ export default function PosPage() {
                       <div className="pos-register-line-main">
                         <strong>{line.service.name}</strong>
                         <span className="muted">
-                          {currency} {formatMoney(line.unit)}
+                          {currency} {formatMoney(line.unit)} each
                         </span>
                       </div>
                       <div className="pos-qty">
-                        <button type="button" onClick={() => setQty(line.serviceId, line.quantity - 1)}>
+                        <button
+                          type="button"
+                          aria-label="Decrease quantity"
+                          onClick={() => setQty(line.serviceId, line.quantity - 1)}
+                        >
                           −
                         </button>
                         <span>{line.quantity}</span>
-                        <button type="button" onClick={() => setQty(line.serviceId, line.quantity + 1)}>
+                        <button
+                          type="button"
+                          aria-label="Increase quantity"
+                          onClick={() => setQty(line.serviceId, line.quantity + 1)}
+                        >
                           +
                         </button>
                       </div>
@@ -449,9 +469,29 @@ export default function PosPage() {
               )}
             </div>
 
-            <div className="pos-register-footer">
+            <div className="pos-cart-summary" aria-live="polite">
+              <div className="pos-cart-summary-head">
+                <strong>Order summary</strong>
+                <span className="muted">Validate services before payment</span>
+              </div>
+              {cartDetails.length === 0 ? (
+                <div className="pos-cart-summary-empty muted">Nothing to charge yet</div>
+              ) : (
+                <ul className="pos-cart-summary-list">
+                  {cartDetails.map((line) => (
+                    <li key={line.serviceId}>
+                      <span>
+                        {line.quantity}× {line.service.name}
+                      </span>
+                      <span>
+                        {currency} {formatMoney(line.lineTotal)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {depositAllowed ? (
-                <div className="segmented">
+                <div className="segmented pos-charge-mode">
                   <button
                     type="button"
                     className={chargeMode === "full" ? "active" : ""}
@@ -474,24 +514,27 @@ export default function PosPage() {
                   </button>
                 </div>
               ) : null}
-
               <div className="pos-register-total">
-                <span>Total due</span>
+                <span>
+                  {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total due"}
+                </span>
                 <strong>
                   {currency} {formatMoney(amountDue)}
                 </strong>
               </div>
+            </div>
 
+            <div className="pos-register-pay">
               <div className="pos-calc compact">
                 <div className="pos-calc-readout">
                   <div>
-                    <span className="muted">Cash</span>
+                    <span className="muted">Cash received</span>
                     <strong>
                       {currency} {tenderInput ? tenderInput : "0"}
                     </strong>
                   </div>
                   <div className={balanceDue > 0 ? "pos-balance warn" : "pos-balance ok"}>
-                    <span className="muted">{balanceDue > 0 ? "Due" : "Change"}</span>
+                    <span className="muted">{balanceDue > 0 ? "Still due" : "Change"}</span>
                     <strong>
                       {currency} {formatMoney(balanceDue > 0 ? balanceDue : changeDue)}
                     </strong>
@@ -518,11 +561,12 @@ export default function PosPage() {
                     type="button"
                     className="btn secondary"
                     onClick={() => setTenderInput(formatMoney(amountDue))}
+                    disabled={amountDue <= 0}
                   >
                     Exact
                   </button>
                   <button type="button" className="btn secondary" onClick={() => setTenderInput("")}>
-                    Clear
+                    Clear cash
                   </button>
                 </div>
               </div>
