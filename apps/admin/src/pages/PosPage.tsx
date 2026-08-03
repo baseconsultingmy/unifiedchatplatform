@@ -3,8 +3,6 @@ import QrPayPanel from "../components/QrPayPanel";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
-const QUICK_NOTES = [1, 5, 10, 20, 50, 100] as const;
-
 function parseMoney(raw: string): number {
   if (!raw || raw === ".") return 0;
   const n = Number(raw);
@@ -23,6 +21,10 @@ export default function PosPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [chargeMode, setChargeMode] = useState<"full" | "deposit">("full");
   const [notes, setNotes] = useState("");
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftPhone, setDraftPhone] = useState("");
+  const [draftNotes, setDraftNotes] = useState("");
   const [tenderInput, setTenderInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -56,12 +58,45 @@ export default function PosPage() {
   const balanceDue = Math.max(0, amountDue - tendered);
   const canTakeCash = Boolean(serviceId) && tendered + 1e-9 >= amountDue && amountDue > 0;
 
+  const customerLabel = customerName.trim() || "Walk-in customer";
+  const customerMeta = [
+    customerPhone.trim() || "No phone",
+    notes.trim() ? "Has note" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   function resetSaleForm(keepService = true) {
     setCustomerName("");
     setCustomerPhone("");
     setNotes("");
     setTenderInput("");
+    setCustomerOpen(false);
     if (!keepService) setServiceId(services[0] ? String(services[0].id) : "");
+  }
+
+  function openCustomer() {
+    setDraftName(customerName);
+    setDraftPhone(customerPhone);
+    setDraftNotes(notes);
+    setCustomerOpen(true);
+  }
+
+  function saveCustomer() {
+    setCustomerName(draftName.trim());
+    setCustomerPhone(draftPhone.trim());
+    setNotes(draftNotes.trim());
+    setCustomerOpen(false);
+  }
+
+  function clearCustomer() {
+    setDraftName("");
+    setDraftPhone("");
+    setDraftNotes("");
+    setCustomerName("");
+    setCustomerPhone("");
+    setNotes("");
+    setCustomerOpen(false);
   }
 
   function selectService(id: number) {
@@ -70,7 +105,6 @@ export default function PosPage() {
     setShowQr(false);
     setLastCash(null);
     setError("");
-    // Reset tender when switching services so change math stays clear
     setTenderInput("");
   }
 
@@ -81,7 +115,6 @@ export default function PosPage() {
         return prev ? `${prev}.` : "0.";
       }
       if (prev === "0") return digit;
-      // limit to 2 decimal places
       const parts = prev.split(".");
       if (parts[1] && parts[1].length >= 2) return prev;
       if (prev.length >= 10) return prev;
@@ -99,10 +132,6 @@ export default function PosPage() {
 
   function setExact() {
     setTenderInput(formatMoney(amountDue));
-  }
-
-  function addQuick(amount: number) {
-    setTenderInput(formatMoney(tendered + amount));
   }
 
   async function checkout(method: "cash" | "qr") {
@@ -214,33 +243,6 @@ export default function PosPage() {
             })}
           </div>
         )}
-
-        <div className="pos-customer-row">
-          <label>
-            Customer
-            <input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Walk-in"
-            />
-          </label>
-          <label>
-            Phone
-            <input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="Optional"
-            />
-          </label>
-          <label>
-            Note
-            <input
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional"
-            />
-          </label>
-        </div>
       </section>
 
       <section className="panel pos-checkout-panel">
@@ -284,7 +286,62 @@ export default function PosPage() {
               </div>
             </div>
 
-            <div className="pos-calc">
+            <div className="pos-customer-card">
+              <button type="button" className="pos-customer-summary" onClick={openCustomer}>
+                <div>
+                  <span className="muted">Customer</span>
+                  <strong>{customerLabel}</strong>
+                  <span className="muted">{customerMeta}</span>
+                </div>
+                <span className="pos-customer-edit">Edit</span>
+              </button>
+
+              {customerOpen ? (
+                <div className="pos-customer-form">
+                  <div className="pos-customer-form-head">
+                    <strong>Customer details</strong>
+                    <button type="button" className="btn secondary" onClick={() => setCustomerOpen(false)}>
+                      Close
+                    </button>
+                  </div>
+                  <label>
+                    Name
+                    <input
+                      value={draftName}
+                      onChange={(e) => setDraftName(e.target.value)}
+                      placeholder="Walk-in"
+                      autoFocus
+                    />
+                  </label>
+                  <label>
+                    Phone
+                    <input
+                      value={draftPhone}
+                      onChange={(e) => setDraftPhone(e.target.value)}
+                      placeholder="6012…"
+                    />
+                  </label>
+                  <label>
+                    Note
+                    <input
+                      value={draftNotes}
+                      onChange={(e) => setDraftNotes(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </label>
+                  <div className="btn-row">
+                    <button type="button" className="btn" onClick={saveCustomer}>
+                      Save customer
+                    </button>
+                    <button type="button" className="btn secondary" onClick={clearCustomer}>
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="pos-calc compact">
               <div className="pos-calc-readout">
                 <div>
                   <span className="muted">Cash received</span>
@@ -300,23 +357,12 @@ export default function PosPage() {
                 </div>
               </div>
 
-              <div className="pos-quick-notes">
-                {QUICK_NOTES.map((n) => (
-                  <button key={n} type="button" onClick={() => addQuick(n)}>
-                    +{n}
-                  </button>
-                ))}
-                <button type="button" onClick={setExact}>
-                  Exact
-                </button>
-              </div>
-
-              <div className="pos-keypad">
+              <div className="pos-keypad compact">
                 {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
                   <button
                     key={key}
                     type="button"
-                    className={key === "⌫" ? "pos-key wide" : "pos-key"}
+                    className="pos-key"
                     onClick={() => {
                       if (key === "⌫") backspace();
                       else appendDigit(key);
@@ -325,8 +371,13 @@ export default function PosPage() {
                     {key}
                   </button>
                 ))}
-                <button type="button" className="pos-key danger" onClick={clearTender}>
-                  C
+              </div>
+              <div className="btn-row pos-calc-tools">
+                <button type="button" className="btn secondary" onClick={setExact}>
+                  Exact
+                </button>
+                <button type="button" className="btn secondary" onClick={clearTender}>
+                  Clear
                 </button>
               </div>
             </div>
