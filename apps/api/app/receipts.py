@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 from app.models import Booking
 from app.payments import amount_due
@@ -52,7 +53,14 @@ def format_receipt_text(
     phone = booking.customer.phone if booking.customer else ""
     currency = booking.currency or "MYR"
     due = amount_due(booking)
-    when = booking.starts_at.strftime("%d %b %Y %H:%M") if booking.starts_at else "now"
+    when = "now"
+    if booking.starts_at:
+        tz_name = booking.tenant.timezone if booking.tenant else "Asia/Kuala_Lumpur"
+        try:
+            tz = ZoneInfo(tz_name or "Asia/Kuala_Lumpur")
+        except Exception:
+            tz = ZoneInfo("Asia/Kuala_Lumpur")
+        when = booking.starts_at.astimezone(tz).strftime("%d %b %Y %H:%M")
     items = line_items if line_items is not None else line_items_from_booking(booking)
 
     if payment_label:
