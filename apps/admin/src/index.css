@@ -880,46 +880,12 @@ p {
 
 .pos-cart-side {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.55rem;
   min-height: 0;
   height: 100%;
   overflow: hidden;
   padding: 0.85rem 0.95rem;
-}
-
-.pos-cart-side:has(.qr-panel) {
-  grid-template-rows: minmax(0, 1fr);
-  overflow: auto;
-}
-
-.pos-cart-side:has(.pos-pay-block) {
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
-  overflow: hidden;
-}
-
-.pos-pay-block {
-  display: grid;
-  gap: 0.45rem;
-  flex-shrink: 0;
-  min-height: 0;
-  overflow: auto;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--line);
-}
-
-.pos-pay-block h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.pos-pay-method {
-  width: 100%;
-  justify-content: stretch;
-}
-
-.pos-pay-method button {
-  flex: 1;
 }
 
 .pos-qr-hint {
@@ -1341,6 +1307,135 @@ p {
   align-content: start;
   min-height: 0;
 }
+
+
+.pos-service-grid.locked {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.pos-confirmed {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.pos-confirmed.active {
+  border-color: rgba(15, 118, 110, 0.35);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.pos-confirmed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.pos-confirmed-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pos-confirmed-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+  max-height: 8rem;
+  overflow: auto;
+}
+
+.pos-confirmed-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pos-confirmed-list li span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pos-customer-chip.static {
+  cursor: default;
+}
+
+.pos-flow-modal {
+  width: min(480px, calc(100vw - 1.5rem));
+}
+
+.pos-flow-actions {
+  flex-direction: column;
+}
+
+.pos-flow-actions .btn {
+  width: 100%;
+}
+
+.pos-pay-options {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.pos-pay-option {
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.pos-pay-option:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.45);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.pos-pay-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pos-pay-option strong {
+  font-size: 1.05rem;
+}
+
+.pos-receipt-sheet {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.pos-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.pos-receipt-row.total {
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--line);
+  font-size: 1.05rem;
+}
+
 
 .qr-panel {
   display: grid;

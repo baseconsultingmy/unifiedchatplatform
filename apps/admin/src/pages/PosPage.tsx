@@ -5,7 +5,8 @@ import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
 
 type CartLine = { serviceId: number; quantity: number };
-type PayMethod = "cash" | "qr";
+type PayMethod = "cash" | "qr" | "card";
+type CheckoutStep = null | "customer" | "payment" | "cash" | "qr" | "done";
 
 function parseMoney(raw: string): number {
   if (!raw || raw === ".") return 0;
@@ -25,19 +26,17 @@ export default function PosPage() {
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [chargeMode, setChargeMode] = useState<"full" | "deposit">("full");
-  const [payMethod, setPayMethod] = useState<PayMethod>("cash");
-  const [payOpen, setPayOpen] = useState(false);
+  const [step, setStep] = useState<CheckoutStep>(null);
+  const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
-  const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [tenderInput, setTenderInput] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [showQr, setShowQr] = useState(false);
   const [lastCash, setLastCash] = useState<{ tendered: number; change: number } | null>(null);
 
   useEffect(() => {
@@ -52,11 +51,17 @@ export default function PosPage() {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setShowCustomerModal(false);
+      if (e.key !== "Escape") return;
+      if (step === "cash") setStep("payment");
+      else if (step === "payment") setStep("customer");
+      else if (step === "customer") setStep(null);
+      else if (step === "qr" || step === "done") {
+        /* keep open until explicit close */
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [step]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -107,7 +112,7 @@ export default function PosPage() {
     return cartDetails.reduce((sum, line) => sum + line.lineTotal, 0);
   }, [cartDetails, chargeMode, profile.showDeposit]);
 
-  const currency = cartDetails[0]?.service?.currency || "MYR";
+  const currency = cartDetails[0]?.service?.currency || result?.currency || "MYR";
   const tendered = parseMoney(tenderInput);
   const changeDue = Math.max(0, tendered - amountDue);
   const balanceDue = Math.max(0, amountDue - tendered);
@@ -143,19 +148,19 @@ export default function PosPage() {
     setNotes("");
     setTenderInput("");
     setCustomerQuery("");
-    setShowCustomerModal(false);
-    setPayMethod("cash");
     setChargeMode("full");
-    setPayOpen(false);
-    setShowQr(false);
+    setOrderConfirmed(false);
+    setStep(null);
+    setResult(null);
+    setLastCash(null);
+    setError("");
   }
 
   function addToCart(serviceId: number) {
+    if (orderConfirmed || step) return;
     setResult(null);
-    setShowQr(false);
     setLastCash(null);
     setError("");
-    const wasEmpty = cart.length === 0;
     setCart((prev) => {
       const existing = prev.find((l) => l.serviceId === serviceId);
       if (existing) {
@@ -165,10 +170,10 @@ export default function PosPage() {
       }
       return [...prev, { serviceId, quantity: 1 }];
     });
-    if (wasEmpty) setShowCustomerModal(true);
   }
 
   function setQty(serviceId: number, quantity: number) {
+    if (orderConfirmed || step) return;
     setCart((prev) => {
       if (quantity <= 0) return prev.filter((l) => l.serviceId !== serviceId);
       return prev.map((l) => (l.serviceId === serviceId ? { ...l, quantity } : l));
@@ -197,15 +202,42 @@ export default function PosPage() {
     setCustomerQuery("");
   }
 
-  function keepShopping() {
-    setShowCustomerModal(false);
-    setPayOpen(false);
+  function startConfirmOrder() {
+    if (cartDetails.length === 0 || amountDue <= 0) return;
+    setError("");
+    setOrderConfirmed(true);
+    setStep("customer");
   }
 
-  function skipToPayment() {
-    setShowCustomerModal(false);
-    setPayOpen(true);
+  function unlockCart() {
+    setOrderConfirmed(false);
+    setStep(null);
     setTenderInput("");
+    setError("");
+  }
+
+  function proceedToPayment(withCustomer: boolean) {
+    if (!withCustomer) {
+      // skip customer — keep walk-in defaults if empty
+      if (!customerName.trim() && !customerId) {
+        setCustomerName("Walk-in");
+      }
+    }
+    setStep("payment");
+    setTenderInput("");
+    setError("");
+  }
+
+  function choosePayment(method: PayMethod) {
+    setError("");
+    if (method === "card") return;
+    if (method === "cash") {
+      setTenderInput("");
+      setStep("cash");
+      return;
+    }
+    // QR — create sale then show QR
+    void checkout("qr");
   }
 
   function appendDigit(digit: string) {
@@ -222,7 +254,7 @@ export default function PosPage() {
     });
   }
 
-  async function checkout(method: PayMethod) {
+  async function checkout(method: "cash" | "qr") {
     if (!token || cartDetails.length === 0) return;
     if (method === "cash" && !canTakeCash) {
       setError("Cash received must cover the amount due");
@@ -230,14 +262,11 @@ export default function PosPage() {
     }
     setError("");
     setBusy(true);
-    setResult(null);
-    setShowQr(false);
-    setLastCash(null);
     try {
       const saleNotes = [
         notes.trim(),
         method === "cash"
-          ? `Cash tendered ${currency} ${formatMoney(tendered)}; change ${currency} ${formatMoney(changeDue)}`
+          ? `Cash received ${currency} ${formatMoney(tendered)}; change ${currency} ${formatMoney(changeDue)}`
           : null,
       ]
         .filter(Boolean)
@@ -257,18 +286,20 @@ export default function PosPage() {
       });
       setResult(sale);
       if (method === "qr") {
-        setShowQr(true);
-        setPayOpen(true);
+        setStep("qr");
       } else {
         setLastCash({ tendered, change: changeDue });
-        resetSale();
+        setStep("done");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sale failed");
+      if (method === "qr") setStep("payment");
     } finally {
       setBusy(false);
     }
   }
+
+  const locked = orderConfirmed || Boolean(step);
 
   return (
     <div className="pos-shell page-fill">
@@ -287,6 +318,7 @@ export default function PosPage() {
               type="button"
               className={`pos-chip ${category === c ? "active" : ""}`}
               onClick={() => setCategory(c)}
+              disabled={locked}
             >
               {c}
             </button>
@@ -296,7 +328,7 @@ export default function PosPage() {
         {visibleServices.length === 0 ? (
           <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
         ) : (
-          <div className="pos-service-grid">
+          <div className={`pos-service-grid ${locked ? "locked" : ""}`}>
             {visibleServices.map((s) => {
               const inCart = cart.find((l) => l.serviceId === s.id);
               return (
@@ -305,6 +337,7 @@ export default function PosPage() {
                   type="button"
                   className={`pos-service-btn ${inCart ? "selected" : ""}`}
                   onClick={() => addToCart(s.id)}
+                  disabled={locked}
                 >
                   <strong>{s.name}</strong>
                   <span className="pos-service-meta">
@@ -323,300 +356,156 @@ export default function PosPage() {
       </section>
 
       <aside className="panel pos-cart-side page-panel">
-        {showQr && result?.payment_url ? (
-          <QrPayPanel
-            paymentUrl={result.payment_url}
-            amountLabel={`${result.currency} ${Number(result.amount_due).toFixed(2)}`}
-            subtitle={(result.line_items || []).join(", ") || `Sale #${result.booking?.id}`}
-            onPaid={() => {
-              setResult((prev: any) =>
-                prev
-                  ? {
-                      ...prev,
-                      already_paid: true,
-                      booking: {
-                        ...prev.booking,
-                        payment_status:
-                          chargeMode === "deposit" && depositAllowed ? "deposit_paid" : "paid",
-                      },
-                    }
-                  : prev,
-              );
-            }}
-            onClose={() => {
-              setShowQr(false);
-              resetSale();
-            }}
-          />
-        ) : (
-          <>
-            <div className="pos-register-head">
-              <div>
-                <h2>Cart summary</h2>
-                <p className="muted">
-                  {itemCount
-                    ? `${itemCount} item${itemCount === 1 ? "" : "s"} · live validation`
-                    : "Tap services on the left"}
-                </p>
-              </div>
+        <div className="pos-register-head">
+          <div>
+            <h2>Cart</h2>
+            <p className="muted">
+              {itemCount
+                ? `${itemCount} item${itemCount === 1 ? "" : "s"} selected`
+                : "Select items from POS"}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={resetSale}
+            disabled={!cart.length && !result && step !== "done"}
+          >
+            New sale
+          </button>
+        </div>
+
+        <div className="pos-register-body">
+          {cartDetails.length === 0 ? (
+            <div className="pos-register-empty muted">Tap services on the left to build the cart.</div>
+          ) : (
+            <div className="pos-register-lines">
+              {cartDetails.map((line) => (
+                <div key={line.serviceId} className="pos-register-line">
+                  <div className="pos-register-line-main">
+                    <strong>{line.service.name}</strong>
+                    <span className="muted">
+                      {currency} {formatMoney(line.unit)} each
+                    </span>
+                  </div>
+                  <div className="pos-qty">
+                    <button
+                      type="button"
+                      aria-label="Decrease quantity"
+                      disabled={locked}
+                      onClick={() => setQty(line.serviceId, line.quantity - 1)}
+                    >
+                      −
+                    </button>
+                    <span>{line.quantity}</span>
+                    <button
+                      type="button"
+                      aria-label="Increase quantity"
+                      disabled={locked}
+                      onClick={() => setQty(line.serviceId, line.quantity + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={`pos-confirmed ${orderConfirmed ? "active" : ""}`}>
+          <div className="pos-confirmed-head">
+            <div>
+              <h3>Confirmed order / booking</h3>
+              <p className="muted">
+                {orderConfirmed
+                  ? "Locked for checkout — customer & payment next"
+                  : "Review the cart, then confirm to continue"}
+              </p>
+            </div>
+            {orderConfirmed && step !== "done" && step !== "qr" ? (
+              <button type="button" className="btn secondary" onClick={unlockCart}>
+                Edit cart
+              </button>
+            ) : null}
+          </div>
+
+          {cartDetails.length === 0 ? (
+            <div className="muted">Nothing confirmed yet.</div>
+          ) : (
+            <ul className="pos-confirmed-list">
+              {cartDetails.map((line) => (
+                <li key={line.serviceId}>
+                  <span>
+                    {line.quantity}× {line.service.name}
+                  </span>
+                  <span>
+                    {currency} {formatMoney(line.lineTotal)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {depositAllowed && !locked ? (
+            <div className="segmented pos-charge-mode">
               <button
                 type="button"
-                className="btn secondary"
-                onClick={resetSale}
-                disabled={!cart.length && !customerName && !customerPhone}
+                className={chargeMode === "full" ? "active" : ""}
+                onClick={() => setChargeMode("full")}
               >
-                Clear
+                Full
+              </button>
+              <button
+                type="button"
+                className={chargeMode === "deposit" ? "active" : ""}
+                onClick={() => setChargeMode("deposit")}
+              >
+                Deposit
               </button>
             </div>
+          ) : null}
 
-            <button
-              type="button"
-              className="pos-customer-chip"
-              onClick={() => setShowCustomerModal(true)}
-            >
+          <div className="pos-register-total">
+            <span>
+              {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total due"}
+            </span>
+            <strong>
+              {currency} {formatMoney(amountDue)}
+            </strong>
+          </div>
+
+          {orderConfirmed ? (
+            <div className="pos-customer-chip static">
               <div>
                 <span className="muted">Customer</span>
                 <strong>{guestLabel}</strong>
-                <span className="muted">{guestPhone || "No phone"}</span>
-              </div>
-              <span className="pos-customer-edit">Edit</span>
-            </button>
-
-            <div className="pos-register-body">
-              {cartDetails.length === 0 ? (
-                <div className="pos-register-empty muted">
-                  Cart updates here as you add services — confirm before payment.
-                </div>
-              ) : (
-                <div className="pos-register-lines">
-                  {cartDetails.map((line) => (
-                    <div key={line.serviceId} className="pos-register-line">
-                      <div className="pos-register-line-main">
-                        <strong>{line.service.name}</strong>
-                        <span className="muted">
-                          {currency} {formatMoney(line.unit)} each
-                        </span>
-                      </div>
-                      <div className="pos-qty">
-                        <button
-                          type="button"
-                          aria-label="Decrease quantity"
-                          onClick={() => setQty(line.serviceId, line.quantity - 1)}
-                        >
-                          −
-                        </button>
-                        <span>{line.quantity}</span>
-                        <button
-                          type="button"
-                          aria-label="Increase quantity"
-                          onClick={() => setQty(line.serviceId, line.quantity + 1)}
-                        >
-                          +
-                        </button>
-                      </div>
-                      <div className="pos-line-total">{formatMoney(line.lineTotal)}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="pos-cart-summary">
-              {depositAllowed ? (
-                <div className="segmented pos-charge-mode">
-                  <button
-                    type="button"
-                    className={chargeMode === "full" ? "active" : ""}
-                    onClick={() => {
-                      setChargeMode("full");
-                      setTenderInput("");
-                    }}
-                  >
-                    Full
-                  </button>
-                  <button
-                    type="button"
-                    className={chargeMode === "deposit" ? "active" : ""}
-                    onClick={() => {
-                      setChargeMode("deposit");
-                      setTenderInput("");
-                    }}
-                  >
-                    Deposit
-                  </button>
-                </div>
-              ) : null}
-              <div className="pos-register-total">
-                <span>
-                  {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total due"}
-                </span>
-                <strong>
-                  {currency} {formatMoney(amountDue)}
-                </strong>
+                <span className="muted">{guestPhone || "No phone yet"}</span>
               </div>
             </div>
+          ) : null}
 
-            {!payOpen ? (
-              <div className="btn-row pos-actions">
-                <button
-                  type="button"
-                  className="btn"
-                  disabled={cartDetails.length === 0 || amountDue <= 0}
-                  onClick={skipToPayment}
-                >
-                  Proceed to payment
-                </button>
-              </div>
-            ) : (
-              <div className="pos-pay-block">
-                <div className="pos-register-head">
-                  <div>
-                    <h3>Payment</h3>
-                    <p className="muted">Cash shows the keypad</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    onClick={() => {
-                      setPayOpen(false);
-                      setTenderInput("");
-                      setError("");
-                    }}
-                  >
-                    Back
-                  </button>
-                </div>
-
-                <div className="segmented pos-pay-method">
-                  <button
-                    type="button"
-                    className={payMethod === "cash" ? "active" : ""}
-                    onClick={() => {
-                      setPayMethod("cash");
-                      setError("");
-                    }}
-                  >
-                    Cash
-                  </button>
-                  <button
-                    type="button"
-                    className={payMethod === "qr" ? "active" : ""}
-                    onClick={() => {
-                      setPayMethod("qr");
-                      setError("");
-                      setTenderInput("");
-                    }}
-                  >
-                    QR pay
-                  </button>
-                </div>
-
-                {payMethod === "cash" ? (
-                  <div className="pos-calc compact">
-                    <div className="pos-calc-readout">
-                      <div>
-                        <span className="muted">Cash received</span>
-                        <strong>
-                          {currency} {tenderInput ? tenderInput : "0"}
-                        </strong>
-                      </div>
-                      <div className={balanceDue > 0 ? "pos-balance warn" : "pos-balance ok"}>
-                        <span className="muted">{balanceDue > 0 ? "Still due" : "Change"}</span>
-                        <strong>
-                          {currency} {formatMoney(balanceDue > 0 ? balanceDue : changeDue)}
-                        </strong>
-                      </div>
-                    </div>
-                    <div className="pos-keypad compact">
-                      {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
-                        <button
-                          key={key}
-                          type="button"
-                          className="pos-key"
-                          onClick={() => {
-                            if (key === "⌫") setTenderInput((prev) => prev.slice(0, -1));
-                            else appendDigit(key);
-                          }}
-                        >
-                          {key}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="btn-row pos-calc-tools">
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        onClick={() => setTenderInput(formatMoney(amountDue))}
-                        disabled={amountDue <= 0}
-                      >
-                        Exact
-                      </button>
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        onClick={() => setTenderInput("")}
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="pos-qr-hint">
-                    <p>
-                      Charge <strong>{currency} {formatMoney(amountDue)}</strong> by QR — no cash
-                      keypad.
-                    </p>
-                  </div>
-                )}
-
-                {error ? <div className="error">{error}</div> : null}
-
-                <div className="btn-row pos-actions">
-                  {payMethod === "cash" ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={busy || !canTakeCash}
-                      onClick={() => checkout("cash")}
-                    >
-                      Take cash
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={busy || cartDetails.length === 0 || amountDue <= 0}
-                      onClick={() => checkout("qr")}
-                    >
-                      Show QR
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {lastCash && result?.already_paid ? (
-              <div className="pos-receipt">
-                <strong>Sale recorded</strong>
-                <div>#{result.booking?.id}</div>
-                <div className="muted">
-                  {(result.line_items || []).join(", ")} · Change {currency}{" "}
-                  {formatMoney(lastCash.change)}
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
+          {!orderConfirmed ? (
+            <div className="btn-row pos-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={cartDetails.length === 0 || amountDue <= 0}
+                onClick={startConfirmOrder}
+              >
+                Confirm order
+              </button>
+            </div>
+          ) : null}
+        </div>
       </aside>
 
-      {showCustomerModal ? (
-        <div
-          className="modal-backdrop"
-          onClick={() => setShowCustomerModal(false)}
-          role="presentation"
-        >
+      {/* Step 1: Customer */}
+      {step === "customer" ? (
+        <div className="modal-backdrop" role="presentation">
           <div
-            className="modal-card booking-modal pos-customer-modal"
+            className="modal-card booking-modal pos-flow-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="pos-customer-title"
@@ -624,15 +513,11 @@ export default function PosPage() {
           >
             <div className="bookings-toolbar">
               <div>
-                <h2 id="pos-customer-title">Customer</h2>
-                <p>Optional — keep shopping or skip to payment.</p>
+                <h2 id="pos-customer-title">Customer information</h2>
+                <p>Attach a guest, or skip and go straight to payment.</p>
               </div>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setShowCustomerModal(false)}
-              >
-                Close
+              <button type="button" className="btn secondary" onClick={unlockCart}>
+                Cancel
               </button>
             </div>
 
@@ -706,17 +591,268 @@ export default function PosPage() {
             </div>
 
             <div className="pos-customer-active">
-              <span className="muted">On this sale</span>
-              <strong>{guestLabel}</strong>
-              <span className="muted">{guestPhone || "No phone"}</span>
+              <span className="muted">Will charge</span>
+              <strong>
+                {currency} {formatMoney(amountDue)}
+              </strong>
+              <span className="muted">{guestLabel}</span>
+            </div>
+
+            <div className="btn-row pos-actions pos-flow-actions">
+              <button type="button" className="btn" onClick={() => proceedToPayment(true)}>
+                Confirm and proceed to payment
+              </button>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => proceedToPayment(false)}
+              >
+                Skip and proceed to payment
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Step 2: Payment method */}
+      {step === "payment" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pos-pay-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2 id="pos-pay-title">Choose payment</h2>
+                <p>
+                  {guestLabel} · {currency} {formatMoney(amountDue)}
+                </p>
+              </div>
+              <button type="button" className="btn secondary" onClick={() => setStep("customer")}>
+                Back
+              </button>
+            </div>
+
+            <div className="pos-pay-options">
+              <button
+                type="button"
+                className="pos-pay-option"
+                disabled={busy}
+                onClick={() => choosePayment("cash")}
+              >
+                <strong>Cash</strong>
+                <span className="muted">Enter cash received and calculate change</span>
+              </button>
+              <button
+                type="button"
+                className="pos-pay-option"
+                disabled={busy}
+                onClick={() => choosePayment("qr")}
+              >
+                <strong>QR pay</strong>
+                <span className="muted">Show a payment QR for the customer</span>
+              </button>
+              <button type="button" className="pos-pay-option" disabled title="Coming soon">
+                <strong>Card</strong>
+                <span className="muted">Coming soon</span>
+              </button>
+            </div>
+
+            {error ? <div className="error">{error}</div> : null}
+            {busy ? <div className="muted">Preparing payment…</div> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Step 3a: Cash calculator */}
+      {step === "cash" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pos-cash-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2 id="pos-cash-title">Cash received</h2>
+                <p>
+                  Amount due {currency} {formatMoney(amountDue)} — change prints on the receipt.
+                </p>
+              </div>
+              <button type="button" className="btn secondary" onClick={() => setStep("payment")}>
+                Back
+              </button>
+            </div>
+
+            <div className="pos-calc">
+              <div className="pos-calc-readout">
+                <div>
+                  <span className="muted">Cash received</span>
+                  <strong>
+                    {currency} {tenderInput ? tenderInput : "0"}
+                  </strong>
+                </div>
+                <div className={balanceDue > 0 ? "pos-balance warn" : "pos-balance ok"}>
+                  <span className="muted">{balanceDue > 0 ? "Still due" : "Change"}</span>
+                  <strong>
+                    {currency} {formatMoney(balanceDue > 0 ? balanceDue : changeDue)}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="pos-keypad">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="pos-key"
+                    onClick={() => {
+                      if (key === "⌫") setTenderInput((prev) => prev.slice(0, -1));
+                      else appendDigit(key);
+                    }}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+
+              <div className="btn-row pos-calc-tools">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setTenderInput(formatMoney(amountDue))}
+                >
+                  Exact
+                </button>
+                <button type="button" className="btn secondary" onClick={() => setTenderInput("")}>
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            {error ? <div className="error">{error}</div> : null}
+
+            <div className="btn-row pos-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={busy || !canTakeCash}
+                onClick={() => checkout("cash")}
+              >
+                Take cash &amp; print receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Step 3b: QR */}
+      {step === "qr" && result?.payment_url ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QrPayPanel
+              paymentUrl={result.payment_url}
+              amountLabel={`${result.currency} ${Number(result.amount_due).toFixed(2)}`}
+              subtitle={(result.line_items || []).join(", ") || `Sale #${result.booking?.id}`}
+              onPaid={() => {
+                setResult((prev: any) =>
+                  prev
+                    ? {
+                        ...prev,
+                        already_paid: true,
+                        booking: {
+                          ...prev.booking,
+                          payment_status:
+                            chargeMode === "deposit" && depositAllowed ? "deposit_paid" : "paid",
+                        },
+                      }
+                    : prev,
+                );
+                setStep("done");
+              }}
+              onClose={() => {
+                resetSale();
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {/* Receipt / done */}
+      {step === "done" && result ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pos-receipt-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2 id="pos-receipt-title">Sale receipt</h2>
+                <p>Booking #{result.booking?.id}</p>
+              </div>
+            </div>
+
+            <div className="pos-receipt-sheet">
+              <div className="pos-receipt-row">
+                <span className="muted">Customer</span>
+                <strong>{guestLabel}</strong>
+              </div>
+              <div className="pos-receipt-row">
+                <span className="muted">Phone</span>
+                <span>{guestPhone || "—"}</span>
+              </div>
+              <ul className="pos-confirmed-list">
+                {(result.line_items || []).map((line: string, idx: number) => (
+                  <li key={`${line}-${idx}`}>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="pos-receipt-row total">
+                <span>Total</span>
+                <strong>
+                  {result.currency} {Number(result.amount_due).toFixed(2)}
+                </strong>
+              </div>
+              {lastCash ? (
+                <>
+                  <div className="pos-receipt-row">
+                    <span className="muted">Cash received</span>
+                    <strong>
+                      {currency} {formatMoney(lastCash.tendered)}
+                    </strong>
+                  </div>
+                  <div className="pos-receipt-row">
+                    <span className="muted">Change</span>
+                    <strong>
+                      {currency} {formatMoney(lastCash.change)}
+                    </strong>
+                  </div>
+                </>
+              ) : (
+                <div className="pos-receipt-row">
+                  <span className="muted">Payment</span>
+                  <strong>QR / online</strong>
+                </div>
+              )}
             </div>
 
             <div className="btn-row pos-actions">
-              <button type="button" className="btn secondary" onClick={keepShopping}>
-                Keep shopping
-              </button>
-              <button type="button" className="btn" onClick={skipToPayment}>
-                Skip to payment
+              <button type="button" className="btn" onClick={resetSale}>
+                New sale
               </button>
             </div>
           </div>
