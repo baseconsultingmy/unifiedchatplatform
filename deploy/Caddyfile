@@ -2,20 +2,18 @@
 	email admin@baseapp.asia
 }
 
-# Until DNS is pointed, serve on the droplet IP over HTTP.
-:80 {
+baseapp.asia, www.baseapp.asia {
 	respond "BaseApp Unified — gateway online" 200
 }
 
-# Enable these after DNS A records point to the droplet:
-# api.baseapp.asia {
-# 	reverse_proxy api:8000
-# }
-#
-# admin.baseapp.asia {
-# 	reverse_proxy admin:3000
-# }
-#
-# baseapp.asia, www.baseapp.asia {
-# 	respond "BaseApp" 200
-# }
+api.baseapp.asia {
+	respond "BaseApp API — ready for gateway" 200
+}
+
+admin.baseapp.asia {
+	respond "BaseApp Admin — ready for panel" 200
+}
+
+:80 {
+	respond "BaseApp Unified — gateway online" 200
+}

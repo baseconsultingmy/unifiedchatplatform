@@ -20,16 +20,22 @@
 
 ## DNS (Exabytes → DigitalOcean)
 
-In Exabytes DNS for `baseapp.asia`, set A records to `157.245.149.238`:
+In Exabytes DNS Manager for `baseapp.asia`, target A records:
 
-| Host | Type | Value |
-|---|---|---|
-| `@` | A | `157.245.149.238` |
-| `www` | A | `157.245.149.238` |
-| `api` | A | `157.245.149.238` |
-| `admin` | A | `157.245.149.238` |
+| Host | Type | Value | Status |
+|---|---|---|---|
+| `@` | A | `157.245.149.238` | Live + HTTPS |
+| `www` | CNAME → `baseapp.asia` | (via apex) | Live + HTTPS |
+| `api` | A | `157.245.149.238` | Live + HTTPS cert issued |
+| `admin` | A | `157.245.149.238` | Live + HTTPS cert issued |
 
-After DNS propagates, uncomment the host blocks in `deploy/Caddyfile` and reload Caddy for automatic HTTPS.
+Smoke checks:
+
+- https://baseapp.asia
+- https://www.baseapp.asia
+- https://api.baseapp.asia
+- https://admin.baseapp.asia
+
 
 ## Deploy / reload edge proxy
 
