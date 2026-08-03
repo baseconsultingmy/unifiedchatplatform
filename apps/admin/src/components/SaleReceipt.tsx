@@ -58,7 +58,7 @@ function buildReceiptText(props: {
   lines.push("", "Items:");
   for (const item of props.lineItems) lines.push(`• ${item}`);
   lines.push("", `Total: ${props.currency} ${formatMoney(props.amountDue)}`);
-  lines.push(`Payment: ${props.paymentLabel}`);
+  lines.push(`Status: ${props.paymentLabel}`);
   if (props.cash) {
     lines.push(`Cash received: ${props.currency} ${formatMoney(props.cash.tendered)}`);
     lines.push(`Change: ${props.currency} ${formatMoney(props.cash.change)}`);

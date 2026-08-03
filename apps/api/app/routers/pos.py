@@ -22,6 +22,12 @@ from app.models import (
     User,
 )
 from app.payments import amount_due, attach_payment_link
+from app.receipts import (
+    format_receipt_text,
+    line_items_from_booking,
+    normalize_phone,
+    wa_click_to_chat,
+)
 from app.schemas import BookingOut, PosReceiptSendIn, PosReceiptSendOut, PosSaleIn, PosSaleItemIn, PosSaleOut
 from app.whatsapp_client import WhatsAppSendError, send_text_message
 from app.whatsapp_creds import resolve_whatsapp_credentials
@@ -190,37 +196,15 @@ def create_walkin_sale(
 
 
 def _normalize_phone(raw: str | None, *, default_country: str = "60") -> str | None:
-    if not raw:
-        return None
-    phone = raw.strip()
-    if phone.lower().startswith("walkin-"):
-        return None
-    digits = "".join(ch for ch in phone if ch.isdigit())
-    if len(digits) < 8:
-        return None
-    # Local MY numbers like 0123456789 → 60123456789
-    if digits.startswith("0") and len(digits) >= 9:
-        digits = default_country + digits[1:]
-    return digits
+    return normalize_phone(raw, default_country=default_country)
 
 
 def _wa_click_to_chat(phone: str, body: str) -> str:
-    from urllib.parse import quote
-
-    return f"https://wa.me/{phone}?text={quote(body)}"
+    return wa_click_to_chat(phone, body)
 
 
 def _line_items_from_booking(booking: Booking) -> list[str]:
-    notes = booking.notes or ""
-    if "POS · " in notes:
-        cart = notes.split("POS · ", 1)[1].strip()
-        # strip trailing cash note if present after another ·
-        cart = cart.split(" · Cash ")[0].strip()
-        if cart:
-            return [part.strip() for part in cart.split(",") if part.strip()]
-    if booking.service:
-        return [booking.service.name]
-    return ["Sale"]
+    return line_items_from_booking(booking)
 
 
 def _format_receipt_text(
@@ -230,38 +214,12 @@ def _format_receipt_text(
     cash_received: Decimal | None,
     change: Decimal | None,
 ) -> str:
-    shop = booking.tenant.name if booking.tenant else "BaseApp"
-    customer = booking.customer.name if booking.customer else "Guest"
-    phone = booking.customer.phone if booking.customer else ""
-    currency = booking.currency or "MYR"
-    due = amount_due(booking)
-    when = booking.starts_at.strftime("%d %b %Y %H:%M") if booking.starts_at else "now"
-    pay = (
-        booking.payment_status.value
-        if hasattr(booking.payment_status, "value")
-        else str(booking.payment_status)
+    return format_receipt_text(
+        booking=booking,
+        line_items=line_items,
+        cash_received=cash_received,
+        change=change,
     )
-    lines = [
-        f"*{shop} — receipt*",
-        f"Booking #{booking.id}",
-        f"When: {when}",
-        f"Customer: {customer}",
-    ]
-    if phone and not phone.startswith("walkin-"):
-        lines.append(f"Phone: {phone}")
-    lines.append("")
-    lines.append("Items:")
-    for item in line_items:
-        lines.append(f"• {item}")
-    lines.append("")
-    lines.append(f"Total: {currency} {Decimal(str(due)):.2f}")
-    lines.append(f"Status: {pay.replace('_', ' ')}")
-    if cash_received is not None:
-        lines.append(f"Cash received: {currency} {Decimal(str(cash_received)):.2f}")
-        lines.append(f"Change: {currency} {Decimal(str(change or 0)):.2f}")
-    lines.append("")
-    lines.append("Thank you!")
-    return "\n".join(lines)
 
 
 @router.post(

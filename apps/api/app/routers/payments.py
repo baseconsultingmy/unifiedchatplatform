@@ -7,8 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.db import get_db
 from app.models import Booking
 from app.payments import mark_booking_paid
-from app.whatsapp_client import WhatsAppSendError, send_text_message
-from app.whatsapp_creds import resolve_whatsapp_credentials
+from app.whatsapp_receipt import deliver_booking_receipt
 
 router = APIRouter(tags=["payments"])
 
@@ -202,29 +201,14 @@ def pay_complete(token: str, request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(booking)
 
-        phone_id = None
-        access_token = None
-        if booking.tenant:
-            access_token, phone_id = resolve_whatsapp_credentials(booking.tenant)
-        customer_phone = booking.customer.phone if booking.customer else None
-        if phone_id and customer_phone:
-            currency, amount = _amount_label(booking)
-            service = booking.service.name if booking.service else "Booking"
-            when = booking.starts_at.strftime("%d %b %Y %H:%M") if booking.starts_at else "TBC"
-            try:
-                send_text_message(
-                    to_phone=customer_phone,
-                    body=(
-                        f"✅ Payment received ({currency} {amount:.2f}).\n"
-                        f"{service} — {when}\n"
-                        f"Your booking is confirmed. See you soon!"
-                    ),
-                    phone_number_id=phone_id,
-                    access_token=access_token,
-                )
-            except WhatsAppSendError:
-                # Payment still succeeds even if receipt send fails.
-                pass
+        # Same receipt template as POS — sent for every paid WhatsApp / online booking.
+        try:
+            deliver_booking_receipt(db, booking, persist=True)
+            db.commit()
+        except Exception:
+            db.rollback()
+            # Payment still succeeds even if receipt send fails.
+            pass
 
     accept = request.headers.get("accept", "")
     if "application/json" in accept:

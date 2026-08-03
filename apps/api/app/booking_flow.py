@@ -18,7 +18,7 @@ from app.models import (
     Service,
     Tenant,
 )
-from app.payments import attach_payment_link
+from app.payments import amount_due, attach_payment_link, mark_booking_paid
 from app.whatsapp_client import (
     WhatsAppSendError,
     send_reply_buttons,
@@ -26,6 +26,7 @@ from app.whatsapp_client import (
     send_text_message,
 )
 from app.whatsapp_creds import resolve_whatsapp_credentials
+from app.whatsapp_receipt import deliver_booking_receipt
 
 MENU_WORDS = {"hi", "hello", "menu", "book", "start", "help", "services", "hola"}
 CANCEL_WORDS = {"cancel", "stop", "reset"}
@@ -353,26 +354,30 @@ def handle_inbound_message(
                 if booking.starts_at
                 else (booking.notes or "TBD")
             )
-            due = Decimal(str(booking.deposit_amount or 0))
+            due = amount_due(booking)
             if due <= 0:
-                due = Decimal(str(booking.amount or 0))
-            pay_url = booking.payment_url or ""
-            body = (
-                f"Booked! ✅\n\n"
-                f"Ref: #{booking.id}\n"
-                f"Service: {ctx.get('service_name')}\n"
-                f"When: {when}\n"
-                f"Amount due: {booking.currency} {due}\n\n"
-                f"Pay here to confirm your slot:\n{pay_url}\n\n"
-                f"Type *menu* to book another."
-            )
-            result = send_text_message(
-                to_phone=to_phone,
-                body=body,
-                **_send_kwargs(tenant),
-                preview_url=True,
-            )
-            _store_outbound(db, conversation, body, result)
+                mark_booking_paid(db, booking)
+                db.flush()
+                deliver_booking_receipt(db, booking, to_phone=to_phone, persist=True)
+            else:
+                pay_url = booking.payment_url or ""
+                body = (
+                    f"Booked! ✅\n\n"
+                    f"Ref: #{booking.id}\n"
+                    f"Service: {ctx.get('service_name')}\n"
+                    f"When: {when}\n"
+                    f"Amount due: {booking.currency} {due}\n\n"
+                    f"Pay here to confirm your slot:\n{pay_url}\n\n"
+                    f"You'll get your receipt on WhatsApp after payment.\n"
+                    f"Type *menu* to book another."
+                )
+                result = send_text_message(
+                    to_phone=to_phone,
+                    body=body,
+                    **_send_kwargs(tenant),
+                    preview_url=True,
+                )
+                _store_outbound(db, conversation, body, result)
             _set_state(conversation, "idle", {})
             return
 

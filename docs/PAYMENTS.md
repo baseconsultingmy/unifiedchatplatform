@@ -11,7 +11,18 @@ After a WhatsApp booking is confirmed, the API attaches a unique pay token and s
 3. Pay link included in the confirmation message
 4. Customer opens hosted page and taps **Pay now (demo)**
 5. Booking becomes `confirmed` + `deposit_paid` / `paid`
-6. WhatsApp receipt is sent; Admin Bookings shows status + link
+6. Shared receipt template is sent on WhatsApp (same body as POS receipts) and stored in the conversation inbox
+
+Zero-amount bookings skip the pay link and send the receipt immediately on confirm.
+
+## Receipt template
+
+Built by `app/receipts.py` (`format_receipt_text`) and delivered by `app/whatsapp_receipt.py`.
+Used by:
+
+- POS → Send to WhatsApp
+- WhatsApp / hosted pay → after `POST /pay/{token}/complete`
+- Free WhatsApp bookings → on confirm
 
 ## Config
 
