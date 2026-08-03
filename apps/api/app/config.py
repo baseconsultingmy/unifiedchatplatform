@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     wa_flow_public_key: str = ""
     # Send draft Flows before Meta publish completes (dev / first setup)
     wa_flow_draft_mode: bool = False
+    # Set false when Meta returns #139000 Integrity on Flow sends
+    wa_flow_enabled: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:

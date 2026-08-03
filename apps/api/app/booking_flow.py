@@ -183,7 +183,7 @@ def send_booking_flow(
 ) -> None:
     """Prefer native WhatsApp Flow; fall back to in-chat lists if Meta blocks Flows."""
     flow_id = (tenant.wa_flow_id or "").strip()
-    if flow_id:
+    if flow_id and settings.wa_flow_enabled:
         flow_token = encode_flow_token(
             tenant_id=tenant.id,
             phone=to_phone,

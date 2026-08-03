@@ -35,6 +35,7 @@ services:
       WA_FLOW_PRIVATE_KEY_PASSWORD: ${WA_FLOW_PRIVATE_KEY_PASSWORD:-}
       WA_FLOW_PUBLIC_KEY: ${WA_FLOW_PUBLIC_KEY:-}
       WA_FLOW_DRAFT_MODE: ${WA_FLOW_DRAFT_MODE:-false}
+      WA_FLOW_ENABLED: ${WA_FLOW_ENABLED:-true}
       ENVIRONMENT: production
     depends_on:
       db:
