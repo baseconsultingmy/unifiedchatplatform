@@ -11,3 +11,11 @@
 - [x] Thread refresh / polling
 - [ ] Media messages / templates outside 24h window
 - [ ] Agent assignment / handoff states
+
+## Booking flow status
+
+- [x] WhatsApp service list from vendor catalog
+- [x] Pick service → preferred time → confirm buttons
+- [x] Creates Admin booking (`held`, deposit_due/unpaid)
+- [ ] Slot calendar / availability rules
+- [ ] Payment link step

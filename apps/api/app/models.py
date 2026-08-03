@@ -168,6 +168,8 @@ class Conversation(Base):
     channel: Mapped[Channel] = mapped_column(Enum(Channel), nullable=False)
     external_thread_id: Mapped[str] = mapped_column(String(120), nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="open")
+    flow_state: Mapped[str] = mapped_column(String(40), default="idle")
+    flow_context: Mapped[str | None] = mapped_column(Text)
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

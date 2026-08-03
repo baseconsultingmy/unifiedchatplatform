@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
+from app.booking_flow import handle_inbound_message
 from app.config import settings
 from app.db import get_db
 from app.models import Channel, Conversation, Customer, Message, MessageDirection, Tenant
@@ -17,7 +18,6 @@ router = APIRouter(prefix="/webhooks/whatsapp", tags=["whatsapp"])
 
 def _verify_signature(raw_body: bytes, signature_header: str | None) -> None:
     if not settings.wa_app_secret:
-        # Allow local/dev without signature until Meta app secret is configured.
         return
     if not signature_header or not signature_header.startswith("sha256="):
         raise HTTPException(status_code=403, detail="Missing signature")
@@ -56,6 +56,22 @@ def _resolve_tenant(db: Session, phone_number_id: str | None = None) -> Tenant:
     return tenant
 
 
+def _message_preview(msg: dict) -> str:
+    msg_type = msg.get("type")
+    if msg_type == "text":
+        return (msg.get("text") or {}).get("body") or ""
+    if msg_type == "interactive":
+        interactive = msg.get("interactive") or {}
+        if interactive.get("type") == "list_reply":
+            reply = interactive.get("list_reply") or {}
+            return f"[selected] {reply.get('title') or reply.get('id')}"
+        if interactive.get("type") == "button_reply":
+            reply = interactive.get("button_reply") or {}
+            return f"[button] {reply.get('title') or reply.get('id')}"
+        return "[interactive]"
+    return f"[{msg_type or 'unknown'} message]"
+
+
 @router.get("")
 def verify_webhook(
     hub_mode: str | None = Query(None, alias="hub.mode"),
@@ -82,25 +98,25 @@ async def receive_webhook(
         raise HTTPException(status_code=400, detail="Invalid JSON") from exc
 
     stored = 0
+    flowed = 0
 
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
+            # Ignore status callbacks without messages.
+            messages = value.get("messages", [])
+            if not messages:
+                continue
+
             metadata = value.get("metadata") or {}
             phone_number_id = metadata.get("phone_number_id")
             tenant = _resolve_tenant(db, phone_number_id)
-            messages = value.get("messages", [])
             contacts = {c.get("wa_id"): c for c in value.get("contacts", [])}
 
             for msg in messages:
                 wa_from = msg.get("from")
                 if not wa_from:
                     continue
-                body = None
-                if msg.get("type") == "text":
-                    body = (msg.get("text") or {}).get("body")
-                else:
-                    body = f"[{msg.get('type', 'unknown')} message]"
 
                 contact = contacts.get(wa_from, {})
                 profile_name = ((contact.get("profile") or {}).get("name")) if contact else None
@@ -133,6 +149,7 @@ async def receive_webhook(
                         channel=Channel.whatsapp,
                         external_thread_id=wa_from,
                         status="open",
+                        flow_state="idle",
                     )
                     db.add(conversation)
                     db.flush()
@@ -156,12 +173,20 @@ async def receive_webhook(
                     Message(
                         conversation_id=conversation.id,
                         direction=MessageDirection.inbound,
-                        body=body,
+                        body=_message_preview(msg),
                         raw_payload=json.dumps(msg),
                         external_message_id=external_id,
                     )
                 )
                 stored += 1
 
+                handle_inbound_message(
+                    db,
+                    tenant=tenant,
+                    conversation=conversation,
+                    msg=msg,
+                )
+                flowed += 1
+
     db.commit()
-    return {"ok": True, "stored": stored}
+    return {"ok": True, "stored": stored, "flowed": flowed}

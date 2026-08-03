@@ -15,12 +15,14 @@ from app.routers import (
     vendors,
     whatsapp,
 )
+from app.schema_migrate import ensure_schema
 from app.seed import bootstrap
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_schema()
     db = SessionLocal()
     try:
         bootstrap(db)
