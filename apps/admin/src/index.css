@@ -287,13 +287,8 @@ p {
 
 .chat-layout {
   align-items: stretch;
-  flex: 1;
   min-height: 0;
-  grid-template-rows: minmax(0, 1fr);
-}
-
-.inbox-page {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
 }
 
 .chat-thread {
