@@ -441,6 +441,94 @@ p {
   margin-bottom: 1rem;
 }
 
+.day-board-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.day-board {
+  display: grid;
+  min-width: 720px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.day-board-hours,
+.day-board-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.day-board-corner,
+.day-board-col-head {
+  display: grid;
+  gap: 0.1rem;
+  place-content: center;
+  height: 56px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  background: rgba(15, 118, 110, 0.08);
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+}
+
+.day-board-col.unassigned .day-board-col-head {
+  background: rgba(180, 83, 9, 0.1);
+}
+
+.day-board-col-head strong {
+  font-size: 0.92rem;
+}
+
+.day-board-col-head .muted {
+  font-size: 0.75rem;
+}
+
+.day-board-col-body {
+  position: relative;
+  border-right: 1px solid var(--line);
+}
+
+.day-board-hour,
+.day-board-slot {
+  height: 28px;
+  border-bottom: 1px solid rgba(20, 32, 28, 0.06);
+}
+
+.day-board-hour {
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.72rem;
+  padding: 0.15rem 0.35rem;
+}
+
+.day-board-hour.hour,
+.day-board-slot.hour {
+  border-bottom-color: rgba(20, 32, 28, 0.12);
+}
+
+.day-board-slot {
+  display: block;
+  width: 100%;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.day-board-slot:hover {
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.day-board-event {
+  z-index: 2;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: 64px repeat(7, minmax(120px, 1fr));

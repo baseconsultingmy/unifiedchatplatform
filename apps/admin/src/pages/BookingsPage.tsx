@@ -4,13 +4,18 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
 
-type ViewMode = "calendar" | "list";
+type ViewMode = "day" | "list";
+type BoardMode = "person" | "room";
 
-function startOfWeek(d: Date) {
+const DAY_START_HOUR = 8;
+const DAY_END_HOUR = 22; // exclusive
+const SLOT_MINUTES = 30;
+const TOTAL_MINUTES = (DAY_END_HOUR - DAY_START_HOUR) * 60;
+const SLOT_COUNT = TOTAL_MINUTES / SLOT_MINUTES;
+
+function startOfDay(d: Date) {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
-  const day = (x.getDay() + 6) % 7; // Monday=0
-  x.setDate(x.getDate() - day);
   return x;
 }
 
@@ -28,8 +33,13 @@ function sameDay(a: Date, b: Date) {
   );
 }
 
-function formatDayLabel(d: Date) {
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+function formatDayTitle(d: Date) {
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function amountDue(b: any) {
@@ -41,19 +51,29 @@ function isPaid(status: string) {
   return status === "paid" || status === "deposit_paid";
 }
 
-const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 08–21
+function bookingDurationMinutes(b: any) {
+  if (b.ends_at && b.starts_at) {
+    return Math.max(SLOT_MINUTES, (new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime()) / 60000);
+  }
+  return Number(b.service?.duration_minutes || 60);
+}
+
+function toLocalDateTimeValue(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 export default function BookingsPage() {
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
-  const [view, setView] = useState<ViewMode>("calendar");
-  const [weekAnchor, setWeekAnchor] = useState(() => startOfWeek(new Date()));
+  const [view, setView] = useState<ViewMode>("day");
+  const [dayAnchor, setDayAnchor] = useState(() => startOfDay(new Date()));
+  const [boardMode, setBoardMode] = useState<BoardMode>("person");
   const [bookings, setBookings] = useState<any[]>([]);
   const [listBookings, setListBookings] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
-  const [filterPersonId, setFilterPersonId] = useState("");
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
   const [showQr, setShowQr] = useState(false);
@@ -75,23 +95,45 @@ export default function BookingsPage() {
     [resources],
   );
 
-  const weekDays = useMemo(
-    () => Array.from({ length: 7 }, (_, i) => addDays(weekAnchor, i)),
-    [weekAnchor],
+  const dayBookings = useMemo(
+    () => bookings.filter((b) => b.starts_at && sameDay(new Date(b.starts_at), dayAnchor)),
+    [bookings, dayAnchor],
   );
+
+  const columns = useMemo(() => {
+    if (!profile.supportsResources) {
+      return [{ id: "all", name: "Schedule", kind: "all" as const }];
+    }
+    const base =
+      boardMode === "person"
+        ? people.map((p) => ({ id: String(p.id), name: p.name, kind: "person" as const }))
+        : rooms.map((r) => ({ id: String(r.id), name: r.name, kind: "room" as const }));
+    return [...base, { id: "unassigned", name: "Unassigned", kind: "unassigned" as const }];
+  }, [profile.supportsResources, boardMode, people, rooms]);
+
+  const timeLabels = useMemo(() => {
+    const labels: string[] = [];
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const mins = DAY_START_HOUR * 60 + i * SLOT_MINUTES;
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      labels.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+    }
+    return labels;
+  }, []);
 
   async function refresh() {
     if (!token) return;
-    const from = weekAnchor.toISOString();
-    const to = addDays(weekAnchor, 7).toISOString();
-    const [week, all, c, s, r] = await Promise.all([
+    const from = startOfDay(dayAnchor).toISOString();
+    const to = addDays(startOfDay(dayAnchor), 1).toISOString();
+    const [day, all, c, s, r] = await Promise.all([
       api.bookings(token, { from, to }),
       api.bookings(token),
       api.customers(token),
       api.services(token),
       profile.supportsResources ? api.resources(token) : Promise.resolve([]),
     ]);
-    setBookings(week);
+    setBookings(day);
     setListBookings(all);
     setCustomers(c);
     setServices(s);
@@ -99,14 +141,14 @@ export default function BookingsPage() {
     if (!serviceId && s[0]) setServiceId(String(s[0].id));
     if (selected) {
       const fresh =
-        all.find((b: any) => b.id === selected.id) || week.find((b: any) => b.id === selected.id);
+        all.find((b: any) => b.id === selected.id) || day.find((b: any) => b.id === selected.id);
       setSelected(fresh || null);
     }
   }
 
   useEffect(() => {
     refresh().catch((err) => setError(err.message));
-  }, [token, weekAnchor]);
+  }, [token, dayAnchor]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -126,6 +168,25 @@ export default function BookingsPage() {
   }
 
   function closeBooking() {
+    setSelected(null);
+    setShowQr(false);
+  }
+
+  function openCreateAt(columnId: string, slotIndex: number) {
+    const mins = DAY_START_HOUR * 60 + slotIndex * SLOT_MINUTES;
+    const start = new Date(dayAnchor);
+    start.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
+    setStartsAt(toLocalDateTimeValue(start));
+    if (profile.supportsResources) {
+      if (boardMode === "person") {
+        setPersonId(columnId === "unassigned" ? "" : columnId);
+        setRoomId("");
+      } else {
+        setRoomId(columnId === "unassigned" ? "" : columnId);
+        setPersonId("");
+      }
+    }
+    setShowCreate(true);
     setSelected(null);
     setShowQr(false);
   }
@@ -175,47 +236,60 @@ export default function BookingsPage() {
     await refresh();
   }
 
-  function bookingsForDay(day: Date) {
-    return bookings.filter((b) => {
-      if (!b.starts_at || !sameDay(new Date(b.starts_at), day)) return false;
-      if (filterPersonId && String(b.person_id || "") !== filterPersonId) return false;
-      return true;
-    });
-  }
-
   function assignmentLabel(b: any) {
     const bits = [b.person?.name, b.room?.name].filter(Boolean);
     return bits.join(" · ");
   }
 
-  function blockStyle(b: any) {
-    const start = new Date(b.starts_at);
-    const duration =
-      b.ends_at && b.starts_at
-        ? Math.max(30, (new Date(b.ends_at).getTime() - start.getTime()) / 60000)
-        : b.service?.duration_minutes || 60;
-    const top = ((start.getHours() + start.getMinutes() / 60 - 8) / 14) * 100;
-    const height = Math.max((duration / 60 / 14) * 100, 4);
-    return { top: `${Math.max(top, 0)}%`, height: `${Math.min(height, 100 - Math.max(top, 0))}%` };
+  function bookingsForColumn(columnId: string) {
+    if (columnId === "all") return dayBookings;
+    if (columnId === "unassigned") {
+      return dayBookings.filter((b) =>
+        boardMode === "person" ? !b.person_id : !b.room_id,
+      );
+    }
+    return dayBookings.filter((b) =>
+      boardMode === "person"
+        ? String(b.person_id || "") === columnId
+        : String(b.room_id || "") === columnId,
+    );
   }
 
-  const weekLabel = `${formatDayLabel(weekDays[0])} – ${formatDayLabel(weekDays[6])}`;
+  function blockStyle(b: any) {
+    const start = new Date(b.starts_at);
+    const minutesFromStart =
+      start.getHours() * 60 + start.getMinutes() - DAY_START_HOUR * 60;
+    const duration = bookingDurationMinutes(b);
+    const top = (minutesFromStart / TOTAL_MINUTES) * 100;
+    const height = (duration / TOTAL_MINUTES) * 100;
+    return {
+      top: `${Math.max(top, 0)}%`,
+      height: `${Math.min(Math.max(height, 3.5), 100 - Math.max(top, 0))}%`,
+    };
+  }
+
+  const isToday = sameDay(dayAnchor, new Date());
+  const bookedCount = dayBookings.length;
 
   return (
     <div className="grid">
       <div className="bookings-toolbar">
         <div>
           <h1>Bookings</h1>
-          <p>Tap a booking to assign and manage — no scrolling past the calendar.</p>
+          <p>
+            {isToday ? "Today’s" : "Day"} board by{" "}
+            {boardMode === "person" ? profile.personNoun.toLowerCase() : profile.roomNoun.toLowerCase()}{" "}
+            — booked slots are filled.
+          </p>
         </div>
         <div className="toolbar-actions">
           <div className="segmented">
             <button
               type="button"
-              className={view === "calendar" ? "active" : ""}
-              onClick={() => setView("calendar")}
+              className={view === "day" ? "active" : ""}
+              onClick={() => setView("day")}
             >
-              Calendar
+              Day
             </button>
             <button
               type="button"
@@ -229,6 +303,7 @@ export default function BookingsPage() {
             type="button"
             className="btn"
             onClick={() => {
+              setStartsAt("");
               setShowCreate(true);
               setSelected(null);
               setShowQr(false);
@@ -241,93 +316,124 @@ export default function BookingsPage() {
 
       {error && !showCreate ? <div className="error">{error}</div> : null}
 
-      {view === "calendar" ? (
+      {view === "day" ? (
         <section className="panel calendar-panel">
           <div className="calendar-nav">
             <button
               type="button"
               className="btn secondary"
-              onClick={() => setWeekAnchor(addDays(weekAnchor, -7))}
+              onClick={() => setDayAnchor(addDays(dayAnchor, -1))}
             >
               Prev
             </button>
             <div>
-              <strong>{weekLabel}</strong>
-              <div className="muted">Week view · 08:00–22:00</div>
+              <strong>{formatDayTitle(dayAnchor)}</strong>
+              <div className="muted">
+                {bookedCount} booking{bookedCount === 1 ? "" : "s"} · {DAY_START_HOUR}:00–
+                {DAY_END_HOUR}:00 · {SLOT_MINUTES}-min slots
+              </div>
             </div>
             <div className="btn-row">
-              {profile.supportsResources && people.length ? (
-                <select
-                  value={filterPersonId}
-                  onChange={(e) => setFilterPersonId(e.target.value)}
-                  aria-label={`Filter by ${profile.personNoun}`}
-                >
-                  <option value="">All {profile.personNoun.toLowerCase()}s</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+              {profile.supportsResources ? (
+                <div className="segmented">
+                  <button
+                    type="button"
+                    className={boardMode === "person" ? "active" : ""}
+                    onClick={() => setBoardMode("person")}
+                  >
+                    {profile.personNoun}s
+                  </button>
+                  <button
+                    type="button"
+                    className={boardMode === "room" ? "active" : ""}
+                    onClick={() => setBoardMode("room")}
+                  >
+                    {profile.roomNoun}s
+                  </button>
+                </div>
               ) : null}
               <button
                 type="button"
                 className="btn secondary"
-                onClick={() => setWeekAnchor(startOfWeek(new Date()))}
+                onClick={() => setDayAnchor(startOfDay(new Date()))}
               >
                 Today
               </button>
               <button
                 type="button"
                 className="btn secondary"
-                onClick={() => setWeekAnchor(addDays(weekAnchor, 7))}
+                onClick={() => setDayAnchor(addDays(dayAnchor, 1))}
               >
                 Next
               </button>
             </div>
           </div>
 
-          <div className="calendar-grid">
-            <div className="calendar-hours">
-              <div className="calendar-corner" />
-              {HOURS.map((h) => (
-                <div key={h} className="calendar-hour">
-                  {String(h).padStart(2, "0")}:00
+          <div className="day-board-scroll">
+          <div
+            className="day-board"
+            style={{ gridTemplateColumns: `64px repeat(${columns.length}, minmax(140px, 1fr))` }}
+          >
+            <div className="day-board-hours">
+              <div className="day-board-corner" />
+              {timeLabels.map((label, idx) => (
+                <div key={label} className={`day-board-hour ${idx % 2 === 0 ? "hour" : "half"}`}>
+                  {idx % 2 === 0 ? label : ""}
                 </div>
               ))}
             </div>
-            {weekDays.map((day) => {
-              const dayBookings = bookingsForDay(day);
-              const isToday = sameDay(day, new Date());
+
+            {columns.map((col) => {
+              const colBookings = bookingsForColumn(col.id);
               return (
-                <div key={day.toISOString()} className={`calendar-day ${isToday ? "today" : ""}`}>
-                  <div className="calendar-day-head">{formatDayLabel(day)}</div>
-                  <div className="calendar-day-body">
-                    {HOURS.map((h) => (
-                      <div key={h} className="calendar-slot" />
+                <div key={col.id} className={`day-board-col ${col.kind === "unassigned" ? "unassigned" : ""}`}>
+                  <div className="day-board-col-head">
+                    <strong>{col.name}</strong>
+                    <span className="muted">
+                      {colBookings.length} booked
+                    </span>
+                  </div>
+                  <div className="day-board-col-body">
+                    {timeLabels.map((label, idx) => (
+                      <button
+                        key={label}
+                        type="button"
+                        className={`day-board-slot ${idx % 2 === 0 ? "hour" : "half"}`}
+                        title={`Book ${label} · ${col.name}`}
+                        onClick={() => openCreateAt(col.id, idx)}
+                      />
                     ))}
-                    {dayBookings.map((b) => (
+                    {colBookings.map((b) => (
                       <button
                         key={b.id}
                         type="button"
-                        className={`calendar-event pay-${b.payment_status}`}
+                        className={`calendar-event day-board-event pay-${b.payment_status}`}
                         style={blockStyle(b)}
-                        onClick={() => openBooking(b)}
-                        title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}${assignmentLabel(b) ? ` · ${assignmentLabel(b)}` : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openBooking(b);
+                        }}
+                        title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}`}
                       >
                         <strong>{b.service?.name || "Booking"}</strong>
                         <span>{b.customer?.name || b.customer?.phone}</span>
-                        {assignmentLabel(b) ? (
-                          <span className="calendar-assign">{assignmentLabel(b)}</span>
-                        ) : profile.supportsResources ? (
-                          <span className="calendar-assign warn">Unassigned</span>
-                        ) : null}
+                        <span className="calendar-assign">
+                          {new Date(b.starts_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                          {" · "}
+                          {bookingDurationMinutes(b)}m
+                          {boardMode === "person" && b.room?.name ? ` · ${b.room.name}` : ""}
+                          {boardMode === "room" && b.person?.name ? ` · ${b.person.name}` : ""}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
               );
             })}
+          </div>
           </div>
         </section>
       ) : (
@@ -520,11 +626,7 @@ export default function BookingsPage() {
       ) : null}
 
       {showCreate ? (
-        <div
-          className="modal-backdrop"
-          onClick={() => setShowCreate(false)}
-          role="presentation"
-        >
+        <div className="modal-backdrop" onClick={() => setShowCreate(false)} role="presentation">
           <form
             className="modal-card form booking-modal"
             onSubmit={onCreate}
