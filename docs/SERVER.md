@@ -47,6 +47,26 @@ docker compose up -d
 docker compose logs -f caddy
 ```
 
+## App deploy path
+
+```text
+/opt/baseapp/
+  apps/api
+  apps/admin
+  deploy/docker-compose.yml
+  deploy/Caddyfile
+  deploy/.env          # secrets — chmod 600
+```
+
+Rebuild / restart:
+
+```bash
+cd /opt/baseapp/deploy
+docker compose --env-file .env up -d --build
+```
+
+Bootstrap admin credentials live in `deploy/.env` (`BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`). Change after first login.
+
 ## Access for Cursor agents
 
 Add this public key to `/root/.ssh/authorized_keys` on the droplet:
@@ -54,3 +74,4 @@ Add this public key to `/root/.ssh/authorized_keys` on the droplet:
 ```text
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMoW/9ifAr1oU5QxhLVAAmfFTK9XifyvGwW9WVyW99wO cursor-cloud-agent-baseapp
 ```
+

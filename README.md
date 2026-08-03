@@ -1,21 +1,37 @@
 # BaseApp Unified
 
-WhatsApp + LINE communication and booking platform for SMEs (health & wellness, appointments, payments), with a Master Admin panel.
+WhatsApp + LINE communication and booking platform for SMEs, with a Master Admin for reservations, payments, and inbox.
 
-## Status
+## Live
 
-- DigitalOcean droplet baseline ready (`docs/SERVER.md`)
-- App services not implemented yet
+| Surface | URL |
+|---|---|
+| Admin | https://admin.baseapp.asia |
+| API | https://api.baseapp.asia/health |
+| WhatsApp webhook | https://api.baseapp.asia/v1/webhooks/whatsapp |
 
-## Repo layout
+## Stack
 
-- `deploy/` — Caddy + Docker Compose edge proxy
-- `docs/` — ops notes
+- `apps/api` — FastAPI booking core + WhatsApp webhook
+- `apps/admin` — React Master Admin
+- `deploy/` — Docker Compose + Caddy on DigitalOcean
 
-## Quick check
-
-After DNS points to the droplet:
+## Local API (optional)
 
 ```bash
-curl -I http://157.245.149.238
+cd apps/api
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+# set DATABASE_URL to a local Postgres, then:
+uvicorn app.main:app --reload
 ```
+
+## Deploy
+
+On the droplet (`/opt/baseapp/deploy`):
+
+```bash
+docker compose --env-file .env up -d --build
+```
+
+See `docs/SERVER.md` and `docs/WHATSAPP.md`.

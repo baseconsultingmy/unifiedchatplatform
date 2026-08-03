@@ -3,15 +3,15 @@
 }
 
 baseapp.asia, www.baseapp.asia {
-	respond "BaseApp Unified — gateway online" 200
+	respond "BaseApp Unified — gateway online. Admin: https://admin.baseapp.asia" 200
 }
 
 api.baseapp.asia {
-	respond "BaseApp API — ready for gateway" 200
+	reverse_proxy api:8000
 }
 
 admin.baseapp.asia {
-	respond "BaseApp Admin — ready for panel" 200
+	reverse_proxy admin:80
 }
 
 :80 {

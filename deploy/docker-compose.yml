@@ -1,4 +1,48 @@
 services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-baseapp}
+      POSTGRES_USER: ${POSTGRES_USER:-baseapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-baseapp} -d ${POSTGRES_DB:-baseapp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../apps/api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-baseapp}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-baseapp}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://admin.baseapp.asia}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@baseapp.asia}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD}
+      BOOTSTRAP_TENANT_NAME: ${BOOTSTRAP_TENANT_NAME:-BaseApp Demo Studio}
+      WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-baseapp-wa-verify}
+      WA_APP_SECRET: ${WA_APP_SECRET:-}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
+      ENVIRONMENT: production
+    depends_on:
+      db:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: ../apps/admin
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-https://api.baseapp.asia}
+    restart: unless-stopped
+    depends_on:
+      - api
+
   caddy:
     image: caddy:2.10-alpine
     restart: unless-stopped
@@ -10,7 +54,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    depends_on:
+      - api
+      - admin
 
 volumes:
+  pgdata:
   caddy_data:
   caddy_config:
