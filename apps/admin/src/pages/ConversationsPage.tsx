@@ -72,6 +72,33 @@ function displayPhone(c: any) {
   return c?.customer?.phone || c?.external_thread_id || "";
 }
 
+type ChatChannel = "whatsapp" | "line" | "messenger" | "web" | "manual";
+
+function normalizeChannel(raw: unknown): ChatChannel {
+  const value = String(raw || "whatsapp").toLowerCase();
+  if (value === "line") return "line";
+  if (value === "messenger" || value === "facebook" || value === "fb") return "messenger";
+  if (value === "web") return "web";
+  if (value === "manual") return "manual";
+  return "whatsapp";
+}
+
+function channelLabel(channel: ChatChannel) {
+  if (channel === "whatsapp") return "WhatsApp";
+  if (channel === "line") return "LINE";
+  if (channel === "messenger") return "Messenger";
+  if (channel === "web") return "Web";
+  return "Manual";
+}
+
+function channelShort(channel: ChatChannel) {
+  if (channel === "whatsapp") return "WA";
+  if (channel === "line") return "LN";
+  if (channel === "messenger") return "MS";
+  if (channel === "web") return "WB";
+  return "MN";
+}
+
 type ThreadItem =
   | { kind: "day"; id: string; label: string }
   | { kind: "msg"; id: string | number; message: any };
@@ -123,6 +150,15 @@ export default function ConversationsPage() {
     () => buildThread(selected?.messages || []),
     [selected?.messages],
   );
+
+  const channelCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const c of items) {
+      const ch = normalizeChannel(c.channel);
+      counts[ch] = (counts[ch] || 0) + 1;
+    }
+    return counts;
+  }, [items]);
 
   async function loadList(preferId?: number | null) {
     if (!token) return;
@@ -214,14 +250,38 @@ export default function ConversationsPage() {
   const active = selected || selectedPreview;
   const activeName = displayName(active);
   const activePhone = displayPhone(active);
+  const activeChannel = normalizeChannel(active?.channel);
 
   return (
-    <div className={`chat-app ${mobileShowThread ? "show-thread" : "show-list"}`}>
+    <div
+      className={`chat-app channel-${active ? activeChannel : "neutral"} ${mobileShowThread ? "show-thread" : "show-list"}`}
+    >
       <aside className="chat-sidebar">
         <div className="chat-sidebar-head">
           <div>
             <h1>Chat</h1>
-            <p>{items.length ? `${items.length} conversation${items.length === 1 ? "" : "s"}` : "WhatsApp inbox"}</p>
+            <p>
+              {items.length
+                ? `${items.length} conversation${items.length === 1 ? "" : "s"}`
+                : "Inbox across WhatsApp, LINE & Messenger"}
+            </p>
+            {items.length ? (
+              <div className="chat-channel-legend" aria-label="Channels">
+                {(
+                  [
+                    ["whatsapp", "WhatsApp"],
+                    ["line", "LINE"],
+                    ["messenger", "Messenger"],
+                  ] as const
+                )
+                  .filter(([key]) => channelCounts[key])
+                  .map(([key, label]) => (
+                    <span key={key} className={`chat-legend-pill channel-${key}`}>
+                      {label} {channelCounts[key]}
+                    </span>
+                  ))}
+              </div>
+            ) : null}
           </div>
           <button
             type="button"
@@ -257,15 +317,21 @@ export default function ConversationsPage() {
               const last = lastMessage(c);
               const name = displayName(c);
               const phone = displayPhone(c);
+              const channel = normalizeChannel(c.channel);
               const activeRow = selectedId === c.id;
               return (
                 <button
                   key={c.id}
                   type="button"
-                  className={`chat-row ${activeRow ? "active" : ""}`}
+                  className={`chat-row channel-${channel} ${activeRow ? "active" : ""}`}
                   onClick={() => onSelect(c.id)}
                 >
-                  <span className="chat-avatar">{initials(name, phone)}</span>
+                  <span className="chat-avatar" data-channel={channel}>
+                    <span className="chat-avatar-initials">{initials(name, phone)}</span>
+                    <span className="chat-avatar-badge" aria-hidden="true">
+                      {channelShort(channel)}
+                    </span>
+                  </span>
                   <span className="chat-row-main">
                     <span className="chat-row-top">
                       <strong>{name}</strong>
@@ -276,7 +342,9 @@ export default function ConversationsPage() {
                         {last?.direction === "outbound" ? "You: " : ""}
                         {last?.body || "No messages yet"}
                       </span>
-                      <span className="chat-channel-pill">{c.channel || "whatsapp"}</span>
+                      <span className={`chat-channel-pill channel-${channel}`}>
+                        {channelLabel(channel)}
+                      </span>
                     </span>
                   </span>
                 </button>
@@ -290,9 +358,13 @@ export default function ConversationsPage() {
         {!active ? (
           <div className="chat-empty-stage">
             <div className="chat-empty-card">
-              <span className="chat-avatar lg">WA</span>
+              <div className="chat-empty-brands" aria-hidden="true">
+                <span className="chat-brand-dot channel-whatsapp">WA</span>
+                <span className="chat-brand-dot channel-line">LN</span>
+                <span className="chat-brand-dot channel-messenger">MS</span>
+              </div>
               <h2>Pick a conversation</h2>
-              <p>Select a chat on the left to reply inside the 24-hour WhatsApp window.</p>
+              <p>Select a chat to reply — threads keep each channel’s look and feel.</p>
             </div>
           </div>
         ) : (
@@ -306,10 +378,20 @@ export default function ConversationsPage() {
               >
                 ←
               </button>
-              <span className="chat-avatar">{initials(activeName, activePhone)}</span>
+              <span className="chat-avatar" data-channel={activeChannel}>
+                <span className="chat-avatar-initials">{initials(activeName, activePhone)}</span>
+                <span className="chat-avatar-badge" aria-hidden="true">
+                  {channelShort(activeChannel)}
+                </span>
+              </span>
               <div className="chat-stage-identity">
                 <strong>{activeName}</strong>
-                <span>{activePhone || "WhatsApp"}</span>
+                <span>
+                  <span className={`chat-channel-pill channel-${activeChannel} inline`}>
+                    {channelLabel(activeChannel)}
+                  </span>
+                  {activePhone ? ` · ${activePhone}` : ""}
+                </span>
               </div>
               <div className="chat-stage-actions">
                 <button
@@ -360,7 +442,7 @@ export default function ConversationsPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Message… Enter to send"
+                placeholder={`Message on ${channelLabel(activeChannel)}… Enter to send`}
                 rows={1}
               />
               <button
