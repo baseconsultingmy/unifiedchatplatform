@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import { BaseMark, BaseWordmark } from "../brand/BaseWordmark";
+import { BasePrimaryLogo } from "../brand/BaseWordmark";
 
 export default function LoginPage() {
   const { token, login } = useAuth();
@@ -31,18 +31,19 @@ export default function LoginPage() {
         <aside className="login-hero">
           <div className="login-hero-glow" aria-hidden />
           <div className="login-hero-brand">
-            <BaseMark size={56} />
-            <BaseWordmark variant="kiosk-os" tone="dark" />
+            {/* Primary Base logo: family + arc + BASE (CONSULTING omitted) */}
+            <div className="login-primary-logo">
+              <BasePrimaryLogo width={240} />
+            </div>
           </div>
           <p className="login-hero-tagline">
             Counter, bookings, and WhatsApp — one workspace for every vendor.
           </p>
-          <div className="login-hero-arc" aria-hidden />
         </aside>
 
         <form className="login-card form" onSubmit={onSubmit}>
           <div className="login-brand">
-            <p className="login-kicker">BaseApp</p>
+            <p className="login-kicker">Base Kiosk OS</p>
             <h1>Sign in</h1>
             <p>Master Admin manages vendors. Vendor owners manage their own shop.</p>
           </div>

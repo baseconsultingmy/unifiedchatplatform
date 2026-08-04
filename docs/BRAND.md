@@ -39,14 +39,16 @@ CSS source of truth: [`brand/tokens.css`](../brand/tokens.css)
 
 ## Wordmarks
 
-| Asset | File |
-|---|---|
-| Base Consulting (family + arc) | `brand/logos/base-consulting.svg` |
-| Base Consulting mono | `brand/logos/base-consulting-mono.svg` |
-| Base Kiosk OS (light) | `brand/logos/base-kiosk-os.svg` |
-| Base Kiosk OS (dark) | `brand/logos/base-kiosk-os-dark.svg` |
-| BaseApp | `brand/logos/base-app.svg` |
-| App icon / favicon mark | `brand/logos/base-mark.svg` |
+| Asset | File | Use |
+|---|---|---|
+| **Primary** (family + arc + BASE) | `brand/logos/base-primary.svg` | Login, brand moments (CONSULTING omitted) |
+| Primary + CONSULTING | `brand/logos/base-consulting.svg` | Company lockup |
+| **Mark** (family + arc only) | `brand/logos/base-mark.svg` | Favicon, top-bar icon |
+| **Simplified** (arc over BASE) | `brand/logos/base-simplified.svg` | Compact wordmark |
+| Base Kiosk OS | `brand/logos/base-kiosk-os.svg` | Product wordmark light |
+| Base Kiosk OS dark | `brand/logos/base-kiosk-os-dark.svg` | Product wordmark on dark |
+
+Prefer the **primary** or **simplified** Base logos — do not invent alternate marks.
 
 ### Base Kiosk OS pattern (from Transit OS)
 

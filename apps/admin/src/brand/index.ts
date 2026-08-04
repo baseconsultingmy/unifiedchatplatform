@@ -1,1 +1,6 @@
-export { BaseMark, BaseWordmark } from "./BaseWordmark";
+export {
+  BaseMark,
+  BasePrimaryLogo,
+  BaseSimplifiedLogo,
+  BaseWordmark,
+} from "./BaseWordmark";

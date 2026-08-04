@@ -1,18 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Base">
-  <title>Base mark</title>
-  <!-- Compact app icon: navy field + amber arc family cue -->
-  <rect width="64" height="64" rx="14" fill="#0F2744"/>
-  <path d="M12 44C14 24 28 14 40 14c10 0 18 6 22 16" fill="none" stroke="#E5A100" stroke-width="3.5" stroke-linecap="round"/>
-  <g fill="#E5A100">
-    <circle cx="18" cy="34" r="2.2"/>
-    <circle cx="28" cy="20" r="2.2"/>
-    <circle cx="40" cy="16" r="2.2"/>
-    <circle cx="50" cy="22" r="2.2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 160" role="img" aria-label="BASE mark">
+  <title>BASE mark — family + arc</title>
+  <!-- Icon crop of primary logo (no wordmark) for app chrome / favicon -->
+  <g fill="#0F2744">
+    <rect x="28" y="118" width="224" height="3.2" rx="1.6"/>
+    <!-- Girl -->
+    <circle cx="56" cy="64" r="9"/>
+    <path d="M62 58c3-1 6-1 8 2 1 2-1 5-3 6-3 0-5-1-6-3l1-5z"/>
+    <path d="M42 118h28l-2.5-38c0-10-5-15-11.5-15S45 70 45 80L42 118z"/>
+    <!-- Boy -->
+    <circle cx="96" cy="68" r="9"/>
+    <path d="M82 118h28v-18H82z"/>
+    <path d="M84 100h24V74c0-8-4.5-12.5-12-12.5S84 66 84 74v26z"/>
+    <!-- Man -->
+    <circle cx="146" cy="54" r="11"/>
+    <path d="M124 118h44l-4.5-50c-1-12-8-18-17.5-18s-16.5 6-17.5 18L124 118z"/>
+    <path d="M140 72l5.5 20 5.5-20H140z" opacity=".4"/>
+    <path d="M158 78c5 2 9 9 10 18v22h-7V98c-1-7-3-13-7-16l4-4z"/>
+    <!-- Woman -->
+    <circle cx="200" cy="56" r="10"/>
+    <path d="M176 118h48l-6-47c-2-14-10-20-18-20s-16 6-18 20l-6 47z"/>
+    <path d="M214 72c8 3 14 11 16 22" fill="none" stroke="#0F2744" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="226" cy="100" rx="5.5" ry="7"/>
   </g>
-  <g fill="#FFFFFF">
-    <circle cx="24" cy="38" r="3"/>
-    <path d="M19 48h10l-.8-8c0-3-1.5-4.5-4.2-4.5S19.8 37 19.8 40L19 48z"/>
-    <circle cx="36" cy="36" r="3.4"/>
-    <path d="M29.5 48h13l-1.2-11c-.3-3.5-2.4-5.2-5.3-5.2s-5 1.7-5.3 5.2L29.5 48z"/>
+  <path d="M32 118C32 58 86 28 146 28c48 0 92 22 108 58" fill="none" stroke="#E5A100" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#E5A100">
+    <circle cx="58" cy="80" r="4.5"/>
+    <circle cx="92" cy="48" r="4.5"/>
+    <circle cx="146" cy="32" r="4.5"/>
+    <circle cx="196" cy="42" r="4.5"/>
+    <circle cx="234" cy="72" r="4.5"/>
   </g>
 </svg>

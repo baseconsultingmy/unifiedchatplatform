@@ -77,10 +77,43 @@
   display: none;
 }
 
+.base-wordmark-simplified {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.55rem;
+}
+
+.base-wordmark-arc {
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 0.7rem;
+  border: 2.5px solid var(--base-amber);
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+  pointer-events: none;
+}
+
+.base-wordmark-simplified .base-wordmark-base {
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+}
+
+.base-primary-logo,
+.base-simplified-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .base-mark {
   display: block;
-  border-radius: 10px;
+  border-radius: 0;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .brand-lockup {
