@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Resource, Service, Tenant, User, UserRole
+from app.models import Order, OrderLine, OrderStatus, Resource, Service, Tenant, User, UserRole
 from app.security import hash_password
 
 
@@ -152,6 +152,12 @@ def bootstrap(db: Session) -> None:
     else:
         kitchen.industry = "fnb"
 
+    kitchen.grab_markup_percent = kitchen.grab_markup_percent or 30
+    if not (kitchen.grab_merchant_id or "").strip():
+        kitchen.grab_merchant_id = "demo-kitchen"
+    if kitchen.grab_sync_status in (None, "", "not_configured"):
+        kitchen.grab_sync_status = "ready"
+
     kitchen_owner_email = "owner@demo-kitchen.baseapp.asia"
     kitchen_owner = db.query(User).filter(User.email == kitchen_owner_email).first()
     if kitchen_owner is None:
@@ -233,5 +239,57 @@ def bootstrap(db: Session) -> None:
                 ),
             ]
         )
+
+    # Sample Grab order so Orders queue is non-empty for demos.
+    if db.query(Order).filter(Order.tenant_id == kitchen.id).count() == 0:
+        menu_items = (
+            db.query(Service)
+            .filter(Service.tenant_id == kitchen.id, Service.is_active.is_(True))
+            .order_by(Service.id.asc())
+            .limit(2)
+            .all()
+        )
+        if menu_items:
+            from decimal import Decimal
+
+            from app.pricing import compute_channel_price
+
+            sample = Order(
+                tenant_id=kitchen.id,
+                channel="grab",
+                status=OrderStatus.new.value,
+                external_order_id="SIM-DEMO-KITCHEN-001",
+                short_order_number="G-101",
+                customer_name="Aisha (Grab)",
+                customer_phone="+60123456789",
+                currency="MYR",
+                notes="Demo Grab Food order",
+            )
+            db.add(sample)
+            db.flush()
+            subtotal = Decimal("0")
+            for svc in menu_items:
+                unit = compute_channel_price(
+                    base_price=svc.price_amount,
+                    tenant=kitchen,
+                    channel_price=None,
+                    channel="grab",
+                )
+                qty = 1
+                line_total = unit * qty
+                subtotal += line_total
+                db.add(
+                    OrderLine(
+                        order_id=sample.id,
+                        service_id=svc.id,
+                        external_item_id=f"svc-{svc.id}",
+                        name=svc.name,
+                        quantity=qty,
+                        unit_price=float(unit),
+                        line_total=float(line_total),
+                    )
+                )
+            sample.subtotal_amount = float(subtotal)
+            sample.total_amount = float(subtotal)
 
     db.commit()

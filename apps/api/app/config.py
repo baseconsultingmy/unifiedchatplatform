@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     wa_flow_draft_mode: bool = False
     # Set false when Meta returns #139000 Integrity on Flow sends
     wa_flow_enabled: bool = True
+    # Grab Food POS partner credentials (optional; dry-run without them)
+    grab_client_id: str = ""
+    grab_client_secret: str = ""
+    grab_partner_webhook_secret: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:

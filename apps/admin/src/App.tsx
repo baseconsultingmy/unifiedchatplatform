@@ -16,6 +16,7 @@ import ConversationsPage from "./pages/ConversationsPage";
 import CustomersPage from "./pages/CustomersPage";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
+import OrdersPage from "./pages/OrdersPage";
 import PosPage from "./pages/PosPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import ServicesPage from "./pages/ServicesPage";
@@ -132,6 +133,14 @@ function ProfileMenu({
               <NavLink to="/customers" role="menuitem">
                 Customers
               </NavLink>
+              {industryProfile(user?.tenant?.industry).key === "fnb" ? (
+                <NavLink to="/orders" role="menuitem">
+                  Orders
+                </NavLink>
+              ) : null}
+              <NavLink to="/bookings" role="menuitem">
+                Bookings
+              </NavLink>
               <NavLink to="/services" role="menuitem">
                 {catalogLabel}
               </NavLink>
@@ -164,9 +173,11 @@ function Shell() {
   const { user, impersonating, exitViewAs } = useAuth();
   const navigate = useNavigate();
   const isPlatformAdmin = user?.role === "platform_admin" && !impersonating;
-  const catalogLabel = industryProfile(user?.tenant?.industry).catalogNoun;
-  const resourcesLabel = industryProfile(user?.tenant?.industry).resourcesNoun;
-  const supportsResources = industryProfile(user?.tenant?.industry).supportsResources;
+  const profile = industryProfile(user?.tenant?.industry);
+  const catalogLabel = profile.catalogNoun;
+  const resourcesLabel = profile.resourcesNoun;
+  const supportsResources = profile.supportsResources;
+  const isFnb = profile.key === "fnb";
 
   function onExitViewAs() {
     exitViewAs();
@@ -207,9 +218,15 @@ function Shell() {
             <NavLink to="/conversations" className="app-tab">
               Chat
             </NavLink>
-            <NavLink to="/bookings" className="app-tab">
-              Bookings
-            </NavLink>
+            {isFnb ? (
+              <NavLink to="/orders" className="app-tab">
+                Orders
+              </NavLink>
+            ) : (
+              <NavLink to="/bookings" className="app-tab">
+                Bookings
+              </NavLink>
+            )}
           </nav>
         )}
 
@@ -270,6 +287,7 @@ export default function App() {
             <Route path="vendors" element={<VendorsPage />} />
             <Route element={<VendorOnly />}>
               <Route path="bookings" element={<BookingsPage />} />
+              <Route path="orders" element={<OrdersPage />} />
               <Route path="pos" element={<PosPage />} />
               <Route path="conversations" element={<ConversationsPage />} />
               <Route path="customers" element={<CustomersPage />} />

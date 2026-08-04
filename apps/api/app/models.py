@@ -25,6 +25,17 @@ class Channel(str, enum.Enum):
     line = "line"
     web = "web"
     manual = "manual"
+    grab = "grab"
+
+
+class OrderStatus(str, enum.Enum):
+    new = "new"
+    accepted = "accepted"
+    rejected = "rejected"
+    preparing = "preparing"
+    ready = "ready"
+    completed = "completed"
+    cancelled = "cancelled"
 
 
 class BookingStatus(str, enum.Enum):
@@ -76,6 +87,12 @@ class Tenant(Base):
     wa_webhook_status: Mapped[str] = mapped_column(String(32), default="not_configured")
     wa_connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     line_channel_id: Mapped[str | None] = mapped_column(String(64))
+    # Grab Food POS integration
+    grab_merchant_id: Mapped[str | None] = mapped_column(String(80))
+    grab_partner_token: Mapped[str | None] = mapped_column(Text)
+    grab_markup_percent: Mapped[float] = mapped_column(Numeric(6, 2), default=30)
+    grab_sync_status: Mapped[str] = mapped_column(String(40), default="not_configured")
+    grab_last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     users: Mapped[list[User]] = relationship(back_populates="tenant")
@@ -84,10 +101,16 @@ class Tenant(Base):
     bookings: Mapped[list[Booking]] = relationship(back_populates="tenant")
     conversations: Mapped[list[Conversation]] = relationship(back_populates="tenant")
     resources: Mapped[list[Resource]] = relationship(back_populates="tenant")
+    orders: Mapped[list[Order]] = relationship(back_populates="tenant")
+    channel_prices: Mapped[list[ServiceChannelPrice]] = relationship(back_populates="tenant")
 
     @property
     def wa_access_token_set(self) -> bool:
         return bool(self.wa_access_token)
+
+    @property
+    def grab_partner_token_set(self) -> bool:
+        return bool(self.grab_partner_token)
 
 
 class User(Base):
@@ -139,6 +162,87 @@ class Service(Base):
 
     tenant: Mapped[Tenant] = relationship(back_populates="services")
     bookings: Mapped[list[Booking]] = relationship(back_populates="service")
+    channel_prices: Mapped[list[ServiceChannelPrice]] = relationship(back_populates="service")
+
+
+class ServiceChannelPrice(Base):
+    """Per-channel price for a catalog item (e.g. Grab markup vs walk-in)."""
+
+    __tablename__ = "service_channel_prices"
+    __table_args__ = (
+        UniqueConstraint("service_id", "channel", name="uq_service_channel_price"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), nullable=False, index=True)
+    channel: Mapped[str] = mapped_column(String(40), nullable=False, default="grab")
+    # When set, used as the published channel price. Otherwise computed from markup.
+    price_amount: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    markup_percent: Mapped[float | None] = mapped_column(Numeric(6, 2))
+    external_id: Mapped[str | None] = mapped_column(String(120))
+    is_published: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="channel_prices")
+    service: Mapped[Service] = relationship(back_populates="channel_prices")
+
+
+class Order(Base):
+    """Marketplace / channel order (Grab Food, etc.) — separate from bookings/POS sales."""
+
+    __tablename__ = "orders"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "channel", "external_order_id", name="uq_order_external"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"))
+    channel: Mapped[str] = mapped_column(String(40), nullable=False, default="grab")
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default=OrderStatus.new.value)
+    external_order_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    short_order_number: Mapped[str | None] = mapped_column(String(40))
+    customer_name: Mapped[str | None] = mapped_column(String(120))
+    customer_phone: Mapped[str | None] = mapped_column(String(40))
+    currency: Mapped[str] = mapped_column(String(3), default="MYR")
+    subtotal_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    total_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    notes: Mapped[str | None] = mapped_column(Text)
+    raw_payload: Mapped[str | None] = mapped_column(Text)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    ready_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    tenant: Mapped[Tenant] = relationship(back_populates="orders")
+    customer: Mapped[Customer | None] = relationship()
+    lines: Mapped[list[OrderLine]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
+
+
+class OrderLine(Base):
+    __tablename__ = "order_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False, index=True)
+    service_id: Mapped[int | None] = mapped_column(ForeignKey("services.id"))
+    external_item_id: Mapped[str | None] = mapped_column(String(120))
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    line_total: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    order: Mapped[Order] = relationship(back_populates="lines")
+    service: Mapped[Service | None] = relationship()
 
 
 class Resource(Base):

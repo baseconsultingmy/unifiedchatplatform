@@ -119,4 +119,28 @@ export const api = {
     ),
   publishVendorFlow: (token: string, id: number) =>
     request<any>(`/v1/vendors/${id}/publish-flow`, { method: "POST" }, token),
+  updateGrabPrice: (
+    token: string,
+    serviceId: number,
+    body: { markup_percent?: number | null; price_override?: number | null; clear_override?: boolean },
+  ) =>
+    request<any>(
+      `/v1/services/${serviceId}/grab-price`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
+  grabStatus: (token: string) => request<any>("/v1/grab/status", {}, token),
+  publishGrabMenu: (token: string) =>
+    request<any>("/v1/grab/publish", { method: "POST" }, token),
+  simulateGrabOrder: (token: string, body?: unknown) =>
+    request<any>("/v1/grab/simulate-order", { method: "POST", body: JSON.stringify(body || {}) }, token),
+  orders: (token: string, params?: { status?: string; channel?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.channel) q.set("channel", params.channel);
+    const suffix = q.toString() ? `?${q}` : "";
+    return request<any[]>(`/v1/orders${suffix}`, {}, token);
+  },
+  updateOrder: (token: string, id: number, body: { status: string }) =>
+    request<any>(`/v1/orders/${id}`, { method: "PATCH", body: JSON.stringify(body) }, token),
 };

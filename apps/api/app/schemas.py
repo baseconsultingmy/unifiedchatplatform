@@ -38,6 +38,11 @@ class TenantOut(BaseModel):
     wa_connected_at: datetime | None = None
     wa_access_token_set: bool = False
     line_channel_id: str | None = None
+    grab_merchant_id: str | None = None
+    grab_markup_percent: float = 30
+    grab_sync_status: str = "not_configured"
+    grab_last_synced_at: datetime | None = None
+    grab_partner_token_set: bool = False
 
 
 class UserOut(BaseModel):
@@ -154,16 +159,40 @@ class ServiceIn(BaseModel):
     is_active: bool = True
 
 
+class GrabPriceOut(BaseModel):
+    channel: str = "grab"
+    base_price: float
+    grab_price: float
+    markup_percent: float
+    pricing_mode: str = "markup"  # markup | override
+    price_override: float | None = None
+    external_id: str | None = None
+    is_published: bool = False
+
+
 class ServiceOut(ServiceIn):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    grab: GrabPriceOut | None = None
+
+
+class GrabPriceIn(BaseModel):
+    """Set Grab channel pricing for a menu item."""
+
+    markup_percent: Decimal | None = None
+    price_override: Decimal | None = None
+    clear_override: bool = False
 
 
 class WorkspaceUpdateIn(WhatsAppFieldsIn):
     industry: str | None = Field(default=None, max_length=80)
     name: str | None = Field(default=None, min_length=2, max_length=120)
     timezone: str | None = None
+    grab_merchant_id: str | None = None
+    grab_markup_percent: Decimal | None = None
+    grab_partner_token: str | None = None
+    clear_grab_partner_token: bool = False
 
 
 class WhatsAppSetupOut(BaseModel):
@@ -350,3 +379,70 @@ class PosReceiptSendOut(BaseModel):
     delivered_via: str = "api"  # api | wa_link
     wa_url: str | None = None
     message: str | None = None
+
+
+class OrderLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int | None = None
+    external_item_id: str | None = None
+    name: str
+    quantity: int
+    unit_price: float
+    line_total: float
+    notes: str | None = None
+
+
+class OrderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tenant_id: int
+    channel: str
+    status: str
+    external_order_id: str
+    short_order_number: str | None = None
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    currency: str
+    subtotal_amount: float
+    total_amount: float
+    notes: str | None = None
+    accepted_at: datetime | None = None
+    ready_at: datetime | None = None
+    completed_at: datetime | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    lines: list[OrderLineOut] = Field(default_factory=list)
+
+
+class OrderStatusUpdateIn(BaseModel):
+    status: str = Field(min_length=2, max_length=40)
+
+
+class GrabPublishOut(BaseModel):
+    ok: bool
+    dry_run: bool = False
+    merchant_id: str | None = None
+    item_count: int = 0
+    message: str
+    sync_status: str
+
+
+class GrabStatusOut(BaseModel):
+    configured: bool
+    dry_run_available: bool = True
+    merchant_id: str | None = None
+    markup_percent: float = 30
+    sync_status: str = "not_configured"
+    last_synced_at: datetime | None = None
+    partner_token_set: bool = False
+    platform_credentials_set: bool = False
+
+
+class GrabSimulateOrderIn(BaseModel):
+    customer_name: str = "Grab Customer"
+    customer_phone: str | None = None
+    items: list[dict] = Field(default_factory=list)
+    notes: str | None = None

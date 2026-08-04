@@ -39,6 +39,73 @@ def ensure_schema() -> None:
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS person_id INTEGER REFERENCES resources(id)",
         "CREATE INDEX IF NOT EXISTS ix_bookings_room_id ON bookings (room_id)",
         "CREATE INDEX IF NOT EXISTS ix_bookings_person_id ON bookings (person_id)",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_merchant_id VARCHAR(80)",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_partner_token TEXT",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_markup_percent NUMERIC(6,2) DEFAULT 30",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_sync_status VARCHAR(40) DEFAULT 'not_configured'",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_last_synced_at TIMESTAMPTZ",
+        """
+        CREATE TABLE IF NOT EXISTS service_channel_prices (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+            service_id INTEGER NOT NULL REFERENCES services(id),
+            channel VARCHAR(40) NOT NULL DEFAULT 'grab',
+            price_amount NUMERIC(12,2),
+            markup_percent NUMERIC(6,2),
+            external_id VARCHAR(120),
+            is_published BOOLEAN DEFAULT FALSE,
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            CONSTRAINT uq_service_channel_price UNIQUE (service_id, channel)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_service_channel_prices_tenant_id ON service_channel_prices (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_service_channel_prices_service_id ON service_channel_prices (service_id)",
+        """
+        CREATE TABLE IF NOT EXISTS orders (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+            customer_id INTEGER REFERENCES customers(id),
+            channel VARCHAR(40) NOT NULL DEFAULT 'grab',
+            status VARCHAR(40) NOT NULL DEFAULT 'new',
+            external_order_id VARCHAR(120) NOT NULL,
+            short_order_number VARCHAR(40),
+            customer_name VARCHAR(120),
+            customer_phone VARCHAR(40),
+            currency VARCHAR(3) DEFAULT 'MYR',
+            subtotal_amount NUMERIC(12,2) DEFAULT 0,
+            total_amount NUMERIC(12,2) DEFAULT 0,
+            notes TEXT,
+            raw_payload TEXT,
+            accepted_at TIMESTAMPTZ,
+            ready_at TIMESTAMPTZ,
+            completed_at TIMESTAMPTZ,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            CONSTRAINT uq_order_external UNIQUE (tenant_id, channel, external_order_id)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_orders_tenant_id ON orders (tenant_id)",
+        """
+        CREATE TABLE IF NOT EXISTS order_lines (
+            id SERIAL PRIMARY KEY,
+            order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+            service_id INTEGER REFERENCES services(id),
+            external_item_id VARCHAR(120),
+            name VARCHAR(160) NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            unit_price NUMERIC(12,2) DEFAULT 0,
+            line_total NUMERIC(12,2) DEFAULT 0,
+            notes TEXT
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_order_lines_order_id ON order_lines (order_id)",
+        # Best-effort add Grab to legacy Postgres enum used by bookings/conversations.
+        """
+        DO $$ BEGIN
+          ALTER TYPE channel ADD VALUE IF NOT EXISTS 'grab';
+        EXCEPTION WHEN others THEN NULL;
+        END $$
+        """,
     ]
     with engine.begin() as conn:
         for stmt in statements:
