@@ -520,20 +520,31 @@ export default function BookingsPage() {
       if (!assigned) return;
     }
 
-    const current = selected;
-    if (isPaid(current.payment_status)) {
-      setBusy(true);
+    // Same POS checkout path:
+    // unpaid / deposit due → choose payment (cash / QR) → receipt
+    // already paid → mark completed (if needed) → receipt (print / WhatsApp)
+    if (!isPaid(selected.payment_status)) {
+      setTenderInput("");
+      setLastCash(null);
+      setSheetStep("pay");
+      return;
+    }
+
+    setBusy(true);
+    let booking = selected;
+    if (booking.status !== "completed") {
       const updated = await patchSelected({ status: "completed" });
       setBusy(false);
       if (!updated) return;
-      setLastCash(null);
-      setReceiptPayLabel(paymentLabel(updated.payment_status));
-      setSheetStep("receipt");
-      return;
+      booking = updated;
+    } else {
+      setBusy(false);
     }
-    setTenderInput("");
     setLastCash(null);
-    setSheetStep("pay");
+    setReceiptPayLabel(
+      booking.payment_status === "deposit_paid" ? "Deposit paid" : "Paid",
+    );
+    setSheetStep("receipt");
   }
 
   async function completeWithCash() {
@@ -976,7 +987,7 @@ export default function BookingsPage() {
                   {busy ? "Saving…" : assignLabel}
                 </button>
               ) : null}
-              {selected.status !== "completed" && selected.status !== "cancelled" ? (
+              {selected.status !== "cancelled" ? (
                 <button
                   type="button"
                   className="btn secondary"
@@ -984,19 +995,6 @@ export default function BookingsPage() {
                   onClick={() => void onComplete()}
                 >
                   Complete
-                </button>
-              ) : selected.status === "completed" ? (
-                <button
-                  type="button"
-                  className="btn secondary"
-                  disabled={busy}
-                  onClick={() => {
-                    setLastCash(null);
-                    setReceiptPayLabel(paymentLabel(selected.payment_status));
-                    setSheetStep("receipt");
-                  }}
-                >
-                  Receipt
                 </button>
               ) : null}
               {selected.status !== "cancelled" ? (
@@ -1025,7 +1023,7 @@ export default function BookingsPage() {
           >
             <div className="bookings-toolbar">
               <div>
-                <h2 id="booking-pay-title">Complete payment</h2>
+                <h2 id="booking-pay-title">Choose payment</h2>
                 <p>
                   {selected.customer?.name || selected.customer?.phone || "Customer"} ·{" "}
                   {selected.currency} {dueAmount.toFixed(2)}
