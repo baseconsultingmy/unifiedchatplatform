@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Base Consulting">
+  <title>Base Consulting (monochrome)</title>
+  <g fill="#000000">
+    <rect x="48" y="118" width="224" height="3" rx="1.5"/>
+    <circle cx="78" cy="62" r="9"/>
+    <path d="M64 118h28l-2-38c0-10-5-16-12-16s-12 6-12 16l-2 38z"/>
+    <path d="M72 52c2-8 8-10 14-6 1 4-1 8-4 10-4 1-8-1-10-4z"/>
+    <circle cx="118" cy="66" r="9"/>
+    <path d="M104 118h28v-34c0-9-5-14-14-14s-14 5-14 14v34z"/>
+    <path d="M107 84h22v8H107z"/>
+    <circle cx="168" cy="54" r="11"/>
+    <path d="M146 118h44l-4-52c-1-12-8-18-18-18s-17 6-18 18l-4 52z"/>
+    <path d="M163 72l5 18 5-18h-10z" opacity=".35"/>
+    <rect x="186" y="78" width="8" height="28" rx="2" transform="rotate(8 190 92)"/>
+    <circle cx="222" cy="56" r="10"/>
+    <path d="M198 118h48l-6-48c-2-14-10-20-18-20s-16 6-18 20l-6 48z"/>
+    <path d="M236 70c10 4 18 14 20 28" fill="none" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <path d="M52 118C52 58 108 28 168 28c48 0 92 22 108 58" fill="none" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+  <g fill="#000000">
+    <circle cx="78" cy="78" r="4.5"/>
+    <circle cx="112" cy="48" r="4.5"/>
+    <circle cx="168" cy="32" r="4.5"/>
+    <circle cx="220" cy="42" r="4.5"/>
+    <circle cx="258" cy="72" r="4.5"/>
+  </g>
+  <text x="160" y="162" text-anchor="middle" font-family="Sora, Arial Black, Helvetica, sans-serif" font-size="42" font-weight="800" letter-spacing="0.04em" fill="#000000">BASE</text>
+  <text x="160" y="188" text-anchor="middle" font-family="Sora, Helvetica, Arial, sans-serif" font-size="14" font-weight="500" letter-spacing="0.42em" fill="#000000">CONSULTING</text>
+</svg>

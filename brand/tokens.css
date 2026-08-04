@@ -1,0 +1,54 @@
+/**
+ * Base CI Color System (Locked) — July 2026
+ * Mirrors /brand/tokens.css for the admin app.
+ */
+
+:root {
+  --base-black: #000000;
+  --base-grey: #475569;
+  --base-navy: #0f2744;
+  --base-amber: #e5a100;
+  --base-navy-deep: #0d223f;
+  --base-amber-arc: #f5a623;
+  --base-slate: #707b8c;
+
+  --base-paper: #f1f4f8;
+  --base-panel: #ffffff;
+  --base-ink: var(--base-navy);
+  --base-muted: var(--base-grey);
+  --base-line: rgba(15, 39, 68, 0.12);
+  --base-shadow: 0 16px 40px rgba(15, 39, 68, 0.08);
+
+  --base-accent: var(--base-navy);
+  --base-accent-soft: rgba(15, 39, 68, 0.08);
+  --base-accent-mid: rgba(15, 39, 68, 0.14);
+  --base-signal: var(--base-amber);
+  --base-signal-soft: rgba(229, 161, 0, 0.16);
+  --base-signal-strong: rgba(229, 161, 0, 0.28);
+
+  --base-ok: #15803d;
+  --base-warn: #b45309;
+  --base-danger: #b91c1c;
+
+  --base-rail: #0a1a2e;
+  --base-rail-elevated: #122c4a;
+  --base-rail-text: #94a3b8;
+  --base-rail-active: #ffffff;
+
+  --font-brand: "Sora", sans-serif;
+  --font-ui: "Manrope", sans-serif;
+
+  /* Compat aliases used across admin CSS */
+  --ink: var(--base-ink);
+  --muted: var(--base-muted);
+  --paper: var(--base-paper);
+  --panel: var(--base-panel);
+  --line: var(--base-line);
+  --accent: var(--base-accent);
+  --accent-2: var(--base-amber);
+  --ok: var(--base-ok);
+  --warn: var(--base-warn);
+  --shadow: var(--base-shadow);
+  --radius: 12px;
+  --radius-sm: 8px;
+}

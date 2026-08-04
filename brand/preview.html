@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Base CI — Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tokens.css" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--font-ui);
+        color: var(--base-ink);
+        background:
+          radial-gradient(900px 420px at 8% -10%, rgba(229, 161, 0, 0.14), transparent 55%),
+          radial-gradient(800px 480px at 100% 0%, rgba(15, 39, 68, 0.1), transparent 50%),
+          linear-gradient(180deg, #eef2f7 0%, var(--base-paper) 50%, #f8fafc 100%);
+        padding: 2.5rem clamp(1.2rem, 4vw, 3rem) 4rem;
+      }
+      h1 {
+        font-family: var(--font-brand);
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        margin: 0 0 0.35rem;
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+      }
+      .lede {
+        color: var(--base-muted);
+        max-width: 42rem;
+        margin: 0 0 2rem;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      section h2 {
+        font-family: var(--font-brand);
+        font-size: 0.85rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--base-grey);
+        margin: 0 0 1rem;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      @media (max-width: 720px) {
+        .swatches { grid-template-columns: 1fr 1fr; }
+      }
+      .swatch {
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--base-line);
+        background: #fff;
+        box-shadow: var(--base-shadow);
+      }
+      .swatch .chip {
+        height: 88px;
+      }
+      .swatch .meta {
+        padding: 0.85rem 1rem 1rem;
+      }
+      .swatch strong {
+        display: block;
+        font-family: var(--font-brand);
+        font-size: 0.95rem;
+      }
+      .swatch span {
+        color: var(--base-muted);
+        font-size: 0.85rem;
+      }
+      .board {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--base-line);
+        border-radius: 18px;
+        padding: 1.4rem;
+        box-shadow: var(--base-shadow);
+      }
+      .card.dark {
+        background: #050811;
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+      .card h3 {
+        margin: 0 0 1rem;
+        font-size: 0.8rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--base-grey);
+        font-family: var(--font-brand);
+      }
+      .card.dark h3 { color: #94a3b8; }
+      .card img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      .rules {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      @media (max-width: 720px) {
+        .rules { grid-template-columns: 1fr; }
+      }
+      .rules ul {
+        margin: 0;
+        padding-left: 1.1rem;
+        color: var(--base-muted);
+      }
+      .rules li { margin: 0.35rem 0; }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: var(--base-amber);
+        color: #fff;
+        font-family: var(--font-brand);
+        font-weight: 700;
+        font-size: 0.75rem;
+        letter-spacing: 0.06em;
+        padding: 0.28rem 0.55rem;
+        border-radius: 7px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>BASE <span style="color:var(--base-grey);font-weight:500">CI</span> <span class="pill">OS</span></h1>
+    <p class="lede">
+      Locked color system and wordmarks for BaseApp / Base Kiosk OS, derived from Base Consulting
+      and the Transit OS horizontal pattern.
+    </p>
+
+    <section>
+      <h2>Primary colors</h2>
+      <div class="swatches">
+        <div class="swatch"><div class="chip" style="background:#000"></div><div class="meta"><strong>Black</strong><span>#000000 · print / mono</span></div></div>
+        <div class="swatch"><div class="chip" style="background:#475569"></div><div class="meta"><strong>Grey</strong><span>#475569 · secondary words</span></div></div>
+        <div class="swatch"><div class="chip" style="background:#0F2744"></div><div class="meta"><strong>Deep Transit Navy</strong><span>#0F2744 · BASE</span></div></div>
+        <div class="swatch"><div class="chip" style="background:#E5A100"></div><div class="meta"><strong>Route Amber</strong><span>#E5A100 · accents / OS</span></div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Logos</h2>
+      <div class="board">
+        <div class="card">
+          <h3>Base Consulting</h3>
+          <img src="./logos/base-consulting.svg" alt="Base Consulting" />
+        </div>
+        <div class="card">
+          <h3>Base Kiosk OS</h3>
+          <img src="./logos/base-kiosk-os.svg" alt="Base Kiosk OS" />
+        </div>
+        <div class="card dark">
+          <h3>Base Kiosk OS · dark</h3>
+          <img src="./logos/base-kiosk-os-dark.svg" alt="Base Kiosk OS on dark" />
+        </div>
+        <div class="card">
+          <h3>BaseApp</h3>
+          <img src="./logos/base-app.svg" alt="BaseApp" />
+        </div>
+        <div class="card">
+          <h3>App mark</h3>
+          <img src="./logos/base-mark.svg" alt="Base mark" style="width:96px" />
+        </div>
+        <div class="card">
+          <h3>Monochrome (print)</h3>
+          <img src="./logos/base-consulting-mono.svg" alt="Base Consulting mono" />
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Usage rules</h2>
+      <div class="rules">
+        <div class="card">
+          <h3>Do</h3>
+          <ul>
+            <li>Navy for BASE</li>
+            <li>Grey for Kiosk / App / Consulting</li>
+            <li>Amber for OS badge and arc accents only</li>
+            <li>Black masters for print</li>
+            <li>Green / red only in status UIs</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Don’t</h3>
+          <ul>
+            <li>No teal or rainbow accents</li>
+            <li>No gradients on logos</li>
+            <li>No multi-color silhouettes</li>
+            <li>Don’t swap amber into body text</li>
+            <li>Don’t restyle BASE in grey</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </body>
+</html>

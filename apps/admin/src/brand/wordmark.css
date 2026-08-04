@@ -1,0 +1,105 @@
+.base-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-family: var(--font-brand);
+  line-height: 1;
+  user-select: none;
+}
+
+.base-wordmark-base {
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+}
+
+.base-wordmark-secondary {
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+.base-wordmark-divider {
+  width: 1.5px;
+  height: 1.05rem;
+  border-radius: 1px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.base-wordmark-os {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85rem;
+  height: 1.25rem;
+  padding: 0 0.4rem;
+  border-radius: 0.4rem;
+  background: var(--base-amber);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+.base-wordmark-kiosk .base-wordmark-os {
+  text-transform: uppercase;
+}
+
+.base-wordmark-descriptor {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.38em;
+}
+
+.base-wordmark-consulting {
+  display: inline-grid;
+  gap: 0.15rem;
+}
+
+.base-wordmark-consulting .base-wordmark-base {
+  font-size: 1.35rem;
+}
+
+.base-wordmark.is-compact .base-wordmark-base {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.base-wordmark.is-compact .base-wordmark-secondary,
+.base-wordmark.is-compact .base-wordmark-divider,
+.base-wordmark.is-compact .base-wordmark-os,
+.base-wordmark.is-compact .base-wordmark-descriptor {
+  display: none;
+}
+
+.base-mark {
+  display: block;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.brand-lockup .brand-meta {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.brand-lockup .brand-meta > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

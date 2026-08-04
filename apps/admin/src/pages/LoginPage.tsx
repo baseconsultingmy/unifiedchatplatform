@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { BaseMark, BaseWordmark } from "../brand/BaseWordmark";
 
 export default function LoginPage() {
   const { token, login } = useAuth();
@@ -26,32 +27,45 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      <form className="panel login-card form" onSubmit={onSubmit}>
-        <div>
-          <p className="muted">BaseApp</p>
-          <h1>Sign in</h1>
-          <p>
-            Master Admin manages vendors. Vendor owners manage their own services and bookings.
+      <div className="login-stage">
+        <aside className="login-hero">
+          <div className="login-hero-glow" aria-hidden />
+          <div className="login-hero-brand">
+            <BaseMark size={56} />
+            <BaseWordmark variant="kiosk-os" tone="dark" />
+          </div>
+          <p className="login-hero-tagline">
+            Counter, bookings, and WhatsApp — one workspace for every vendor.
           </p>
-        </div>
-        <label>
-          Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
-        </label>
-        <label>
-          Password
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-          />
-        </label>
-        {error ? <div className="error">{error}</div> : null}
-        <button className="btn" disabled={busy}>
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+          <div className="login-hero-arc" aria-hidden />
+        </aside>
+
+        <form className="login-card form" onSubmit={onSubmit}>
+          <div className="login-brand">
+            <p className="login-kicker">BaseApp</p>
+            <h1>Sign in</h1>
+            <p>Master Admin manages vendors. Vendor owners manage their own shop.</p>
+          </div>
+          <label>
+            Email
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+          </label>
+          <label>
+            Password
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              required
+            />
+          </label>
+          {error ? <div className="error">{error}</div> : null}
+          <button className="btn btn-signal" disabled={busy}>
+            {busy ? "Signing in…" : "Sign in"}
+          </button>
+          <p className="login-footer muted">Base Consulting</p>
+        </form>
+      </div>
     </div>
   );
 }

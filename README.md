@@ -1,6 +1,20 @@
 # BaseApp Unified
 
-WhatsApp + LINE communication and booking platform for SMEs, with a Master Admin for reservations, payments, and inbox.
+WhatsApp + LINE communication and booking platform for SMEs (**Base Kiosk OS**), by **Base Consulting**.
+
+## Brand / CI
+
+Locked corporate identity: [`brand/`](brand/) · [`docs/BRAND.md`](docs/BRAND.md)
+
+| Layer | Name |
+|---|---|
+| Company | Base Consulting |
+| Platform | BaseApp |
+| OS wordmark | Base Kiosk OS |
+
+Colors (locked): Navy `#0F2744` · Grey `#475569` · Amber `#E5A100` · Black `#000000`
+
+Admin UX (current): tablet **top-bar** primary tabs (POS / Chat / Bookings) + profile menu — CI is applied on top of that shell.
 
 ## Live
 
@@ -13,7 +27,8 @@ WhatsApp + LINE communication and booking platform for SMEs, with a Master Admin
 ## Stack
 
 - `apps/api` — FastAPI booking core + WhatsApp webhook
-- `apps/admin` — React Master Admin
+- `apps/admin` — React Master Admin (Base CI)
+- `brand/` — logos, tokens, CI preview
 - `deploy/` — Docker Compose + Caddy on DigitalOcean
 
 ## Local API (optional)

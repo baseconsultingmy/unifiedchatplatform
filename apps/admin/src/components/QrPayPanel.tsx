@@ -35,7 +35,7 @@ export default function QrPayPanel({
     QRCode.toDataURL(paymentUrl, {
       width: 240,
       margin: 1,
-      color: { dark: "#14201c", light: "#ffffff" },
+      color: { dark: "#0F2744", light: "#ffffff" },
     })
       .then((url) => {
         if (!cancelled) setDataUrl(url);

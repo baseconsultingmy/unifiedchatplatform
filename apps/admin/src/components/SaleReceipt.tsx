@@ -74,7 +74,7 @@ const PRINT_STYLES = `
     margin: 0;
     padding: 0;
     background: #fff;
-    color: #14201c;
+    color: #0F2744;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     font-size: 13px;
     line-height: 1.45;
