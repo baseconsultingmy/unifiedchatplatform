@@ -1013,6 +1013,19 @@ p {
   -webkit-overflow-scrolling: touch;
 }
 
+.agenda-slot {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.agenda-slot-cards {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
 .bookings-empty {
   margin: auto;
   text-align: center;
@@ -1030,8 +1043,8 @@ p {
 
 .agenda-card {
   display: grid;
-  grid-template-columns: 64px auto minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
   align-items: center;
   width: 100%;
   text-align: left;
@@ -1044,6 +1057,38 @@ p {
   font: inherit;
   box-shadow: 0 1px 0 rgba(20, 32, 28, 0.03);
   transition: border-color 0.15s ease, transform 0.15s ease;
+  min-width: 0;
+}
+
+.agenda-card.compact {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  align-items: start;
+  padding: 0.65rem 0.7rem;
+  border-radius: 14px;
+}
+
+.agenda-card.compact .agenda-pills {
+  justify-items: start;
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.agenda-card.compact .agenda-guest {
+  font-size: 0.92rem;
+}
+
+.agenda-card.compact .agenda-meta {
+  font-size: 0.78rem;
+}
+
+.agenda-card.compact .agenda-pill {
+  max-width: 100%;
+  font-size: 0.68rem;
+  padding: 0.14rem 0.45rem;
 }
 
 .agenda-card:hover {
@@ -1077,6 +1122,8 @@ p {
   display: grid;
   gap: 0.1rem;
   justify-items: start;
+  align-content: start;
+  padding-top: 0.85rem;
 }
 
 .agenda-time strong {
@@ -2323,9 +2370,27 @@ p {
     gap: 0.55rem;
   }
 
+  .agenda-slot {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
   .agenda-card {
-    grid-template-columns: 56px auto minmax(0, 1fr) auto;
     padding: 0.75rem 0.8rem;
+  }
+
+  .agenda-slot.count-3 .agenda-slot-cards,
+  .agenda-slot.count-2 .agenda-slot-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .agenda-card.compact {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .agenda-card.compact .agenda-pills {
+    display: grid;
+    justify-items: end;
   }
 
   .agenda-pill,

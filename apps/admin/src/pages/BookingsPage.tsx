@@ -153,6 +153,22 @@ export default function BookingsPage() {
     return dayBookings.filter((b) => String(b.person_id || "") === filterId);
   }, [dayBookings, filterId]);
 
+  const agendaSlots = useMemo(() => {
+    const groups = new Map<string, any[]>();
+    for (const b of filteredAgenda) {
+      const start = new Date(b.starts_at);
+      const key = `${start.getHours()}:${String(start.getMinutes()).padStart(2, "0")}`;
+      const list = groups.get(key) || [];
+      list.push(b);
+      groups.set(key, list);
+    }
+    return Array.from(groups.entries()).map(([key, items]) => ({
+      key,
+      start: new Date(items[0].starts_at),
+      items,
+    }));
+  }, [filteredAgenda]);
+
   const columns = useMemo(() => {
     if (!profile.supportsResources) {
       return [{ id: "all", name: "Schedule", kind: "all" as const }];
@@ -489,53 +505,87 @@ export default function BookingsPage() {
               </button>
             </div>
           ) : (
-            filteredAgenda.map((b) => {
-              const start = new Date(b.starts_at);
-              const end = b.ends_at
-                ? new Date(b.ends_at)
-                : new Date(start.getTime() + bookingDurationMinutes(b) * 60000);
-              const isNow = now >= start.getTime() && now < end.getTime();
-              const isPast = end.getTime() < now && isToday;
-              const name = b.customer?.name || b.customer?.phone || "Guest";
-              const staffName = b.person?.name || "";
-              const roomName = b.room?.name || "";
+            agendaSlots.map((slot) => {
+              const count = slot.items.length;
+              const dense = count >= 2;
+              const slotNow = slot.items.some((b) => {
+                const start = new Date(b.starts_at);
+                const end = b.ends_at
+                  ? new Date(b.ends_at)
+                  : new Date(start.getTime() + bookingDurationMinutes(b) * 60000);
+                return now >= start.getTime() && now < end.getTime();
+              });
               return (
-                <button
-                  key={b.id}
-                  type="button"
-                  className={`agenda-card pay-${paymentTone(b.payment_status)} ${isNow ? "now" : ""} ${isPast ? "past" : ""} ${b.status === "cancelled" ? "cancelled" : ""}`}
-                  data-now={isNow ? "1" : "0"}
-                  onClick={() => openBooking(b)}
+                <div
+                  key={slot.key}
+                  className={`agenda-slot count-${Math.min(count, 3)} ${dense ? "dense" : "single"}`}
+                  data-now={slotNow ? "1" : "0"}
                 >
                   <div className="agenda-time">
-                    <strong>{formatTime(start)}</strong>
-                    <span>{bookingDurationMinutes(b)}m</span>
-                  </div>
-                  <span className="agenda-avatar">{initials(name)}</span>
-                  <div className="agenda-main">
-                    <strong className="agenda-guest">{name}</strong>
-                    <div className="agenda-meta">{b.service?.name || "Booking"}</div>
-                    <div className="agenda-money muted">
-                      {b.currency} {amountDue(b).toFixed(2)}
-                      {b.status === "cancelled" ? " · Cancelled" : ""}
-                    </div>
-                  </div>
-                  <div className="agenda-pills">
-                    <span className={`agenda-pill pay-${paymentTone(b.payment_status)}`}>
-                      {paymentLabel(b.payment_status)}
+                    <strong>{formatTime(slot.start)}</strong>
+                    <span>
+                      {count > 1 ? `${count} bookings` : `${bookingDurationMinutes(slot.items[0])}m`}
                     </span>
-                    {staffName ? (
-                      <span className="agenda-pill staff" title={profile.personNoun}>
-                        {staffName}
-                      </span>
-                    ) : null}
-                    {roomName ? (
-                      <span className="agenda-pill room" title={profile.roomNoun}>
-                        {roomName}
-                      </span>
-                    ) : null}
                   </div>
-                </button>
+                  <div
+                    className="agenda-slot-cards"
+                    style={{
+                      gridTemplateColumns: `repeat(${Math.min(count, 3)}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {slot.items.map((b) => {
+                      const start = new Date(b.starts_at);
+                      const end = b.ends_at
+                        ? new Date(b.ends_at)
+                        : new Date(start.getTime() + bookingDurationMinutes(b) * 60000);
+                      const isNow = now >= start.getTime() && now < end.getTime();
+                      const isPast = end.getTime() < now && isToday;
+                      const name = b.customer?.name || b.customer?.phone || "Guest";
+                      const staffName = b.person?.name || "";
+                      const roomName = b.room?.name || "";
+                      return (
+                        <button
+                          key={b.id}
+                          type="button"
+                          className={`agenda-card pay-${paymentTone(b.payment_status)} ${dense ? "compact" : ""} ${isNow ? "now" : ""} ${isPast ? "past" : ""} ${b.status === "cancelled" ? "cancelled" : ""}`}
+                          onClick={() => openBooking(b)}
+                        >
+                          {!dense ? (
+                            <span className="agenda-avatar">{initials(name)}</span>
+                          ) : null}
+                          <div className="agenda-main">
+                            <strong className="agenda-guest">{name}</strong>
+                            <div className="agenda-meta">
+                              {b.service?.name || "Booking"}
+                              {dense ? ` · ${bookingDurationMinutes(b)}m` : ""}
+                            </div>
+                            {!dense ? (
+                              <div className="agenda-money muted">
+                                {b.currency} {amountDue(b).toFixed(2)}
+                                {b.status === "cancelled" ? " · Cancelled" : ""}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="agenda-pills">
+                            <span className={`agenda-pill pay-${paymentTone(b.payment_status)}`}>
+                              {paymentLabel(b.payment_status)}
+                            </span>
+                            {staffName ? (
+                              <span className="agenda-pill staff" title={profile.personNoun}>
+                                {staffName}
+                              </span>
+                            ) : null}
+                            {roomName ? (
+                              <span className="agenda-pill room" title={profile.roomNoun}>
+                                {roomName}
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })
           )}
