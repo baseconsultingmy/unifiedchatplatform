@@ -103,6 +103,25 @@ function initials(name: string) {
     .join("");
 }
 
+function bookingWindow(b: any, fallbackMinutes = 60): { start: Date; end: Date } | null {
+  if (!b?.starts_at) return null;
+  const start = new Date(b.starts_at);
+  if (Number.isNaN(start.getTime())) return null;
+  const end = b.ends_at
+    ? new Date(b.ends_at)
+    : new Date(start.getTime() + fallbackMinutes * 60000);
+  if (Number.isNaN(end.getTime()) || end <= start) return null;
+  return { start, end };
+}
+
+function windowsOverlap(a: { start: Date; end: Date }, b: { start: Date; end: Date }) {
+  return a.start < b.end && a.end > b.start;
+}
+
+function isBlockingStatus(status: string | undefined) {
+  return status !== "cancelled" && status !== "no_show";
+}
+
 export default function BookingsPage() {
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
@@ -203,23 +222,70 @@ export default function BookingsPage() {
     [dayBookings],
   );
 
+  function resourceBusy(
+    kind: "person" | "room",
+    resourceId: number | string,
+    window: { start: Date; end: Date } | null,
+    excludeBookingId?: number | null,
+  ) {
+    if (!window || resourceId === "" || resourceId == null) return null;
+    const id = Number(resourceId);
+    if (!id) return null;
+    return (
+      bookings.find((b) => {
+        if (!isBlockingStatus(b.status)) return false;
+        if (excludeBookingId && b.id === excludeBookingId) return false;
+        if (kind === "person" && Number(b.person_id) !== id) return false;
+        if (kind === "room" && Number(b.room_id) !== id) return false;
+        const other = bookingWindow(b, bookingDurationMinutes(b));
+        return other ? windowsOverlap(window, other) : false;
+      }) || null
+    );
+  }
+
+  const selectedWindow = useMemo(() => {
+    if (!selected) return null;
+    return bookingWindow(selected, bookingDurationMinutes(selected));
+  }, [selected]);
+
+  const createWindow = useMemo(() => {
+    if (!startsAt) return null;
+    const start = new Date(startsAt);
+    if (Number.isNaN(start.getTime())) return null;
+    const service = services.find((s) => String(s.id) === serviceId);
+    const mins = Number(service?.duration_minutes || 60);
+    return { start, end: new Date(start.getTime() + mins * 60000) };
+  }, [startsAt, serviceId, services]);
+
+  useEffect(() => {
+    if (!showCreate || !createWindow) return;
+    if (personId && resourceBusy("person", personId, createWindow)) {
+      setPersonId("");
+    }
+    if (roomId && resourceBusy("room", roomId, createWindow)) {
+      setRoomId("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showCreate, createWindow?.start.getTime(), createWindow?.end.getTime(), serviceId]);
+
   async function refresh() {
     if (!token) return;
-    const from = startOfDay(dayAnchor).toISOString();
-    const to = addDays(startOfDay(dayAnchor), 1).toISOString();
-    const [day, c, s, r] = await Promise.all([
+    // Load a small window so assignment conflicts catch spillover / nearby days.
+    const from = addDays(startOfDay(dayAnchor), -1).toISOString();
+    const to = addDays(startOfDay(dayAnchor), 2).toISOString();
+    const [range, c, s, r] = await Promise.all([
       api.bookings(token, { from, to }),
       api.customers(token),
       api.services(token),
       profile.supportsResources ? api.resources(token) : Promise.resolve([]),
     ]);
-    setBookings(day);
+    setBookings(range);
     setCustomers(c);
     setServices(s);
     setResources(r);
     if (!serviceId && s[0]) setServiceId(String(s[0].id));
     if (selected) {
-      const fresh = day.find((b: any) => b.id === selected.id);
+      const fresh = range.find((b: any) => b.id === selected.id);
       setSelected(fresh || null);
     }
   }
@@ -251,6 +317,7 @@ export default function BookingsPage() {
     setSelected(b);
     setShowQr(false);
     setShowCreate(false);
+    setError("");
   }
 
   function closeBooking() {
@@ -301,6 +368,12 @@ export default function BookingsPage() {
     if (!token) return;
     setError("");
     try {
+      if (personId && resourceBusy("person", personId, createWindow)) {
+        throw new Error("That staff member is already booked for this time");
+      }
+      if (roomId && resourceBusy("room", roomId, createWindow)) {
+        throw new Error("That room is already booked for this time");
+      }
       let customer = customers.find((c) => c.phone === customerPhone);
       if (!customer) {
         customer = await api.createCustomer(token, {
@@ -336,9 +409,14 @@ export default function BookingsPage() {
 
   async function patchSelected(body: Record<string, unknown>) {
     if (!token || !selected) return;
-    const updated = await api.updateBooking(token, selected.id, body);
-    setSelected(updated);
-    await refresh();
+    setError("");
+    try {
+      const updated = await api.updateBooking(token, selected.id, body);
+      setSelected(updated);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update booking");
+    }
   }
 
   function bookingsForColumn(columnId: string) {
@@ -700,11 +778,14 @@ export default function BookingsPage() {
                     }
                   >
                     <option value="">Unassigned</option>
-                    {people.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    {people.map((p) => {
+                      const clash = resourceBusy("person", p.id, selectedWindow, selected.id);
+                      return (
+                        <option key={p.id} value={p.id} disabled={Boolean(clash)}>
+                          {clash ? `${p.name} · busy` : p.name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 <label>
@@ -718,15 +799,19 @@ export default function BookingsPage() {
                     }
                   >
                     <option value="">Unassigned</option>
-                    {rooms.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
+                    {rooms.map((r) => {
+                      const clash = resourceBusy("room", r.id, selectedWindow, selected.id);
+                      return (
+                        <option key={r.id} value={r.id} disabled={Boolean(clash)}>
+                          {clash ? `${r.name} · busy` : r.name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
               </div>
             ) : null}
+            {error ? <div className="error">{error}</div> : null}
 
             <div className="detail-grid">
               <div>
@@ -837,24 +922,33 @@ export default function BookingsPage() {
                   {profile.personNoun}
                   <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
                     <option value="">Unassigned</option>
-                    {people.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    {people.map((p) => {
+                      const clash = resourceBusy("person", p.id, createWindow);
+                      return (
+                        <option key={p.id} value={p.id} disabled={Boolean(clash)}>
+                          {clash ? `${p.name} · busy` : p.name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
                 <label>
                   {profile.roomNoun}
                   <select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
                     <option value="">Unassigned</option>
-                    {rooms.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
+                    {rooms.map((r) => {
+                      const clash = resourceBusy("room", r.id, createWindow);
+                      return (
+                        <option key={r.id} value={r.id} disabled={Boolean(clash)}>
+                          {clash ? `${r.name} · busy` : r.name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
+                <p className="muted booking-assign-hint">
+                  Staff or rooms already booked for this time are disabled.
+                </p>
               </div>
             ) : null}
             <label>

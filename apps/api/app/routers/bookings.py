@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
+from app.availability import resource_conflicts
 from app.db import get_db
 from app.deps import require_vendor_user
 from app.models import Booking, Customer, Resource, Service, User
@@ -43,6 +44,70 @@ def _validate_resource(
     )
     if resource is None:
         raise HTTPException(status_code=404, detail=f"{label} not found")
+
+
+def _window_for_booking(
+    *,
+    starts_at: datetime | None,
+    ends_at: datetime | None,
+    service: Service | None,
+) -> tuple[datetime, datetime] | None:
+    if starts_at is None:
+        return None
+    starts = starts_at if starts_at.tzinfo else starts_at.replace(tzinfo=timezone.utc)
+    if ends_at is not None:
+        ends = ends_at if ends_at.tzinfo else ends_at.replace(tzinfo=timezone.utc)
+    else:
+        mins = int((service.duration_minutes if service else None) or 60)
+        ends = starts + timedelta(minutes=mins)
+    if ends <= starts:
+        return None
+    return starts, ends
+
+
+def _assert_no_resource_clash(
+    db: Session,
+    *,
+    tenant_id: int,
+    starts_at: datetime | None,
+    ends_at: datetime | None,
+    person_id: int | None,
+    room_id: int | None,
+    service: Service | None = None,
+    exclude_booking_id: int | None = None,
+) -> None:
+    window = _window_for_booking(starts_at=starts_at, ends_at=ends_at, service=service)
+    if window is None or (person_id is None and room_id is None):
+        return
+    starts, ends = window
+    clashes = resource_conflicts(
+        db,
+        tenant_id=tenant_id,
+        starts_at=starts,
+        ends_at=ends,
+        person_id=person_id,
+        room_id=room_id,
+        exclude_booking_id=exclude_booking_id,
+    )
+    if not clashes:
+        return
+
+    person_hit = next((c for c in clashes if person_id and c.person_id == person_id), None)
+    room_hit = next((c for c in clashes if room_id and c.room_id == room_id), None)
+    if person_hit and room_hit:
+        raise HTTPException(
+            status_code=409,
+            detail="That staff member and room are already booked for this time",
+        )
+    if person_hit:
+        raise HTTPException(
+            status_code=409,
+            detail="That staff member is already booked for this time",
+        )
+    raise HTTPException(
+        status_code=409,
+        detail="That room is already booked for this time",
+    )
 
 
 @router.get("", response_model=list[BookingOut])
@@ -109,6 +174,16 @@ def create_booking(
             data["starts_at"] = starts
         data["ends_at"] = starts + timedelta(minutes=int(service.duration_minutes or 60))
 
+    _assert_no_resource_clash(
+        db,
+        tenant_id=user.tenant_id,
+        starts_at=data.get("starts_at"),
+        ends_at=data.get("ends_at"),
+        person_id=data.get("person_id"),
+        room_id=data.get("room_id"),
+        service=service,
+    )
+
     booking = Booking(tenant_id=user.tenant_id, **data)
     db.add(booking)
     db.flush()
@@ -149,6 +224,34 @@ def update_booking(
             expected_kind="person",
             label="Person",
         )
+
+    next_person = data["person_id"] if "person_id" in data else booking.person_id
+    next_room = data["room_id"] if "room_id" in data else booking.room_id
+    next_starts = data["starts_at"] if "starts_at" in data else booking.starts_at
+    next_ends = data["ends_at"] if "ends_at" in data else booking.ends_at
+    service = None
+    service_id = data["service_id"] if "service_id" in data else booking.service_id
+    if service_id is not None:
+        service = (
+            db.query(Service)
+            .filter(Service.id == service_id, Service.tenant_id == user.tenant_id)
+            .first()
+        )
+    if next_starts is not None and next_ends is None and service is not None:
+        starts = next_starts if next_starts.tzinfo else next_starts.replace(tzinfo=timezone.utc)
+        next_ends = starts + timedelta(minutes=int(service.duration_minutes or 60))
+        data["ends_at"] = next_ends
+
+    _assert_no_resource_clash(
+        db,
+        tenant_id=user.tenant_id,
+        starts_at=next_starts,
+        ends_at=next_ends,
+        person_id=next_person,
+        room_id=next_room,
+        service=service,
+        exclude_booking_id=booking.id,
+    )
 
     for key, value in data.items():
         setattr(booking, key, value)
