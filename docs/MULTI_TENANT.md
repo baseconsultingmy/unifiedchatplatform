@@ -33,7 +33,8 @@ Shared callback: `https://api.baseapp.asia/v1/webhooks/whatsapp` — see `docs/W
 Created on first API boot from `deploy/.env`:
 
 - Master Admin: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`
-- Sample vendor owner: `owner@demo-studio.baseapp.asia` (same bootstrap password)
+- Sample wellness vendor: `owner@demo-studio.baseapp.asia` (same bootstrap password) · industry `health_beauty`
+- Sample food vendor: `owner@demo-kitchen.baseapp.asia` (same bootstrap password) · industry `fnb`
 
 ## View as (Master Admin)
 

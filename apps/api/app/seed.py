@@ -136,4 +136,102 @@ def bootstrap(db: Session) -> None:
 
     refresh_whatsapp_status(vendor)
 
+    # Sample F&B vendor for kiosk / menu POS testing (no rooms/staff).
+    kitchen = db.query(Tenant).filter(Tenant.slug == "demo-kitchen").first()
+    if kitchen is None:
+        kitchen = Tenant(
+            name="BaseApp Demo Kitchen",
+            slug="demo-kitchen",
+            industry="fnb",
+            timezone="Asia/Kuala_Lumpur",
+            country="MY",
+            is_platform=False,
+        )
+        db.add(kitchen)
+        db.flush()
+    else:
+        kitchen.industry = "fnb"
+
+    kitchen_owner_email = "owner@demo-kitchen.baseapp.asia"
+    kitchen_owner = db.query(User).filter(User.email == kitchen_owner_email).first()
+    if kitchen_owner is None:
+        db.add(
+            User(
+                tenant_id=kitchen.id,
+                email=kitchen_owner_email,
+                full_name="Demo Kitchen Owner",
+                password_hash=hash_password(settings.bootstrap_admin_password),
+                role=UserRole.owner.value,
+            )
+        )
+    else:
+        kitchen_owner.tenant_id = kitchen.id
+        kitchen_owner.role = UserRole.owner.value
+
+    if db.query(Service).filter(Service.tenant_id == kitchen.id).count() == 0:
+        db.add_all(
+            [
+                Service(
+                    tenant_id=kitchen.id,
+                    name="Nasi Lemak",
+                    description="Coconut rice with sambal, egg, and peanuts.",
+                    duration_minutes=15,
+                    price_amount=12,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Food",
+                ),
+                Service(
+                    tenant_id=kitchen.id,
+                    name="Chicken Rice",
+                    description="Hainanese chicken rice set.",
+                    duration_minutes=15,
+                    price_amount=14,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Food",
+                ),
+                Service(
+                    tenant_id=kitchen.id,
+                    name="Roti Canai (2pcs)",
+                    description="Crispy flatbread with dhal.",
+                    duration_minutes=10,
+                    price_amount=5,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Food",
+                ),
+                Service(
+                    tenant_id=kitchen.id,
+                    name="Iced Teh Tarik",
+                    description="Pulled milk tea over ice.",
+                    duration_minutes=5,
+                    price_amount=4.5,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Drinks",
+                ),
+                Service(
+                    tenant_id=kitchen.id,
+                    name="Kopi O",
+                    description="Black coffee, local style.",
+                    duration_minutes=5,
+                    price_amount=3.5,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Drinks",
+                ),
+                Service(
+                    tenant_id=kitchen.id,
+                    name="Combo Set A",
+                    description="Nasi Lemak + Iced Teh Tarik.",
+                    duration_minutes=15,
+                    price_amount=15,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Combos",
+                ),
+            ]
+        )
+
     db.commit()
