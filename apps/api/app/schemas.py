@@ -184,11 +184,53 @@ class GrabPriceOut(BaseModel):
     is_published: bool = False
 
 
+class ModifierOptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    price_delta: float = 0
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class ModifierGroupOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
+    name: str
+    min_select: int = 0
+    max_select: int = 1
+    required: bool = False
+    sort_order: int = 0
+    is_active: bool = True
+    options: list[ModifierOptionOut] = Field(default_factory=list)
+
+
+class ModifierOptionIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    price_delta: Decimal = Decimal("0")
+    sort_order: int = 0
+    is_active: bool = True
+
+
+class ModifierGroupIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    min_select: int = Field(default=0, ge=0, le=20)
+    max_select: int = Field(default=1, ge=1, le=20)
+    required: bool = False
+    sort_order: int = 0
+    is_active: bool = True
+    options: list[ModifierOptionIn] = Field(default_factory=list)
+
+
 class ServiceOut(ServiceIn):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     grab: GrabPriceOut | None = None
+    modifiers: list[ModifierGroupOut] = Field(default_factory=list)
 
 
 class GrabPriceIn(BaseModel):
@@ -355,6 +397,9 @@ class DashboardOut(BaseModel):
 class PosSaleItemIn(BaseModel):
     service_id: int
     quantity: int = Field(default=1, ge=1, le=99)
+    remarks: str | None = None
+    option_ids: list[int] = Field(default_factory=list)
+    unit_price: Decimal | None = None  # optional override including modifiers
 
 
 class PosSaleIn(BaseModel):
@@ -368,6 +413,73 @@ class PosSaleIn(BaseModel):
     charge_mode: str = Field(default="full", pattern="^(full|deposit)$")
     notes: str | None = None
     starts_at: datetime | None = None
+    table_label: str | None = None
+    ticket_id: int | None = None  # settle an open table ticket
+
+
+class PosTicketLineModOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    price_delta: float = 0
+
+
+class PosTicketLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int | None = None
+    name: str
+    quantity: int
+    unit_price: float
+    line_total: float
+    remarks: str | None = None
+    mods: list[PosTicketLineModOut] = Field(default_factory=list)
+
+
+class PosTicketOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    table_label: str
+    status: str
+    currency: str
+    subtotal_amount: float
+    total_amount: float
+    notes: str | None = None
+    kitchen_sent_at: datetime | None = None
+    paid_at: datetime | None = None
+    booking_id: int | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    lines: list[PosTicketLineOut] = Field(default_factory=list)
+
+
+class PosTicketLineIn(BaseModel):
+    service_id: int
+    quantity: int = Field(default=1, ge=1, le=99)
+    remarks: str | None = None
+    option_ids: list[int] = Field(default_factory=list)
+
+
+class PosTicketCreateIn(BaseModel):
+    table_label: str = Field(default="Takeaway", min_length=1, max_length=40)
+    notes: str | None = None
+    lines: list[PosTicketLineIn] = Field(default_factory=list)
+
+
+class PosTicketAddLinesIn(BaseModel):
+    lines: list[PosTicketLineIn] = Field(min_length=1)
+    notes: str | None = None
+
+
+class KitchenSendOut(BaseModel):
+    ok: bool = True
+    ticket: PosTicketOut
+    print_job_id: int
+    slip_text: str
+    message: str = "Sent to kitchen"
 
 
 class PosSaleOut(BaseModel):

@@ -1,7 +1,18 @@
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Order, OrderLine, OrderStatus, Resource, Service, Tenant, User, UserRole
+from app.models import (
+    ModifierGroup,
+    ModifierOption,
+    Order,
+    OrderLine,
+    OrderStatus,
+    Resource,
+    Service,
+    Tenant,
+    User,
+    UserRole,
+)
 from app.security import hash_password
 
 
@@ -219,6 +230,16 @@ def bootstrap(db: Session) -> None:
                 ),
                 Service(
                     tenant_id=kitchen.id,
+                    name="Milo Ais",
+                    description="Iced Milo — customise ice & sweetness.",
+                    duration_minutes=5,
+                    price_amount=4.0,
+                    deposit_amount=0,
+                    currency="MYR",
+                    category="Drinks",
+                ),
+                Service(
+                    tenant_id=kitchen.id,
                     name="Kopi O",
                     description="Black coffee, local style.",
                     duration_minutes=5,
@@ -239,6 +260,71 @@ def bootstrap(db: Session) -> None:
                 ),
             ]
         )
+
+    # Ensure Milo Ais exists even if kitchen was seeded earlier.
+    milo = (
+        db.query(Service)
+        .filter(Service.tenant_id == kitchen.id, Service.name == "Milo Ais")
+        .first()
+    )
+    if milo is None:
+        milo = Service(
+            tenant_id=kitchen.id,
+            name="Milo Ais",
+            description="Iced Milo — customise ice & sweetness.",
+            duration_minutes=5,
+            price_amount=4.0,
+            deposit_amount=0,
+            currency="MYR",
+            category="Drinks",
+        )
+        db.add(milo)
+        db.flush()
+
+    def _ensure_drink_mods(service: Service) -> None:
+        if db.query(ModifierGroup).filter(ModifierGroup.service_id == service.id).count():
+            return
+        ice = ModifierGroup(
+            tenant_id=kitchen.id,
+            service_id=service.id,
+            name="Ice",
+            min_select=1,
+            max_select=1,
+            required=True,
+            sort_order=0,
+        )
+        sweet = ModifierGroup(
+            tenant_id=kitchen.id,
+            service_id=service.id,
+            name="Sweetness",
+            min_select=1,
+            max_select=1,
+            required=True,
+            sort_order=1,
+        )
+        db.add_all([ice, sweet])
+        db.flush()
+        db.add_all(
+            [
+                ModifierOption(group_id=ice.id, name="Normal ice", price_delta=0, sort_order=0),
+                ModifierOption(group_id=ice.id, name="Less ice", price_delta=0, sort_order=1),
+                ModifierOption(group_id=ice.id, name="More ice", price_delta=0, sort_order=2),
+                ModifierOption(group_id=ice.id, name="No ice", price_delta=0, sort_order=3),
+                ModifierOption(group_id=sweet.id, name="Normal sugar", price_delta=0, sort_order=0),
+                ModifierOption(group_id=sweet.id, name="Less sweet", price_delta=0, sort_order=1),
+                ModifierOption(group_id=sweet.id, name="More sweet", price_delta=0.5, sort_order=2),
+                ModifierOption(group_id=sweet.id, name="No sugar", price_delta=0, sort_order=3),
+            ]
+        )
+
+    _ensure_drink_mods(milo)
+    teh = (
+        db.query(Service)
+        .filter(Service.tenant_id == kitchen.id, Service.name == "Iced Teh Tarik")
+        .first()
+    )
+    if teh:
+        _ensure_drink_mods(teh)
 
     # Sample Grab order so Orders queue is non-empty for demos.
     if db.query(Order).filter(Order.tenant_id == kitchen.id).count() == 0:

@@ -19,6 +19,7 @@ from app.routers import (
     pos,
     resources,
     services,
+    tickets,
     vendors,
     whatsapp,
     workspace,
@@ -57,6 +58,7 @@ app.include_router(resources.router, prefix="/v1")
 app.include_router(customers.router, prefix="/v1")
 app.include_router(bookings.router, prefix="/v1")
 app.include_router(pos.router, prefix="/v1")
+app.include_router(tickets.router, prefix="/v1")
 app.include_router(orders.router, prefix="/v1")
 app.include_router(grab.router, prefix="/v1")
 app.include_router(workspace.router, prefix="/v1")

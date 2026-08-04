@@ -100,6 +100,87 @@ def ensure_schema() -> None:
         )
         """,
         "CREATE INDEX IF NOT EXISTS ix_order_lines_order_id ON order_lines (order_id)",
+        """
+        CREATE TABLE IF NOT EXISTS modifier_groups (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+            name VARCHAR(80) NOT NULL,
+            min_select INTEGER DEFAULT 0,
+            max_select INTEGER DEFAULT 1,
+            required BOOLEAN DEFAULT FALSE,
+            sort_order INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_modifier_groups_tenant_id ON modifier_groups (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_modifier_groups_service_id ON modifier_groups (service_id)",
+        """
+        CREATE TABLE IF NOT EXISTS modifier_options (
+            id SERIAL PRIMARY KEY,
+            group_id INTEGER NOT NULL REFERENCES modifier_groups(id) ON DELETE CASCADE,
+            name VARCHAR(80) NOT NULL,
+            price_delta NUMERIC(12,2) DEFAULT 0,
+            sort_order INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT TRUE
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_modifier_options_group_id ON modifier_options (group_id)",
+        """
+        CREATE TABLE IF NOT EXISTS pos_tickets (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+            table_label VARCHAR(40) NOT NULL DEFAULT 'Takeaway',
+            status VARCHAR(40) NOT NULL DEFAULT 'open',
+            currency VARCHAR(3) DEFAULT 'MYR',
+            subtotal_amount NUMERIC(12,2) DEFAULT 0,
+            total_amount NUMERIC(12,2) DEFAULT 0,
+            notes TEXT,
+            kitchen_sent_at TIMESTAMPTZ,
+            paid_at TIMESTAMPTZ,
+            booking_id INTEGER REFERENCES bookings(id),
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_pos_tickets_tenant_id ON pos_tickets (tenant_id)",
+        """
+        CREATE TABLE IF NOT EXISTS pos_ticket_lines (
+            id SERIAL PRIMARY KEY,
+            ticket_id INTEGER NOT NULL REFERENCES pos_tickets(id) ON DELETE CASCADE,
+            service_id INTEGER REFERENCES services(id),
+            name VARCHAR(160) NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            unit_price NUMERIC(12,2) DEFAULT 0,
+            line_total NUMERIC(12,2) DEFAULT 0,
+            remarks TEXT
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_pos_ticket_lines_ticket_id ON pos_ticket_lines (ticket_id)",
+        """
+        CREATE TABLE IF NOT EXISTS pos_ticket_line_mods (
+            id SERIAL PRIMARY KEY,
+            line_id INTEGER NOT NULL REFERENCES pos_ticket_lines(id) ON DELETE CASCADE,
+            option_id INTEGER REFERENCES modifier_options(id),
+            name VARCHAR(80) NOT NULL,
+            price_delta NUMERIC(12,2) DEFAULT 0
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_pos_ticket_line_mods_line_id ON pos_ticket_line_mods (line_id)",
+        """
+        CREATE TABLE IF NOT EXISTS kitchen_print_jobs (
+            id SERIAL PRIMARY KEY,
+            tenant_id INTEGER NOT NULL REFERENCES tenants(id),
+            ticket_id INTEGER NOT NULL REFERENCES pos_tickets(id) ON DELETE CASCADE,
+            status VARCHAR(40) NOT NULL DEFAULT 'pending',
+            trigger VARCHAR(40) DEFAULT 'send_kitchen',
+            slip_text TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            printed_at TIMESTAMPTZ
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_kitchen_print_jobs_tenant_id ON kitchen_print_jobs (tenant_id)",
+        "CREATE INDEX IF NOT EXISTS ix_kitchen_print_jobs_ticket_id ON kitchen_print_jobs (ticket_id)",
         # Best-effort add marketplace channels to legacy Postgres enum.
         """
         DO $$ BEGIN

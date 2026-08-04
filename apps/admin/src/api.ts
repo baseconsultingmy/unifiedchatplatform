@@ -129,6 +129,26 @@ export const api = {
       { method: "PATCH", body: JSON.stringify(body) },
       token,
     ),
+  replaceModifiers: (token: string, serviceId: number, groups: unknown[]) =>
+    request<any[]>(
+      `/v1/services/${serviceId}/modifiers`,
+      { method: "PUT", body: JSON.stringify(groups) },
+      token,
+    ),
+  posTickets: (token: string, status = "open") =>
+    request<any[]>(`/v1/pos/tickets?status=${encodeURIComponent(status)}`, {}, token),
+  createPosTicket: (token: string, body: unknown) =>
+    request<any>("/v1/pos/tickets", { method: "POST", body: JSON.stringify(body) }, token),
+  addPosTicketLines: (token: string, ticketId: number, body: unknown) =>
+    request<any>(
+      `/v1/pos/tickets/${ticketId}/lines`,
+      { method: "POST", body: JSON.stringify(body) },
+      token,
+    ),
+  sendKitchen: (token: string, ticketId: number) =>
+    request<any>(`/v1/pos/tickets/${ticketId}/send-kitchen`, { method: "POST" }, token),
+  cancelPosTicket: (token: string, ticketId: number) =>
+    request<any>(`/v1/pos/tickets/${ticketId}/cancel`, { method: "POST" }, token),
   grabStatus: (token: string) => request<any>("/v1/grab/status", {}, token),
   connectGrab: (token: string) =>
     request<any>("/v1/grab/connect", { method: "POST" }, token),

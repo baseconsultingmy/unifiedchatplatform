@@ -165,6 +165,133 @@ class Service(Base):
     tenant: Mapped[Tenant] = relationship(back_populates="services")
     bookings: Mapped[list[Booking]] = relationship(back_populates="service")
     channel_prices: Mapped[list[ServiceChannelPrice]] = relationship(back_populates="service")
+    modifier_groups: Mapped[list[ModifierGroup]] = relationship(
+        back_populates="service",
+        cascade="all, delete-orphan",
+        order_by="ModifierGroup.sort_order",
+    )
+
+
+class ModifierGroup(Base):
+    """Customization group on a menu item (e.g. Ice level, Sweetness)."""
+
+    __tablename__ = "modifier_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    service_id: Mapped[int] = mapped_column(ForeignKey("services.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    min_select: Mapped[int] = mapped_column(Integer, default=0)
+    max_select: Mapped[int] = mapped_column(Integer, default=1)
+    required: Mapped[bool] = mapped_column(Boolean, default=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    service: Mapped[Service] = relationship(back_populates="modifier_groups")
+    options: Mapped[list[ModifierOption]] = relationship(
+        back_populates="group",
+        cascade="all, delete-orphan",
+        order_by="ModifierOption.sort_order",
+    )
+
+
+class ModifierOption(Base):
+    __tablename__ = "modifier_options"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("modifier_groups.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    price_delta: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    group: Mapped[ModifierGroup] = relationship(back_populates="options")
+
+
+class PosTicketStatus(str, enum.Enum):
+    open = "open"
+    kitchen = "kitchen"
+    awaiting_payment = "awaiting_payment"
+    paid = "paid"
+    cancelled = "cancelled"
+
+
+class PosTicket(Base):
+    """Open dine-in / takeaway ticket parked on a table until payment."""
+
+    __tablename__ = "pos_tickets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    table_label: Mapped[str] = mapped_column(String(40), nullable=False, default="Takeaway")
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default=PosTicketStatus.open.value)
+    currency: Mapped[str] = mapped_column(String(3), default="MYR")
+    subtotal_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    total_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    notes: Mapped[str | None] = mapped_column(Text)
+    kitchen_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    booking_id: Mapped[int | None] = mapped_column(ForeignKey("bookings.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    lines: Mapped[list[PosTicketLine]] = relationship(
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+    )
+    print_jobs: Mapped[list[KitchenPrintJob]] = relationship(
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+    )
+
+
+class PosTicketLine(Base):
+    __tablename__ = "pos_ticket_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("pos_tickets.id"), nullable=False, index=True)
+    service_id: Mapped[int | None] = mapped_column(ForeignKey("services.id"))
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    line_total: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    remarks: Mapped[str | None] = mapped_column(Text)
+
+    ticket: Mapped[PosTicket] = relationship(back_populates="lines")
+    service: Mapped[Service | None] = relationship()
+    mods: Mapped[list[PosTicketLineMod]] = relationship(
+        back_populates="line",
+        cascade="all, delete-orphan",
+    )
+
+
+class PosTicketLineMod(Base):
+    __tablename__ = "pos_ticket_line_mods"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    line_id: Mapped[int] = mapped_column(ForeignKey("pos_ticket_lines.id"), nullable=False, index=True)
+    option_id: Mapped[int | None] = mapped_column(ForeignKey("modifier_options.id"))
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    price_delta: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+
+    line: Mapped[PosTicketLine] = relationship(back_populates="mods")
+
+
+class KitchenPrintJob(Base):
+    __tablename__ = "kitchen_print_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
+    ticket_id: Mapped[int] = mapped_column(ForeignKey("pos_tickets.id"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="pending")
+    trigger: Mapped[str] = mapped_column(String(40), default="send_kitchen")
+    slip_text: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    printed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    ticket: Mapped[PosTicket] = relationship(back_populates="print_jobs")
 
 
 class ServiceChannelPrice(Base):

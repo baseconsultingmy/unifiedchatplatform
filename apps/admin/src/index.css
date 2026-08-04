@@ -2663,6 +2663,76 @@ p {
   min-width: 4.5rem;
 }
 
+.pos-open-tickets {
+  display: grid;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.pos-table-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.pos-table-custom {
+  width: 5.5rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.38rem 0.55rem;
+  background: white;
+  font: inherit;
+}
+
+.pos-ticket-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
+.pos-open-ticket {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 0.05rem;
+  text-align: left;
+  min-width: 92px;
+  padding: 0.45rem 0.55rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.pos-open-ticket.active {
+  border-color: var(--base-amber);
+  background: var(--base-signal-soft);
+}
+
+.pos-mod-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.pos-mod-option {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pos-mod-option.active {
+  border-color: var(--base-navy);
+  background: rgba(15, 39, 68, 0.1);
+}
+
 .pos-catalog .pos-service-grid {
   overflow: auto;
   min-height: 0;

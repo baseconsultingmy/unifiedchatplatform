@@ -18,9 +18,68 @@ export default function ServicesPage() {
   const [grabMsg, setGrabMsg] = useState("");
   const [overrideDraft, setOverrideDraft] = useState<Record<number, string>>({});
   const [busyPublish, setBusyPublish] = useState(false);
+  const [modItem, setModItem] = useState<any | null>(null);
+  const [modGroups, setModGroups] = useState<any[]>([]);
+  const [modBusy, setModBusy] = useState(false);
+  const [modMsg, setModMsg] = useState("");
 
   const profile = industryProfile(industry);
   const isFnb = profile.key === "fnb";
+
+  function openModifiers(item: any) {
+    setModItem(item);
+    setModMsg("");
+    const groups = (item.modifiers || []).map((g: any) => ({
+      name: g.name,
+      min_select: g.min_select ?? 0,
+      max_select: g.max_select ?? 1,
+      required: !!g.required,
+      sort_order: g.sort_order ?? 0,
+      is_active: g.is_active !== false,
+      options: (g.options || []).map((o: any) => ({
+        name: o.name,
+        price_delta: Number(o.price_delta || 0),
+        sort_order: o.sort_order ?? 0,
+        is_active: o.is_active !== false,
+      })),
+    }));
+    setModGroups(
+      groups.length
+        ? groups
+        : [
+            {
+              name: "Ice",
+              min_select: 1,
+              max_select: 1,
+              required: true,
+              sort_order: 0,
+              is_active: true,
+              options: [
+                { name: "Normal ice", price_delta: 0, sort_order: 0, is_active: true },
+                { name: "Less ice", price_delta: 0, sort_order: 1, is_active: true },
+                { name: "More ice", price_delta: 0, sort_order: 2, is_active: true },
+              ],
+            },
+          ],
+    );
+  }
+
+  async function saveModifiers() {
+    if (!token || !modItem) return;
+    setModBusy(true);
+    setModMsg("");
+    setError("");
+    try {
+      await api.replaceModifiers(token, modItem.id, modGroups);
+      setModMsg("Customisations saved");
+      await refresh();
+      setModItem(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save customisations");
+    } finally {
+      setModBusy(false);
+    }
+  }
 
   async function refresh() {
     if (!token) return;
@@ -187,6 +246,7 @@ export default function ServicesPage() {
               {isFnb ? <th>Grab</th> : null}
               {profile.showDeposit ? <th>Deposit</th> : null}
               {isFnb ? <th>Grab override</th> : null}
+              {isFnb ? <th>Customise</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -195,6 +255,11 @@ export default function ServicesPage() {
                 <td>
                   <strong>{s.name}</strong>
                   {!s.is_active ? <div className="muted">Inactive</div> : null}
+                  {isFnb && (s.modifiers || []).length ? (
+                    <div className="muted" style={{ fontSize: "0.78rem" }}>
+                      {(s.modifiers || []).map((g: any) => g.name).join(" · ")}
+                    </div>
+                  ) : null}
                 </td>
                 <td>{s.category || "—"}</td>
                 {profile.showDuration ? <td>{s.duration_minutes}m</td> : null}
@@ -240,11 +305,191 @@ export default function ServicesPage() {
                     </div>
                   </td>
                 ) : null}
+                {isFnb ? (
+                  <td>
+                    <button type="button" className="btn secondary" onClick={() => openModifiers(s)}>
+                      {(s.modifiers || []).length ? "Edit" : "Add"}
+                    </button>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
         </table>
       </section>
+
+      {modItem ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2>Customisations — {modItem.name}</h2>
+                <p>Shown as a popup when this item is tapped on POS (e.g. less ice, less sweet).</p>
+              </div>
+              <button type="button" className="btn secondary" onClick={() => setModItem(null)}>
+                Close
+              </button>
+            </div>
+
+            {modGroups.map((g, gi) => (
+              <div key={gi} className="pos-confirmed" style={{ marginBottom: "0.75rem" }}>
+                <label className="pos-field">
+                  Group name
+                  <input
+                    value={g.name}
+                    onChange={(e) =>
+                      setModGroups((rows) =>
+                        rows.map((row, i) => (i === gi ? { ...row, name: e.target.value } : row)),
+                      )
+                    }
+                  />
+                </label>
+                <div className="btn-row" style={{ marginTop: "0.45rem" }}>
+                  <label className="pos-field">
+                    Min
+                    <input
+                      type="number"
+                      min={0}
+                      value={g.min_select}
+                      onChange={(e) =>
+                        setModGroups((rows) =>
+                          rows.map((row, i) =>
+                            i === gi ? { ...row, min_select: Number(e.target.value) } : row,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="pos-field">
+                    Max
+                    <input
+                      type="number"
+                      min={1}
+                      value={g.max_select}
+                      onChange={(e) =>
+                        setModGroups((rows) =>
+                          rows.map((row, i) =>
+                            i === gi ? { ...row, max_select: Number(e.target.value) } : row,
+                          ),
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+                {(g.options || []).map((o: any, oi: number) => (
+                  <div key={oi} className="btn-row" style={{ marginTop: "0.4rem", alignItems: "end" }}>
+                    <label className="pos-field" style={{ flex: 1 }}>
+                      Option
+                      <input
+                        value={o.name}
+                        onChange={(e) =>
+                          setModGroups((rows) =>
+                            rows.map((row, i) =>
+                              i === gi
+                                ? {
+                                    ...row,
+                                    options: row.options.map((opt: any, j: number) =>
+                                      j === oi ? { ...opt, name: e.target.value } : opt,
+                                    ),
+                                  }
+                                : row,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="pos-field" style={{ width: "6rem" }}>
+                      +RM
+                      <input
+                        type="number"
+                        step={0.5}
+                        value={o.price_delta}
+                        onChange={(e) =>
+                          setModGroups((rows) =>
+                            rows.map((row, i) =>
+                              i === gi
+                                ? {
+                                    ...row,
+                                    options: row.options.map((opt: any, j: number) =>
+                                      j === oi
+                                        ? { ...opt, price_delta: Number(e.target.value) }
+                                        : opt,
+                                    ),
+                                  }
+                                : row,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="btn secondary"
+                  style={{ marginTop: "0.5rem" }}
+                  onClick={() =>
+                    setModGroups((rows) =>
+                      rows.map((row, i) =>
+                        i === gi
+                          ? {
+                              ...row,
+                              options: [
+                                ...row.options,
+                                {
+                                  name: "New option",
+                                  price_delta: 0,
+                                  sort_order: row.options.length,
+                                  is_active: true,
+                                },
+                              ],
+                            }
+                          : row,
+                      ),
+                    )
+                  }
+                >
+                  Add option
+                </button>
+              </div>
+            ))}
+
+            <div className="btn-row">
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() =>
+                  setModGroups((rows) => [
+                    ...rows,
+                    {
+                      name: "New group",
+                      min_select: 0,
+                      max_select: 1,
+                      required: false,
+                      sort_order: rows.length,
+                      is_active: true,
+                      options: [
+                        { name: "Option", price_delta: 0, sort_order: 0, is_active: true },
+                      ],
+                    },
+                  ])
+                }
+              >
+                Add group
+              </button>
+              <button type="button" className="btn" disabled={modBusy} onClick={saveModifiers}>
+                {modBusy ? "Saving…" : "Save customisations"}
+              </button>
+            </div>
+            {modMsg ? <p className="muted">{modMsg}</p> : null}
+          </div>
+        </div>
+      ) : null}
 
       <form className="panel form" onSubmit={onCreate}>
         <h2>Add {profile.catalogNounSingular.toLowerCase()}</h2>

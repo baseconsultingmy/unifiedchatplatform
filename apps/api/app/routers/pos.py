@@ -17,7 +17,11 @@ from app.models import (
     Customer,
     Message,
     MessageDirection,
+    ModifierOption,
     PaymentStatus,
+    PosTicket,
+    PosTicketLine,
+    PosTicketStatus,
     Service,
     User,
 )
@@ -31,6 +35,7 @@ from app.receipts import (
 from app.schemas import BookingOut, PosReceiptSendIn, PosReceiptSendOut, PosSaleIn, PosSaleItemIn, PosSaleOut
 from app.whatsapp_client import WhatsAppSendError, send_text_message
 from app.whatsapp_creds import resolve_whatsapp_credentials
+from sqlalchemy.orm import joinedload
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -58,39 +63,91 @@ def create_walkin_sale(
     user: User = Depends(require_vendor_user),
     db: Session = Depends(get_db),
 ) -> PosSaleOut:
-    raw_items = _normalize_items(payload)
-    # Merge duplicate service lines
-    qty_by_id: dict[int, int] = {}
-    for item in raw_items:
-        qty_by_id[item.service_id] = qty_by_id.get(item.service_id, 0) + int(item.quantity)
+    open_ticket: PosTicket | None = None
+    if payload.ticket_id is not None:
+        open_ticket = (
+            db.query(PosTicket)
+            .options(joinedload(PosTicket.lines).joinedload(PosTicketLine.mods))
+            .filter(
+                PosTicket.id == payload.ticket_id,
+                PosTicket.tenant_id == user.tenant_id,
+            )
+            .first()
+        )
+        if open_ticket is None:
+            raise HTTPException(status_code=404, detail="Open ticket not found")
+        if open_ticket.status in (
+            PosTicketStatus.paid.value,
+            PosTicketStatus.cancelled.value,
+        ):
+            raise HTTPException(status_code=400, detail="Ticket is already closed")
+        # Build sale lines from the parked ticket
+        raw_items = [
+            PosSaleItemIn(
+                service_id=int(ln.service_id or 0),
+                quantity=ln.quantity,
+                remarks=ln.remarks,
+                unit_price=Decimal(str(ln.unit_price or 0)),
+            )
+            for ln in open_ticket.lines
+            if ln.service_id
+        ]
+        if not raw_items:
+            raise HTTPException(status_code=400, detail="Ticket has no items")
+    else:
+        raw_items = _normalize_items(payload)
 
+    service_ids = [item.service_id for item in raw_items]
     services = (
         db.query(Service)
         .filter(
             Service.tenant_id == user.tenant_id,
             Service.is_active.is_(True),
-            Service.id.in_(list(qty_by_id.keys())),
+            Service.id.in_(service_ids),
         )
         .all()
     )
     by_id = {s.id: s for s in services}
-    if len(by_id) != len(qty_by_id):
+    if any(sid not in by_id for sid in service_ids):
         raise HTTPException(status_code=404, detail="One or more catalog items were not found")
+
+    all_opt_ids = [oid for item in raw_items for oid in (item.option_ids or [])]
+    options_by_id: dict[int, ModifierOption] = {}
+    if all_opt_ids:
+        for opt in (
+            db.query(ModifierOption)
+            .options(joinedload(ModifierOption.group))
+            .filter(ModifierOption.id.in_(all_opt_ids), ModifierOption.is_active.is_(True))
+            .all()
+        ):
+            if opt.group.tenant_id == user.tenant_id:
+                options_by_id[opt.id] = opt
 
     line_labels: list[str] = []
     amount = Decimal("0")
     duration_total = 0
     currency = "MYR"
     primary: Service | None = None
-    for service_id, qty in qty_by_id.items():
-        service = by_id[service_id]
+    for item in raw_items:
+        service = by_id[item.service_id]
         if primary is None:
             primary = service
         currency = service.currency or currency
-        unit = Decimal(str(service.price_amount or 0))
+        qty = int(item.quantity)
+        if item.unit_price is not None:
+            unit = Decimal(str(item.unit_price))
+        else:
+            unit = Decimal(str(service.price_amount or 0))
+            for oid in item.option_ids or []:
+                opt = options_by_id.get(oid)
+                if opt:
+                    unit += Decimal(str(opt.price_delta or 0))
         amount += unit * qty
         duration_total += int(service.duration_minutes or 0) * qty
-        line_labels.append(f"{qty}× {service.name}")
+        label = f"{qty}× {service.name}"
+        if item.remarks:
+            label = f"{label} ({item.remarks})"
+        line_labels.append(label)
 
     assert primary is not None
 
@@ -136,8 +193,13 @@ def create_walkin_sale(
     ends_at = starts_at + timedelta(minutes=max(duration_total, 15))
 
     deposit = Decimal(str(primary.deposit_amount or 0))
-    single_item = len(qty_by_id) == 1 and next(iter(qty_by_id.values())) == 1
-    use_deposit = payload.charge_mode == "deposit" and single_item and deposit > 0
+    single_item = len(raw_items) == 1 and raw_items[0].quantity == 1
+    use_deposit = (
+        open_ticket is None
+        and payload.charge_mode == "deposit"
+        and single_item
+        and deposit > 0
+    )
     if use_deposit:
         due_deposit = deposit
         payment_status = PaymentStatus.deposit_due
@@ -145,8 +207,13 @@ def create_walkin_sale(
         due_deposit = Decimal("0")
         payment_status = PaymentStatus.unpaid
 
+    table_bit = None
+    if open_ticket:
+        table_bit = f"Table {open_ticket.table_label}"
+    elif payload.table_label:
+        table_bit = f"Table {payload.table_label.strip()}"
     cart_note = "POS · " + ", ".join(line_labels)
-    notes = " · ".join([x for x in [payload.notes, cart_note] if x])
+    notes = " · ".join([x for x in [table_bit, payload.notes, cart_note] if x])
 
     booking = Booking(
         tenant_id=user.tenant_id,
@@ -166,6 +233,8 @@ def create_walkin_sale(
     # For deposit on single item, amount should still be full price
     if use_deposit:
         booking.amount = Decimal(str(primary.price_amount or 0))
+    elif open_ticket:
+        booking.amount = amount
 
     db.add(booking)
     db.flush()
@@ -180,6 +249,14 @@ def create_walkin_sale(
         booking.status = BookingStatus.confirmed
         booking.paid_at = datetime.now(timezone.utc)
         already_paid = True
+
+    if open_ticket:
+        open_ticket.booking_id = booking.id
+        if already_paid:
+            open_ticket.status = PosTicketStatus.paid.value
+            open_ticket.paid_at = booking.paid_at
+        else:
+            open_ticket.status = PosTicketStatus.awaiting_payment.value
 
     db.commit()
     booking = _booking_out(db, booking.id)
