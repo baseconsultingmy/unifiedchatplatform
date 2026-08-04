@@ -15,6 +15,14 @@ export type IndustryProfile = {
   resourcesNoun: string;
   roomNoun: string;
   personNoun: string;
+  /** Ticket / cart wording in POS */
+  posTicketNoun: string;
+  /** Primary checkout CTA before payment */
+  posChargeLabel: string;
+  /** F&B: skip customer modal; charge → payment */
+  posFastCheckout: boolean;
+  /** Optional table / seat / order note on ticket */
+  posShowOrderNote: boolean;
 };
 
 const PROFILES: Record<IndustryKey, IndustryProfile> = {
@@ -33,14 +41,18 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     resourcesNoun: "Rooms & staff",
     roomNoun: "Room / bay",
     personNoun: "Artist / therapist",
+    posTicketNoun: "Ticket",
+    posChargeLabel: "Confirm order",
+    posFastCheckout: false,
+    posShowOrderNote: false,
   },
   fnb: {
     key: "fnb",
     label: "Food & Beverage",
     catalogNoun: "Menu",
     catalogNounSingular: "Item",
-    posTitle: "Kiosk POS",
-    posHint: "Build an order from the menu, adjust quantities, then take payment.",
+    posTitle: "Kitchen POS",
+    posHint: "Tap menu items into the order, then charge — walk-in by default.",
     categoryHints: ["Food", "Drinks", "Snacks", "Combos"],
     showDuration: false,
     showDeposit: false,
@@ -49,6 +61,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     resourcesNoun: "Resources",
     roomNoun: "Station",
     personNoun: "Staff",
+    posTicketNoun: "Order",
+    posChargeLabel: "Charge",
+    posFastCheckout: true,
+    posShowOrderNote: true,
   },
   retail: {
     key: "retail",
@@ -65,6 +81,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     resourcesNoun: "Resources",
     roomNoun: "Station",
     personNoun: "Staff",
+    posTicketNoun: "Cart",
+    posChargeLabel: "Charge",
+    posFastCheckout: true,
+    posShowOrderNote: false,
   },
   general: {
     key: "general",
@@ -81,6 +101,10 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     resourcesNoun: "Resources",
     roomNoun: "Room",
     personNoun: "Staff",
+    posTicketNoun: "Cart",
+    posChargeLabel: "Confirm order",
+    posFastCheckout: false,
+    posShowOrderNote: false,
   },
 };
 

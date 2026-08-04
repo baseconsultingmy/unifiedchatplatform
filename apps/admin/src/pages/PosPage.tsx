@@ -19,12 +19,19 @@ function formatMoney(n: number): string {
   return n.toFixed(2);
 }
 
+function roundUpTender(amount: number, step: number): number {
+  if (amount <= 0) return step;
+  return Math.ceil(amount / step) * step;
+}
+
 export default function PosPage() {
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
+  const fast = profile.posFastCheckout;
   const [services, setServices] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [category, setCategory] = useState("All");
+  const [menuQuery, setMenuQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [chargeMode, setChargeMode] = useState<"full" | "deposit">("full");
   const [step, setStep] = useState<CheckoutStep>(null);
@@ -33,6 +40,7 @@ export default function PosPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [tableLabel, setTableLabel] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
   const [tenderInput, setTenderInput] = useState("");
   const [error, setError] = useState("");
@@ -54,13 +62,15 @@ export default function PosPage() {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
       if (step === "cash") setStep("payment");
-      else if (step === "payment") setStep("customer");
-      else if (step === "customer") setStep(null);
+      else if (step === "payment") {
+        if (fast) unlockCart();
+        else setStep("customer");
+      } else if (step === "customer") setStep(null);
       else if (step === "qr" || step === "done") resetSale();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step]);
+  }, [step, fast]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -71,9 +81,20 @@ export default function PosPage() {
   }, [services]);
 
   const visibleServices = useMemo(() => {
-    if (category === "All") return services;
-    return services.filter((s) => (s.category || "General") === category);
-  }, [services, category]);
+    const q = menuQuery.trim().toLowerCase();
+    return services.filter((s) => {
+      if (category !== "All" && (s.category || "General") !== category) return false;
+      if (!q) return true;
+      return (
+        String(s.name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(s.category || "")
+          .toLowerCase()
+          .includes(q)
+      );
+    });
+  }, [services, category, menuQuery]);
 
   const cartDetails = useMemo(() => {
     return cart
@@ -123,7 +144,11 @@ export default function PosPage() {
     Number(cartDetails[0].service.deposit_amount || 0) > 0;
 
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : null;
-  const guestLabel = selectedCustomer?.name || customerName.trim() || "Walk-in guest";
+  const guestLabel =
+    selectedCustomer?.name ||
+    customerName.trim() ||
+    (tableLabel.trim() ? `Table ${tableLabel.trim()}` : "") ||
+    (fast ? "Walk-in" : "Walk-in guest");
   const guestPhone = selectedCustomer?.phone || customerPhone.trim() || "";
 
   const filteredCustomers = useMemo(() => {
@@ -139,14 +164,27 @@ export default function PosPage() {
       .slice(0, 8);
   }, [customers, customerQuery]);
 
+  const cashQuickAmounts = useMemo(() => {
+    const exact = Number(amountDue.toFixed(2));
+    const opts = [exact, roundUpTender(exact, 5), roundUpTender(exact, 10), 20, 50, 100];
+    const uniq: number[] = [];
+    for (const n of opts) {
+      const v = Number(n.toFixed(2));
+      if (v + 1e-9 >= exact && !uniq.includes(v)) uniq.push(v);
+    }
+    return uniq.slice(0, 5);
+  }, [amountDue]);
+
   function resetSale() {
     setCart([]);
     setCustomerId(null);
     setCustomerName("");
     setCustomerPhone("");
     setNotes("");
+    setTableLabel("");
     setTenderInput("");
     setCustomerQuery("");
+    setMenuQuery("");
     setChargeMode("full");
     setOrderConfirmed(false);
     setStep(null);
@@ -205,6 +243,14 @@ export default function PosPage() {
     if (cartDetails.length === 0 || amountDue <= 0) return;
     setError("");
     setOrderConfirmed(true);
+    if (fast) {
+      if (!customerName.trim() && !customerId) {
+        setCustomerName(tableLabel.trim() ? `Table ${tableLabel.trim()}` : "Walk-in");
+      }
+      setStep("payment");
+      setTenderInput("");
+      return;
+    }
     setStep("customer");
   }
 
@@ -217,7 +263,6 @@ export default function PosPage() {
 
   function proceedToPayment(withCustomer: boolean) {
     if (!withCustomer) {
-      // skip customer — keep walk-in defaults if empty
       if (!customerName.trim() && !customerId) {
         setCustomerName("Walk-in");
       }
@@ -235,7 +280,6 @@ export default function PosPage() {
       setStep("cash");
       return;
     }
-    // QR — create sale then show QR
     void checkout("qr");
   }
 
@@ -263,6 +307,7 @@ export default function PosPage() {
     setBusy(true);
     try {
       const saleNotes = [
+        tableLabel.trim() ? `Table ${tableLabel.trim()}` : null,
         notes.trim(),
         method === "cash"
           ? `Cash received ${currency} ${formatMoney(tendered)}; change ${currency} ${formatMoney(changeDue)}`
@@ -277,7 +322,7 @@ export default function PosPage() {
           quantity: l.quantity,
         })),
         customer_id: customerId,
-        customer_name: customerName || null,
+        customer_name: customerName || (tableLabel.trim() ? `Table ${tableLabel.trim()}` : null),
         customer_phone: customerPhone || null,
         payment_method: method,
         charge_mode: depositAllowed && chargeMode === "deposit" ? "deposit" : "full",
@@ -301,13 +346,24 @@ export default function PosPage() {
   const locked = orderConfirmed || Boolean(step);
 
   return (
-    <div className="pos-shell page-fill">
+    <div className={`pos-shell page-fill ${fast ? "pos-fnb" : ""}`}>
       <section className="panel pos-catalog page-panel">
         <div className="pos-catalog-head">
           <div>
             <h1>{profile.posTitle}</h1>
             <p>{profile.posHint}</p>
           </div>
+          {fast ? (
+            <label className="pos-menu-search">
+              <span className="muted">Search menu</span>
+              <input
+                value={menuQuery}
+                onChange={(e) => setMenuQuery(e.target.value)}
+                placeholder="Nasi, teh, combo…"
+                disabled={locked}
+              />
+            </label>
+          ) : null}
         </div>
 
         <div className="pos-category-row">
@@ -325,9 +381,13 @@ export default function PosPage() {
         </div>
 
         {visibleServices.length === 0 ? (
-          <p className="muted">No active {profile.catalogNoun.toLowerCase()} yet.</p>
+          <p className="muted">
+            {menuQuery.trim()
+              ? `No ${profile.catalogNoun.toLowerCase()} match “${menuQuery.trim()}”.`
+              : `No active ${profile.catalogNoun.toLowerCase()} yet.`}
+          </p>
         ) : (
-          <div className={`pos-service-grid ${locked ? "locked" : ""}`}>
+          <div className={`pos-service-grid ${locked ? "locked" : ""} ${fast ? "dense" : ""}`}>
             {visibleServices.map((s) => {
               const inCart = cart.find((l) => l.serviceId === s.id);
               return (
@@ -338,11 +398,11 @@ export default function PosPage() {
                   onClick={() => addToCart(s.id)}
                   disabled={locked}
                 >
+                  {inCart ? <span className="pos-qty-badge">×{inCart.quantity}</span> : null}
                   <strong>{s.name}</strong>
                   <span className="pos-service-meta">
                     {s.category || "General"}
                     {profile.showDuration ? ` · ${s.duration_minutes} min` : ""}
-                    {inCart ? ` · ×${inCart.quantity}` : ""}
                   </span>
                   <span className="pos-service-price">
                     {s.currency} {Number(s.price_amount).toFixed(2)}
@@ -357,11 +417,11 @@ export default function PosPage() {
       <aside className="panel pos-cart-side page-panel">
         <div className="pos-register-head">
           <div>
-            <h2>Cart</h2>
+            <h2>{profile.posTicketNoun}</h2>
             <p className="muted">
               {itemCount
-                ? `${itemCount} item${itemCount === 1 ? "" : "s"} selected`
-                : "Select items from POS"}
+                ? `${itemCount} item${itemCount === 1 ? "" : "s"}`
+                : `Tap ${profile.catalogNounSingular.toLowerCase()}s to start`}
             </p>
           </div>
           <button
@@ -370,13 +430,55 @@ export default function PosPage() {
             onClick={resetSale}
             disabled={!cart.length && !result && step !== "done"}
           >
-            New sale
+            {fast ? "New order" : "New sale"}
           </button>
         </div>
 
+        {profile.posShowOrderNote && !locked ? (
+          <div className="pos-order-meta">
+            <label className="pos-field">
+              Table / seat
+              <input
+                value={tableLabel}
+                onChange={(e) => setTableLabel(e.target.value)}
+                placeholder="A3, takeaway…"
+              />
+            </label>
+            <label className="pos-field">
+              Kitchen note
+              <input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Less spicy, no ice…"
+              />
+            </label>
+          </div>
+        ) : null}
+
+        {profile.posShowOrderNote && locked && (tableLabel.trim() || notes.trim()) ? (
+          <div className="pos-order-meta locked">
+            {tableLabel.trim() ? (
+              <div>
+                <span className="muted">Table</span>
+                <strong>{tableLabel.trim()}</strong>
+              </div>
+            ) : null}
+            {notes.trim() ? (
+              <div>
+                <span className="muted">Note</span>
+                <strong>{notes.trim()}</strong>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="pos-register-body">
           {cartDetails.length === 0 ? (
-            <div className="pos-register-empty muted">Tap services on the left to build the cart.</div>
+            <div className="pos-register-empty muted">
+              {fast
+                ? "Tap menu items on the left to build this order."
+                : "Tap services on the left to build the cart."}
+            </div>
           ) : (
             <div className="pos-register-lines">
               {cartDetails.map((line) => (
@@ -413,39 +515,32 @@ export default function PosPage() {
           )}
         </div>
 
-        <div className={`pos-confirmed ${orderConfirmed ? "active" : ""}`}>
-          <div className="pos-confirmed-head">
-            <div>
-              <h3>Confirmed order / booking</h3>
-              <p className="muted">
-                {orderConfirmed
-                  ? "Locked for checkout — customer & payment next"
-                  : "Review the cart, then confirm to continue"}
-              </p>
+        <div className={`pos-ticket-footer ${orderConfirmed ? "locked" : ""}`}>
+          {!fast && orderConfirmed ? (
+            <div className="pos-confirmed-head compact">
+              <div>
+                <h3>Locked for checkout</h3>
+                <p className="muted">Customer & payment next</p>
+              </div>
+              {step !== "done" && step !== "qr" ? (
+                <button type="button" className="btn secondary" onClick={unlockCart}>
+                  Edit cart
+                </button>
+              ) : null}
             </div>
-            {orderConfirmed && step !== "done" && step !== "qr" ? (
-              <button type="button" className="btn secondary" onClick={unlockCart}>
-                Edit cart
-              </button>
-            ) : null}
-          </div>
+          ) : null}
 
-          {cartDetails.length === 0 ? (
-            <div className="muted">Nothing confirmed yet.</div>
-          ) : (
-            <ul className="pos-confirmed-list">
-              {cartDetails.map((line) => (
-                <li key={line.serviceId}>
-                  <span>
-                    {line.quantity}× {line.service.name}
-                  </span>
-                  <span>
-                    {currency} {formatMoney(line.lineTotal)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          {fast && orderConfirmed && step !== "done" && step !== "qr" ? (
+            <div className="pos-confirmed-head compact">
+              <div>
+                <h3>Charging order</h3>
+                <p className="muted">{guestLabel}</p>
+              </div>
+              <button type="button" className="btn secondary" onClick={unlockCart}>
+                Edit order
+              </button>
+            </div>
+          ) : null}
 
           {depositAllowed && !locked ? (
             <div className="segmented pos-charge-mode">
@@ -468,39 +563,30 @@ export default function PosPage() {
 
           <div className="pos-register-total">
             <span>
-              {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total due"}
+              {chargeMode === "deposit" && depositAllowed ? "Deposit due" : "Total"}
             </span>
             <strong>
               {currency} {formatMoney(amountDue)}
             </strong>
           </div>
 
-          {orderConfirmed ? (
-            <div className="pos-customer-chip static">
-              <div>
-                <span className="muted">Customer</span>
-                <strong>{guestLabel}</strong>
-                <span className="muted">{guestPhone || "No phone yet"}</span>
-              </div>
-            </div>
-          ) : null}
-
           {!orderConfirmed ? (
             <div className="btn-row pos-actions">
               <button
                 type="button"
-                className="btn"
+                className="btn pos-charge-btn"
                 disabled={cartDetails.length === 0 || amountDue <= 0}
                 onClick={startConfirmOrder}
               >
-                Confirm order
+                {profile.posChargeLabel}
+                {amountDue > 0 ? ` · ${currency} ${formatMoney(amountDue)}` : ""}
               </button>
             </div>
           ) : null}
         </div>
       </aside>
 
-      {/* Step 1: Customer */}
+      {/* Step 1: Customer (wellness / slow checkout only) */}
       {step === "customer" ? (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -613,7 +699,7 @@ export default function PosPage() {
         </div>
       ) : null}
 
-      {/* Step 2: Payment method */}
+      {/* Payment method */}
       {step === "payment" ? (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -628,9 +714,14 @@ export default function PosPage() {
                 <h2 id="pos-pay-title">Choose payment</h2>
                 <p>
                   {guestLabel} · {currency} {formatMoney(amountDue)}
+                  {itemCount ? ` · ${itemCount} items` : ""}
                 </p>
               </div>
-              <button type="button" className="btn secondary" onClick={() => setStep("customer")}>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => (fast ? unlockCart() : setStep("customer"))}
+              >
                 Back
               </button>
             </div>
@@ -666,7 +757,7 @@ export default function PosPage() {
         </div>
       ) : null}
 
-      {/* Step 3a: Cash calculator */}
+      {/* Cash calculator */}
       {step === "cash" ? (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -702,6 +793,19 @@ export default function PosPage() {
                     {currency} {formatMoney(balanceDue > 0 ? balanceDue : changeDue)}
                   </strong>
                 </div>
+              </div>
+
+              <div className="btn-row pos-cash-quick">
+                {cashQuickAmounts.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => setTenderInput(formatMoney(n))}
+                  >
+                    {n === Number(amountDue.toFixed(2)) ? "Exact" : formatMoney(n)}
+                  </button>
+                ))}
               </div>
 
               <div className="pos-keypad">
@@ -750,7 +854,7 @@ export default function PosPage() {
         </div>
       ) : null}
 
-      {/* Step 3b: QR */}
+      {/* QR */}
       {step === "qr" && result?.payment_url ? (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -789,11 +893,7 @@ export default function PosPage() {
 
       {/* Receipt / done */}
       {step === "done" && result ? (
-        <div
-          className="modal-backdrop"
-          role="presentation"
-          onClick={resetSale}
-        >
+        <div className="modal-backdrop" role="presentation" onClick={resetSale}>
           <div
             className="modal-card booking-modal pos-flow-modal receipt-modal"
             role="dialog"
