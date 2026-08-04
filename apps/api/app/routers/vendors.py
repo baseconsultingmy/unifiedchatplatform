@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import require_platform_admin
+from app.grab_client import grab_configured
+from app.grab_creds import apply_grab_fields
 from app.models import Booking, Service, Tenant, User, UserRole
 from app.routers.workspace import normalize_industry
 from app.schemas import PlatformMetaOut, TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
@@ -63,6 +65,12 @@ def _vendor_out(db: Session, tenant: Tenant) -> VendorOut:
         wa_connected_at=tenant.wa_connected_at,
         wa_access_token_set=bool(tenant.wa_access_token),
         line_channel_id=tenant.line_channel_id,
+        grab_merchant_id=tenant.grab_merchant_id,
+        grab_markup_percent=float(tenant.grab_markup_percent or 30),
+        grab_sync_status=tenant.grab_sync_status or "not_configured",
+        grab_last_synced_at=tenant.grab_last_synced_at,
+        grab_activation_url=tenant.grab_activation_url,
+        grab_partner_token_set=bool(tenant.grab_partner_token),
         created_at=tenant.created_at,
         owner_email=owner.email if owner else None,
         owner_name=owner.full_name if owner else None,
@@ -96,6 +104,12 @@ def platform_meta_overview(
     with_token = sum(1 for t in vendors if (t.wa_access_token or "").strip())
     with_flow = sum(1 for t in vendors if (t.wa_flow_id or "").strip())
     verified = sum(1 for t in vendors if (t.wa_webhook_status or "") == "verified")
+    with_grab = sum(
+        1
+        for t in vendors
+        if (t.grab_merchant_id or "").strip()
+        or (t.grab_sync_status or "") not in ("", "not_configured")
+    )
     crypto_ok = is_flow_crypto_configured(settings.wa_flow_private_key)
     notes = [
         "Per-vendor Phone number ID + access token are set on each row via Meta setup (or by the merchant under Settings).",
@@ -109,6 +123,8 @@ def platform_meta_overview(
         notes.append("No platform fallback access token is configured.")
     if not crypto_ok:
         notes.append("WA_FLOW_PRIVATE_KEY missing — Flows data endpoint cannot decrypt Meta requests.")
+    if not grab_configured():
+        notes.append("GRAB_CLIENT_ID / GRAB_CLIENT_SECRET unset — Grab Connect / Publish run in dry-run.")
     return PlatformMetaOut(
         webhook_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp",
         flows_endpoint_url=f"{settings.public_api_base.rstrip('/')}/v1/webhooks/whatsapp/flows",
@@ -117,10 +133,12 @@ def platform_meta_overview(
         platform_access_token_set=bool(settings.meta_access_token),
         platform_phone_number_id=(settings.meta_phone_number_id or "").strip() or None,
         flow_crypto_configured=crypto_ok,
+        grab_credentials_set=grab_configured(),
         vendors_with_phone_id=with_phone,
         vendors_with_token=with_token,
         vendors_with_flow=with_flow,
         vendors_verified=verified,
+        vendors_with_grab=with_grab,
         notes=notes,
     )
 
@@ -195,8 +213,42 @@ def update_vendor(
         _ensure_unique_phone_id(db, data.get("wa_phone_number_id"), exclude_id=tenant.id)
 
     apply_whatsapp_fields(tenant, data)
+    apply_grab_fields(tenant, data)
     for key, value in data.items():
         setattr(tenant, key, value)
+    db.commit()
+    db.refresh(tenant)
+    return _vendor_out(db, tenant)
+
+
+@router.post("/{vendor_id}/grab/connect", response_model=VendorOut)
+async def connect_vendor_grab(
+    vendor_id: int,
+    _: User = Depends(require_platform_admin),
+    db: Session = Depends(get_db),
+) -> VendorOut:
+    """Master Admin: start Grab self-serve activation for a vendor."""
+    from app import grab_client
+
+    tenant = (
+        db.query(Tenant)
+        .filter(Tenant.id == vendor_id, Tenant.is_platform.is_(False))
+        .first()
+    )
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    result = await grab_client.create_self_serve_activation(partner_merchant_id=tenant.slug)
+    if not result.get("ok"):
+        raise HTTPException(
+            status_code=400,
+            detail=result.get("detail") or "Could not start Grab activation",
+        )
+    tenant.grab_activation_url = result.get("activation_url")
+    if not (tenant.grab_merchant_id or "").strip():
+        tenant.grab_merchant_id = tenant.slug
+    if tenant.grab_sync_status in (None, "", "not_configured"):
+        tenant.grab_sync_status = "activation_pending"
     db.commit()
     db.refresh(tenant)
     return _vendor_out(db, tenant)

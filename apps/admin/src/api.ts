@@ -130,8 +130,12 @@ export const api = {
       token,
     ),
   grabStatus: (token: string) => request<any>("/v1/grab/status", {}, token),
+  connectGrab: (token: string) =>
+    request<any>("/v1/grab/connect", { method: "POST" }, token),
   publishGrabMenu: (token: string) =>
     request<any>("/v1/grab/publish", { method: "POST" }, token),
+  connectVendorGrab: (token: string, id: number) =>
+    request<any>(`/v1/vendors/${id}/grab/connect`, { method: "POST" }, token),
   simulateGrabOrder: (token: string, body?: unknown) =>
     request<any>("/v1/grab/simulate-order", { method: "POST", body: JSON.stringify(body || {}) }, token),
   orders: (token: string, params?: { status?: string; channel?: string }) => {

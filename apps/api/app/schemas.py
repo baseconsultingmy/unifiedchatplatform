@@ -42,6 +42,7 @@ class TenantOut(BaseModel):
     grab_markup_percent: float = 30
     grab_sync_status: str = "not_configured"
     grab_last_synced_at: datetime | None = None
+    grab_activation_url: str | None = None
     grab_partner_token_set: bool = False
 
 
@@ -95,6 +96,11 @@ class VendorUpdateIn(WhatsAppFieldsIn):
     country: str | None = Field(default=None, min_length=2, max_length=2)
     is_active: bool | None = None
     line_channel_id: str | None = None
+    grab_merchant_id: str | None = None
+    grab_markup_percent: Decimal | None = None
+    grab_sync_status: str | None = None
+    grab_partner_token: str | None = None
+    clear_grab_partner_token: bool = False
 
 
 class VendorOut(BaseModel):
@@ -116,6 +122,12 @@ class VendorOut(BaseModel):
     wa_connected_at: datetime | None = None
     wa_access_token_set: bool = False
     line_channel_id: str | None = None
+    grab_merchant_id: str | None = None
+    grab_markup_percent: float = 30
+    grab_sync_status: str = "not_configured"
+    grab_last_synced_at: datetime | None = None
+    grab_activation_url: str | None = None
+    grab_partner_token_set: bool = False
     created_at: datetime
     owner_email: str | None = None
     owner_name: str | None = None
@@ -141,10 +153,12 @@ class PlatformMetaOut(BaseModel):
     platform_access_token_set: bool
     platform_phone_number_id: str | None = None
     flow_crypto_configured: bool = False
+    grab_credentials_set: bool = False
     vendors_with_phone_id: int = 0
     vendors_with_token: int = 0
     vendors_with_flow: int = 0
     vendors_verified: int = 0
+    vendors_with_grab: int = 0
     notes: list[str] = []
 
 
@@ -193,6 +207,7 @@ class WorkspaceUpdateIn(WhatsAppFieldsIn):
     grab_markup_percent: Decimal | None = None
     grab_partner_token: str | None = None
     clear_grab_partner_token: bool = False
+    grab_sync_status: str | None = None
 
 
 class WhatsAppSetupOut(BaseModel):
@@ -432,13 +447,29 @@ class GrabPublishOut(BaseModel):
 
 class GrabStatusOut(BaseModel):
     configured: bool
+    connected: bool = False
     dry_run_available: bool = True
+    partner_merchant_id: str | None = None
     merchant_id: str | None = None
     markup_percent: float = 30
     sync_status: str = "not_configured"
     last_synced_at: datetime | None = None
+    activation_url: str | None = None
     partner_token_set: bool = False
     platform_credentials_set: bool = False
+    menu_webhook_url: str | None = None
+    orders_webhook_url: str | None = None
+    sync_state_webhook_url: str | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
+class GrabConnectOut(BaseModel):
+    ok: bool
+    dry_run: bool = False
+    partner_merchant_id: str
+    activation_url: str | None = None
+    sync_status: str
+    message: str
 
 
 class GrabSimulateOrderIn(BaseModel):

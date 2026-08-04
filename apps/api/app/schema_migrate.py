@@ -44,6 +44,7 @@ def ensure_schema() -> None:
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_markup_percent NUMERIC(6,2) DEFAULT 30",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_sync_status VARCHAR(40) DEFAULT 'not_configured'",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_last_synced_at TIMESTAMPTZ",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS grab_activation_url TEXT",
         """
         CREATE TABLE IF NOT EXISTS service_channel_prices (
             id SERIAL PRIMARY KEY,

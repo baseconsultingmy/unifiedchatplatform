@@ -5,6 +5,7 @@ from app.config import settings
 from app.db import get_db
 from app.deps import require_vendor_user
 from app.flow_crypto import is_flow_crypto_configured
+from app.grab_creds import apply_grab_fields
 from app.models import Tenant, User
 from app.schemas import TenantOut, WhatsAppSetupOut, WorkspaceUpdateIn
 from app.whatsapp_creds import apply_whatsapp_fields, resolve_verify_token, resolve_whatsapp_credentials
@@ -86,27 +87,7 @@ def update_workspace(
         _ensure_unique_phone_id(db, data.get("wa_phone_number_id"), exclude_id=tenant.id)
 
     apply_whatsapp_fields(tenant, data)
-
-    clear_grab_token = bool(data.pop("clear_grab_partner_token", False))
-    grab_token = data.pop("grab_partner_token", None)
-    if clear_grab_token:
-        tenant.grab_partner_token = None
-    elif grab_token is not None:
-        tenant.grab_partner_token = (str(grab_token).strip() or None)
-
-    if "grab_merchant_id" in data:
-        mid = data.pop("grab_merchant_id")
-        tenant.grab_merchant_id = (str(mid).strip() or None) if mid is not None else None
-        if tenant.grab_merchant_id and tenant.grab_sync_status in (
-            None,
-            "",
-            "not_configured",
-        ):
-            tenant.grab_sync_status = "ready"
-        elif not tenant.grab_merchant_id:
-            tenant.grab_sync_status = "not_configured"
-    if "grab_markup_percent" in data and data["grab_markup_percent"] is not None:
-        tenant.grab_markup_percent = float(data.pop("grab_markup_percent"))
+    apply_grab_fields(tenant, data)
 
     for key, value in data.items():
         setattr(tenant, key, value)

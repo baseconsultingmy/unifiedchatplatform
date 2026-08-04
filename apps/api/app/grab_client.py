@@ -135,3 +135,48 @@ async def mark_order_ready(*, order_id: str, mark_status: int = 1) -> dict[str, 
             "status_code": res.status_code,
             "detail": res.text if res.status_code >= 400 else None,
         }
+
+
+async def create_self_serve_activation(*, partner_merchant_id: str) -> dict[str, Any]:
+    """Start Grab self-serve activation; merchant opens activationUrl in Grab Merchant."""
+    token = await get_access_token()
+    if not token:
+        # Dry-run link so shops can still practice the connect UX.
+        fake = (
+            "https://merchant.grab.com/support/self-serve-activation"
+            f"?partnerMerchantID={partner_merchant_id}&source=baseapp&dry_run=1"
+        )
+        logger.info("Grab dry-run: self-serve activation for partner=%s", partner_merchant_id)
+        return {
+            "ok": True,
+            "dry_run": True,
+            "activation_url": fake,
+            "partner_merchant_id": partner_merchant_id,
+            "message": "Grab partner credentials not configured — simulated activation link",
+        }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        res = await client.post(
+            f"{grab_api_base()}/partner/v1/self-serve/activation",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            json={"partner": {"merchantID": partner_merchant_id}},
+        )
+        if res.status_code >= 400:
+            return {
+                "ok": False,
+                "dry_run": False,
+                "status_code": res.status_code,
+                "detail": res.text,
+                "partner_merchant_id": partner_merchant_id,
+            }
+        data = res.json() if res.content else {}
+        return {
+            "ok": True,
+            "dry_run": False,
+            "activation_url": data.get("activationUrl") or data.get("activation_url"),
+            "partner_merchant_id": partner_merchant_id,
+            "message": "Open the activation link and Enable Integration in Grab Merchant",
+        }

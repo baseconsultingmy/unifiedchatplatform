@@ -94,6 +94,7 @@ class Tenant(Base):
     grab_markup_percent: Mapped[float] = mapped_column(Numeric(6, 2), default=30)
     grab_sync_status: Mapped[str] = mapped_column(String(40), default="not_configured")
     grab_last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    grab_activation_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     users: Mapped[list[User]] = relationship(back_populates="tenant")

@@ -13,6 +13,11 @@ type WaForm = {
   wa_verify_token: string;
 };
 
+type GrabForm = {
+  grab_merchant_id: string;
+  grab_markup_percent: number;
+};
+
 const emptyWa: WaForm = {
   wa_phone_number_id: "",
   wa_access_token: "",
@@ -22,6 +27,16 @@ const emptyWa: WaForm = {
   wa_display_phone: "",
   wa_verify_token: "",
 };
+
+const emptyGrab: GrabForm = {
+  grab_merchant_id: "",
+  grab_markup_percent: 30,
+};
+
+function isFnbIndustry(raw?: string | null) {
+  const v = (raw || "").toLowerCase();
+  return v === "fnb" || v === "food" || v === "food_beverage";
+}
 
 const WEBHOOK_URL = "https://api.baseapp.asia/v1/webhooks/whatsapp";
 const FLOWS_URL = "https://api.baseapp.asia/v1/webhooks/whatsapp/flows";
@@ -35,7 +50,9 @@ export default function VendorsPage() {
   const [saved, setSaved] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
+  const [editPanel, setEditPanel] = useState<"meta" | "grab">("meta");
   const [waForm, setWaForm] = useState<WaForm>(emptyWa);
+  const [grabForm, setGrabForm] = useState<GrabForm>(emptyGrab);
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("health_beauty");
   const [ownerName, setOwnerName] = useState("");
@@ -96,6 +113,7 @@ export default function VendorsPage() {
 
   function openMetaSetup(vendor: any) {
     setEditing(vendor);
+    setEditPanel("meta");
     setWaForm({
       wa_phone_number_id: vendor.wa_phone_number_id || "",
       wa_access_token: "",
@@ -105,8 +123,17 @@ export default function VendorsPage() {
       wa_display_phone: vendor.wa_display_phone || "",
       wa_verify_token: vendor.wa_verify_token || "",
     });
+    setGrabForm({
+      grab_merchant_id: vendor.grab_merchant_id || "",
+      grab_markup_percent: Number(vendor.grab_markup_percent ?? 30),
+    });
     setError("");
     setSaved("");
+  }
+
+  function openGrabSetup(vendor: any) {
+    openMetaSetup(vendor);
+    setEditPanel("grab");
   }
 
   async function saveMetaSetup(e: FormEvent) {
@@ -139,6 +166,59 @@ export default function VendorsPage() {
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save Meta setup");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function saveGrabSetup(e: FormEvent) {
+    e.preventDefault();
+    if (!token || !editing) return;
+    setError("");
+    setSaved("");
+    setBusyId(editing.id);
+    try {
+      const updated = await api.updateVendor(token, editing.id, {
+        grab_merchant_id: grabForm.grab_merchant_id.trim() || null,
+        grab_markup_percent: grabForm.grab_markup_percent,
+      });
+      setEditing(updated);
+      setGrabForm({
+        grab_merchant_id: updated.grab_merchant_id || "",
+        grab_markup_percent: Number(updated.grab_markup_percent ?? 30),
+      });
+      setSaved("Grab Food settings saved");
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save Grab setup");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function connectVendorGrab() {
+    if (!token || !editing) return;
+    setError("");
+    setSaved("");
+    setBusyId(editing.id);
+    try {
+      const updated = await api.connectVendorGrab(token, editing.id);
+      setEditing(updated);
+      setGrabForm({
+        grab_merchant_id: updated.grab_merchant_id || "",
+        grab_markup_percent: Number(updated.grab_markup_percent ?? 30),
+      });
+      setSaved(
+        updated.grab_activation_url
+          ? "Grab activation started — open the activation link"
+          : "Grab activation started",
+      );
+      if (updated.grab_activation_url) {
+        window.open(updated.grab_activation_url, "_blank", "noopener,noreferrer");
+      }
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not connect Grab");
     } finally {
       setBusyId(null);
     }
@@ -216,10 +296,15 @@ export default function VendorsPage() {
             <div>{meta?.flow_crypto_configured ? "Ready" : "Missing private key"}</div>
           </div>
           <div>
+            <span className="muted">Grab partner API</span>
+            <div>{meta?.grab_credentials_set ? "Credentials on file" : "Dry-run (no creds)"}</div>
+          </div>
+          <div>
             <span className="muted">Vendors linked</span>
             <div>
               {meta?.vendors_with_phone_id ?? 0} phone · {meta?.vendors_with_token ?? 0} token ·{" "}
-              {meta?.vendors_with_flow ?? 0} flow · {meta?.vendors_verified ?? 0} verified
+              {meta?.vendors_with_flow ?? 0} flow · {meta?.vendors_verified ?? 0} verified ·{" "}
+              {meta?.vendors_with_grab ?? 0} Grab
             </div>
           </div>
         </div>
@@ -275,7 +360,9 @@ export default function VendorsPage() {
       <div className="grid split-2">
         <section className="panel">
           <h2>Vendors</h2>
-          <p className="muted">Configure Meta WhatsApp per shop, or open View as → Settings.</p>
+          <p className="muted">
+            Configure Meta WhatsApp / Grab Food per shop, or open View as → Settings.
+          </p>
           {error && !editing ? <div className="error">{error}</div> : null}
           {saved && !editing ? <div className="pos-receipt ok">{saved}</div> : null}
           <table className="table">
@@ -283,6 +370,7 @@ export default function VendorsPage() {
               <tr>
                 <th>Vendor</th>
                 <th>WhatsApp</th>
+                <th>Grab</th>
                 <th>Usage</th>
                 <th>Status</th>
                 <th></th>
@@ -310,6 +398,27 @@ export default function VendorsPage() {
                     </div>
                   </td>
                   <td>
+                    {isFnbIndustry(v.industry) ? (
+                      <>
+                        <span
+                          className={`order-channel-pill channel-grab ${
+                            v.grab_merchant_id || v.grab_sync_status !== "not_configured"
+                              ? ""
+                              : ""
+                          }`}
+                        >
+                          Grab
+                        </span>
+                        <div className="muted" style={{ marginTop: "0.25rem" }}>
+                          {v.grab_sync_status || "not_configured"}
+                        </div>
+                        <div className="muted">{v.grab_merchant_id || "No merchant ID"}</div>
+                      </>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
+                  <td>
                     {v.services_count} services
                     <div className="muted">{v.bookings_count} bookings</div>
                   </td>
@@ -322,6 +431,11 @@ export default function VendorsPage() {
                     <button className="btn secondary" onClick={() => openMetaSetup(v)}>
                       Meta setup
                     </button>
+                    {isFnbIndustry(v.industry) ? (
+                      <button className="btn secondary" onClick={() => openGrabSetup(v)}>
+                        Grab setup
+                      </button>
+                    ) : null}
                     <button
                       className="btn"
                       disabled={!v.is_active || busyId === v.id}
@@ -340,7 +454,87 @@ export default function VendorsPage() {
         </section>
 
         <div className="grid" style={{ gap: "1rem", alignContent: "start" }}>
-          {editing ? (
+          {editing && editPanel === "grab" ? (
+            <form className="panel form order-card channel-grab" onSubmit={saveGrabSetup}>
+              <div className="bookings-toolbar">
+                <div>
+                  <div className="order-card-title">
+                    <span className="order-channel-pill channel-grab">Grab</span>
+                    <h2 style={{ margin: 0 }}>Grab Food — {editing.name}</h2>
+                  </div>
+                  <p className="muted">
+                    Status: {editing.grab_sync_status || "not_configured"}
+                    {editing.grab_merchant_id ? ` · ${editing.grab_merchant_id}` : ""}
+                    {" · partner "}
+                    {editing.slug}
+                  </p>
+                </div>
+                <button type="button" className="btn secondary" onClick={() => setEditing(null)}>
+                  Close
+                </button>
+              </div>
+              <label>
+                Grab merchant ID
+                <input
+                  value={grabForm.grab_merchant_id}
+                  onChange={(e) =>
+                    setGrabForm((f) => ({ ...f, grab_merchant_id: e.target.value }))
+                  }
+                  placeholder="From Grab after Enable Integration"
+                />
+              </label>
+              <label>
+                Default Grab markup (%)
+                <input
+                  type="number"
+                  min={0}
+                  max={500}
+                  value={grabForm.grab_markup_percent}
+                  onChange={(e) =>
+                    setGrabForm((f) => ({
+                      ...f,
+                      grab_markup_percent: Number(e.target.value),
+                    }))
+                  }
+                />
+              </label>
+              {editing.grab_activation_url ? (
+                <>
+                  <div className="pos-receipt-row">
+                    <span className="muted">Activation URL</span>
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      onClick={() => copyText(editing.grab_activation_url)}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <code className="settings-code">{editing.grab_activation_url}</code>
+                </>
+              ) : null}
+              {error ? <div className="error">{error}</div> : null}
+              {saved ? <div className="pos-receipt ok">{saved}</div> : null}
+              <div className="pos-receipt-row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+                <button className="btn" disabled={busyId === editing.id}>
+                  {busyId === editing.id ? "Saving…" : "Save Grab setup"}
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  disabled={busyId === editing.id}
+                  onClick={connectVendorGrab}
+                >
+                  Connect Grab
+                </button>
+                <button type="button" className="btn secondary" onClick={() => setEditPanel("meta")}>
+                  Meta setup
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {editing && editPanel === "meta" ? (
             <form className="panel form" onSubmit={saveMetaSetup}>
               <div className="bookings-toolbar">
                 <div>
@@ -460,6 +654,11 @@ export default function VendorsPage() {
                 >
                   Publish booking Flow
                 </button>
+                {isFnbIndustry(editing.industry) ? (
+                  <button type="button" className="btn secondary" onClick={() => setEditPanel("grab")}>
+                    Grab setup
+                  </button>
+                ) : null}
               </div>
             </form>
           ) : null}

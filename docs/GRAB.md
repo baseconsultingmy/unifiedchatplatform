@@ -6,6 +6,17 @@ BaseApp supports two-way Grab Food integration for F&B tenants:
 2. **Menu out** — vendors publish the shop catalog; Grab pulls the menu after notification.
 3. **Smart pricing** — walk-in / dine-in uses `Service.price_amount`; Grab uses override **or** `base × (1 + markup%)` (tenant default 30%, rounded to `.00` / `.50`).
 
+## Merchant connect flow
+
+1. **Settings → Grab Food → Connect Grab** (or Master Admin → Vendors → Grab setup)
+2. API calls Grab `POST /partner/v1/self-serve/activation` with `partner.merchantID` = tenant slug
+3. Merchant opens **activation URL** → Grab Merchant → **Enable Integration**
+4. Save Grab **merchant ID** (after Grab links the outlet)
+5. Set markup / overrides on **Menu**, then **Publish menu**
+6. Orders appear under **Orders**
+
+Without platform Grab credentials, Connect / Publish run in **dry-run** so the admin UX can be tested.
+
 ## Credentials
 
 Platform env (optional until partner activation):
@@ -16,10 +27,12 @@ Platform env (optional until partner activation):
 | `GRAB_CLIENT_SECRET` | OAuth client secret |
 | `GRAB_PARTNER_WEBHOOK_SECRET` | Shared secret for inbound Grab webhooks |
 
-Per-tenant (Settings / workspace):
+Per-tenant (Settings / Master Admin Vendors):
 
 - `grab_merchant_id` — Grab merchant ID (demo kitchen uses `demo-kitchen`)
 - `grab_markup_percent` — default Grab markup (e.g. `30`)
+- `grab_activation_url` — last self-serve activation link
+- `grab_sync_status` — `not_configured` → `activation_pending` → `ready` → `published` / `synced`
 - `grab_partner_token` — optional merchant token (write-only)
 
 When platform credentials are missing, publish / accept / ready callbacks run in **dry-run** mode so the panel can be tested end-to-end.
@@ -29,6 +42,8 @@ When platform credentials are missing, publish / accept / ready callbacks run in
 | Method | Path | Who |
 |---|---|---|
 | `GET` | `/v1/grab/status` | Vendor |
+| `POST` | `/v1/grab/connect` | Vendor — start self-serve activation |
+| `POST` | `/v1/vendors/{id}/grab/connect` | Master Admin — same for a shop |
 | `POST` | `/v1/grab/publish` | Vendor — notify Grab + mark items published |
 | `POST` | `/v1/grab/simulate-order` | Vendor — local Grab-like order |
 | `PATCH` | `/v1/services/{id}/grab-price` | Vendor — override / per-item markup |

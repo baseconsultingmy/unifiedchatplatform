@@ -19,6 +19,7 @@ from app.grab_menu import build_grab_menu, channel_price_map
 from app.models import Order, OrderLine, OrderStatus, Service, Tenant, User
 from app.pricing import compute_channel_price
 from app.schemas import (
+    GrabConnectOut,
     GrabPublishOut,
     GrabSimulateOrderIn,
     GrabStatusOut,
@@ -59,6 +60,44 @@ def _verify_grab_webhook(
     raise HTTPException(status_code=401, detail="Invalid Grab webhook credentials")
 
 
+def _grab_status_for_tenant(tenant: Tenant) -> GrabStatusOut:
+    base = settings.public_api_base.rstrip("/")
+    status = tenant.grab_sync_status or "not_configured"
+    connected = bool(tenant.grab_merchant_id) and status not in (
+        "not_configured",
+        "activation_pending",
+    )
+    notes = [
+        "1. Tap Connect Grab — open the activation link and Enable Integration in Grab Merchant.",
+        "2. Paste the Grab merchant ID Grab shows after linking (or keep partner ID for dry-run).",
+        "3. Set markup / overrides on Menu, then Publish to Grab.",
+        "4. New Grab orders appear under Orders.",
+    ]
+    if not grab_client.grab_configured():
+        notes.append(
+            "Platform Grab partner credentials are not set yet — Connect / Publish run in dry-run."
+        )
+    if status == "activation_pending":
+        notes.insert(0, "Activation started — finish Enable Integration in Grab Merchant.")
+    return GrabStatusOut(
+        configured=bool(tenant.grab_merchant_id) or status in ("activation_pending", "ready"),
+        connected=connected,
+        dry_run_available=True,
+        partner_merchant_id=tenant.slug,
+        merchant_id=tenant.grab_merchant_id,
+        markup_percent=float(tenant.grab_markup_percent or 30),
+        sync_status=status,
+        last_synced_at=tenant.grab_last_synced_at,
+        activation_url=tenant.grab_activation_url,
+        partner_token_set=bool(tenant.grab_partner_token),
+        platform_credentials_set=grab_client.grab_configured(),
+        menu_webhook_url=f"{base}/v1/webhooks/grab/merchant/menu",
+        orders_webhook_url=f"{base}/v1/webhooks/grab/orders",
+        sync_state_webhook_url=f"{base}/v1/webhooks/grab/menu/sync-state",
+        notes=notes,
+    )
+
+
 @router.get("/grab/status", response_model=GrabStatusOut)
 def grab_status(
     user: User = Depends(require_vendor_user),
@@ -67,15 +106,44 @@ def grab_status(
     tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    return GrabStatusOut(
-        configured=bool(tenant.grab_merchant_id),
-        dry_run_available=True,
-        merchant_id=tenant.grab_merchant_id,
-        markup_percent=float(tenant.grab_markup_percent or 30),
-        sync_status=tenant.grab_sync_status or "not_configured",
-        last_synced_at=tenant.grab_last_synced_at,
-        partner_token_set=bool(tenant.grab_partner_token),
-        platform_credentials_set=grab_client.grab_configured(),
+    return _grab_status_for_tenant(tenant)
+
+
+@router.post("/grab/connect", response_model=GrabConnectOut)
+async def connect_grab(
+    user: User = Depends(require_vendor_user),
+    db: Session = Depends(get_db),
+) -> GrabConnectOut:
+    """Create Grab self-serve activation journey for this shop."""
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+
+    partner_id = tenant.slug
+    result = await grab_client.create_self_serve_activation(partner_merchant_id=partner_id)
+    if not result.get("ok"):
+        raise HTTPException(
+            status_code=400,
+            detail=result.get("detail") or "Could not start Grab activation",
+        )
+
+    activation_url = result.get("activation_url")
+    tenant.grab_activation_url = activation_url
+    if not (tenant.grab_merchant_id or "").strip():
+        # Until Grab returns the real merchantID, partner slug is used for dry-run mapping.
+        tenant.grab_merchant_id = partner_id
+    if tenant.grab_sync_status in (None, "", "not_configured"):
+        tenant.grab_sync_status = "activation_pending"
+    db.commit()
+
+    return GrabConnectOut(
+        ok=True,
+        dry_run=bool(result.get("dry_run")),
+        partner_merchant_id=partner_id,
+        activation_url=activation_url,
+        sync_status=tenant.grab_sync_status or "activation_pending",
+        message=result.get("message")
+        or "Open the activation link in Grab Merchant and Enable Integration",
     )
 
 
