@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-type Variant = "kiosk-os" | "app" | "simplified" | "consulting-lockup";
+type Variant = "kiosk-os" | "app" | "consulting-lockup";
 type Tone = "light" | "dark";
 
 type Props = {
@@ -12,9 +12,7 @@ type Props = {
 };
 
 /**
- * Product wordmarks from locked Base CI.
- * - simplified: BASE with amber arc (CI sheet)
- * - kiosk-os: BASE | Kiosk [OS] (Transit OS pattern)
+ * Product wordmarks from locked Base CI (Transit OS pattern for Kiosk OS).
  */
 export function BaseWordmark({
   variant = "kiosk-os",
@@ -28,22 +26,6 @@ export function BaseWordmark({
   const secondaryColor = onDark ? "#94A3B8" : "var(--base-grey)";
   const dividerColor = onDark ? "#64748B" : "#94A3B8";
   const badgeFg = onDark ? "#000000" : "#FFFFFF";
-  const arcColor = "var(--base-amber)";
-
-  if (variant === "simplified") {
-    return (
-      <span
-        className={`base-wordmark base-wordmark-simplified ${compact ? "is-compact" : ""} ${className}`.trim()}
-        style={style}
-        aria-label="BASE"
-      >
-        <span className="base-wordmark-arc" style={{ borderColor: arcColor }} aria-hidden />
-        <span className="base-wordmark-base" style={{ color: baseColor }}>
-          BASE
-        </span>
-      </span>
-    );
-  }
 
   if (variant === "app") {
     return (
@@ -64,18 +46,13 @@ export function BaseWordmark({
 
   if (variant === "consulting-lockup") {
     return (
-      <span
-        className={`base-wordmark base-wordmark-consulting ${compact ? "is-compact" : ""} ${className}`.trim()}
+      <img
+        className={`base-consulting-lockup ${className}`.trim()}
         style={style}
-        aria-label="Base Consulting"
-      >
-        <span className="base-wordmark-base" style={{ color: baseColor }}>
-          BASE
-        </span>
-        <span className="base-wordmark-descriptor" style={{ color: secondaryColor }}>
-          CONSULTING
-        </span>
-      </span>
+        src="/brand/base-consulting-primary.png"
+        alt="Base Consulting"
+        height={compact ? 36 : 56}
+      />
     );
   }
 
@@ -99,21 +76,21 @@ export function BaseWordmark({
   );
 }
 
-/** Primary logo graphic: family silhouettes + amber arc (no wordmark). */
+/** Official primary mark: family silhouettes + amber arc (from uploaded master PNG). */
 export function BaseMark({ className = "", size = 36 }: { className?: string; size?: number }) {
   return (
     <img
       className={`base-mark ${className}`.trim()}
-      src="/brand/base-mark.svg"
+      src="/brand/base-mark.png"
       width={size}
-      height={Math.round(size * (160 / 280))}
+      height={size}
       alt=""
       aria-hidden
     />
   );
 }
 
-/** Full primary BASE logo (family + arc + BASE). CONSULTING omitted. */
+/** Official primary BASE logo (CONSULTING omitted for product). */
 export function BasePrimaryLogo({
   className = "",
   width = 220,
@@ -124,29 +101,10 @@ export function BasePrimaryLogo({
   return (
     <img
       className={`base-primary-logo ${className}`.trim()}
-      src="/brand/base-primary.svg"
+      src="/brand/base-primary.png"
       width={width}
-      height={Math.round(width * (260 / 360))}
       alt="BASE"
-    />
-  );
-}
-
-/** Simplified CI logo: amber arc over BASE. */
-export function BaseSimplifiedLogo({
-  className = "",
-  width = 200,
-}: {
-  className?: string;
-  width?: number;
-}) {
-  return (
-    <img
-      className={`base-simplified-logo ${className}`.trim()}
-      src="/brand/base-simplified.svg"
-      width={width}
-      height={Math.round(width * (120 / 320))}
-      alt="BASE"
+      style={{ height: "auto" }}
     />
   );
 }
