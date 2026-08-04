@@ -1221,6 +1221,11 @@ p {
   min-height: 0;
 }
 
+.booking-sheet-actions {
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .booking-sheet-status {
   display: flex;
   align-items: center;
