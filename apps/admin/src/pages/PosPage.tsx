@@ -599,7 +599,7 @@ export default function PosPage() {
 
             <div className="btn-row pos-actions pos-flow-actions">
               <button type="button" className="btn" onClick={() => proceedToPayment(true)}>
-                Confirm and proceed to payment
+                Confirm &amp; pay
               </button>
               <button
                 type="button"

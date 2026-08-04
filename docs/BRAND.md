@@ -25,17 +25,26 @@ CSS source of truth: [`brand/tokens.css`](../brand/tokens.css)
 
 ### DO
 
-- Navy for the word **BASE**
+- Navy for the word **BASE**, navigation chrome, and structural UI
 - Grey for secondary words (**Kiosk**, **App**, **Consulting**)
-- Amber only for accents and the **OS** badge
+- Amber for accents, the **OS** badge, and **primary product CTAs** (Complete, Checkout, Assign, Sign in, Send)
 - Keep black master files for print
 - Status UIs may use green / red sparingly
+
+### Product CTA mapping
+
+| Role | Color | Examples |
+|---|---|---|
+| Chrome / tabs / identity | Navy `#0F2744` | Top tabs, brand mark, avatars |
+| Primary action | Amber `#E5A100` | Complete, Take cash, Create, Sign in |
+| Secondary action | Outline / white | Back, Cancel, Close |
 
 ### DON’T
 
 - No teal, gold rainbows, or flag colors
 - No gradients on logos
 - No multi-color silhouettes
+- Don’t use amber for every control — reserve it for the next meaningful action
 
 ## Wordmarks
 

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import QrPayPanel from "../components/QrPayPanel";
+import SaleReceipt from "../components/SaleReceipt";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
 
 type ViewMode = "agenda" | "board";
 type BoardMode = "person" | "room";
+type BookingSheetStep = "detail" | "pay" | "cash" | "qr" | "receipt";
 
 const DAY_START_HOUR = 9;
 const DAY_END_HOUR = 21; // exclusive
@@ -135,7 +137,13 @@ export default function BookingsPage() {
   const [resources, setResources] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<any | null>(null);
-  const [showQr, setShowQr] = useState(false);
+  const [sheetStep, setSheetStep] = useState<BookingSheetStep>("detail");
+  const [assignPersonId, setAssignPersonId] = useState("");
+  const [assignRoomId, setAssignRoomId] = useState("");
+  const [tenderInput, setTenderInput] = useState("");
+  const [lastCash, setLastCash] = useState<{ tendered: number; change: number } | null>(null);
+  const [receiptPayLabel, setReceiptPayLabel] = useState("Paid");
+  const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const agendaRef = useRef<HTMLDivElement | null>(null);
 
@@ -297,13 +305,26 @@ export default function BookingsPage() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      setSelected(null);
-      setShowQr(false);
-      setShowCreate(false);
+      if (showCreate) {
+        setShowCreate(false);
+        return;
+      }
+      if (!selected) return;
+      if (sheetStep === "cash" || sheetStep === "qr") {
+        setSheetStep("pay");
+        setError("");
+        return;
+      }
+      if (sheetStep === "pay") {
+        setSheetStep("detail");
+        setError("");
+        return;
+      }
+      closeBooking();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [selected, sheetStep, showCreate]);
 
   useEffect(() => {
     if (view !== "agenda" || !agendaRef.current || !sameDay(dayAnchor, new Date())) return;
@@ -315,14 +336,26 @@ export default function BookingsPage() {
 
   function openBooking(b: any) {
     setSelected(b);
-    setShowQr(false);
+    setSheetStep("detail");
+    setAssignPersonId(b.person_id ? String(b.person_id) : "");
+    setAssignRoomId(b.room_id ? String(b.room_id) : "");
+    setTenderInput("");
+    setLastCash(null);
+    setReceiptPayLabel("Paid");
+    setBusy(false);
     setShowCreate(false);
     setError("");
   }
 
   function closeBooking() {
     setSelected(null);
-    setShowQr(false);
+    setSheetStep("detail");
+    setAssignPersonId("");
+    setAssignRoomId("");
+    setTenderInput("");
+    setLastCash(null);
+    setBusy(false);
+    setError("");
   }
 
   function openCreateAt(columnId: string, slotIndex: number) {
@@ -340,8 +373,7 @@ export default function BookingsPage() {
       }
     }
     setShowCreate(true);
-    setSelected(null);
-    setShowQr(false);
+    closeBooking();
   }
 
   function openCreateBlank() {
@@ -359,8 +391,7 @@ export default function BookingsPage() {
       setPersonId(filterId);
     }
     setShowCreate(true);
-    setSelected(null);
-    setShowQr(false);
+    closeBooking();
   }
 
   async function onCreate(e: FormEvent) {
@@ -408,15 +439,144 @@ export default function BookingsPage() {
   }
 
   async function patchSelected(body: Record<string, unknown>) {
-    if (!token || !selected) return;
+    if (!token || !selected) return null;
     setError("");
     try {
       const updated = await api.updateBooking(token, selected.id, body);
       setSelected(updated);
       await refresh();
+      return updated;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not update booking");
+      return null;
     }
+  }
+
+  const dueAmount = selected ? amountDue(selected) : 0;
+  const tendered = Number(tenderInput || 0);
+  const changeDue = Math.max(0, tendered - dueAmount);
+  const balanceDue = Math.max(0, dueAmount - tendered);
+  const canTakeCash = tendered >= dueAmount && dueAmount >= 0;
+  const assignDirty =
+    Boolean(selected) &&
+    (assignPersonId !== (selected.person_id ? String(selected.person_id) : "") ||
+      assignRoomId !== (selected.room_id ? String(selected.room_id) : ""));
+  const alreadyAssigned = Boolean(selected?.person_id || selected?.room_id);
+  const assignLabel = alreadyAssigned ? "Reassign" : "Assign";
+
+  function appendDigit(digit: string) {
+    setTenderInput((prev) => {
+      if (digit === ".") {
+        if (prev.includes(".")) return prev;
+        return prev ? `${prev}.` : "0.";
+      }
+      if (prev === "0") return digit;
+      const parts = prev.split(".");
+      if (parts[1] && parts[1].length >= 2) return prev;
+      if (prev.length >= 10) return prev;
+      return `${prev}${digit}`;
+    });
+  }
+
+  async function onAssign() {
+    if (!selected || !token) return;
+    if (assignPersonId && resourceBusy("person", assignPersonId, selectedWindow, selected.id)) {
+      setError(`That ${profile.personNoun.toLowerCase()} is already booked for this time`);
+      return;
+    }
+    if (assignRoomId && resourceBusy("room", assignRoomId, selectedWindow, selected.id)) {
+      setError(`That ${profile.roomNoun.toLowerCase()} is already booked for this time`);
+      return;
+    }
+    setBusy(true);
+    const updated = await patchSelected({
+      person_id: assignPersonId ? Number(assignPersonId) : null,
+      room_id: assignRoomId ? Number(assignRoomId) : null,
+    });
+    setBusy(false);
+    if (updated) closeBooking();
+  }
+
+  async function onComplete() {
+    if (!selected || !token) return;
+    setError("");
+
+    // Persist any pending staff/room picks before leaving the detail sheet.
+    if (profile.supportsResources && assignDirty) {
+      if (assignPersonId && resourceBusy("person", assignPersonId, selectedWindow, selected.id)) {
+        setError(`That ${profile.personNoun.toLowerCase()} is already booked for this time`);
+        return;
+      }
+      if (assignRoomId && resourceBusy("room", assignRoomId, selectedWindow, selected.id)) {
+        setError(`That ${profile.roomNoun.toLowerCase()} is already booked for this time`);
+        return;
+      }
+      setBusy(true);
+      const assigned = await patchSelected({
+        person_id: assignPersonId ? Number(assignPersonId) : null,
+        room_id: assignRoomId ? Number(assignRoomId) : null,
+      });
+      setBusy(false);
+      if (!assigned) return;
+    }
+
+    // Same POS checkout path:
+    // unpaid / deposit due → choose payment (cash / QR) → receipt
+    // already paid → mark completed (if needed) → receipt (print / WhatsApp)
+    if (!isPaid(selected.payment_status)) {
+      setTenderInput("");
+      setLastCash(null);
+      setSheetStep("pay");
+      return;
+    }
+
+    setBusy(true);
+    let booking = selected;
+    if (booking.status !== "completed") {
+      const updated = await patchSelected({ status: "completed" });
+      setBusy(false);
+      if (!updated) return;
+      booking = updated;
+    } else {
+      setBusy(false);
+    }
+    setLastCash(null);
+    setReceiptPayLabel(
+      booking.payment_status === "deposit_paid" ? "Deposit paid" : "Paid",
+    );
+    setSheetStep("receipt");
+  }
+
+  async function completeWithCash() {
+    if (!selected || !token) return;
+    if (!canTakeCash) {
+      setError("Cash received must cover the amount due");
+      return;
+    }
+    setBusy(true);
+    const cashNote = `Cash received ${selected.currency} ${tendered.toFixed(2)}; change ${selected.currency} ${changeDue.toFixed(2)}`;
+    const notes = [selected.notes, cashNote].filter(Boolean).join(" · ");
+    const updated = await patchSelected({
+      payment_status: "paid",
+      status: "completed",
+      notes,
+    });
+    setBusy(false);
+    if (!updated) return;
+    setLastCash({ tendered, change: changeDue });
+    setReceiptPayLabel("Cash");
+    setSheetStep("receipt");
+  }
+
+  async function completeAfterQrPaid() {
+    if (!selected || !token) return;
+    setBusy(true);
+    const updated = await patchSelected({ status: "completed" });
+    setBusy(false);
+    if (!updated) return;
+    setLastCash(null);
+    setReceiptPayLabel("QR / online");
+    setSheetStep("receipt");
   }
 
   function bookingsForColumn(columnId: string) {
@@ -731,7 +891,7 @@ export default function BookingsPage() {
         </section>
       )}
 
-      {selected ? (
+      {selected && sheetStep === "detail" ? (
         <div className="modal-backdrop" onClick={closeBooking} role="presentation">
           <div
             className="modal-card booking-modal"
@@ -761,7 +921,7 @@ export default function BookingsPage() {
               </span>
               <span className="badge">{selected.status}</span>
               <span className="muted">
-                {selected.currency} {amountDue(selected).toFixed(2)}
+                {selected.currency} {dueAmount.toFixed(2)}
               </span>
             </div>
 
@@ -770,12 +930,8 @@ export default function BookingsPage() {
                 <label>
                   {profile.personNoun}
                   <select
-                    value={selected.person_id ? String(selected.person_id) : ""}
-                    onChange={(e) =>
-                      patchSelected({
-                        person_id: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
+                    value={assignPersonId}
+                    onChange={(e) => setAssignPersonId(e.target.value)}
                   >
                     <option value="">Unassigned</option>
                     {people.map((p) => {
@@ -790,14 +946,7 @@ export default function BookingsPage() {
                 </label>
                 <label>
                   {profile.roomNoun}
-                  <select
-                    value={selected.room_id ? String(selected.room_id) : ""}
-                    onChange={(e) =>
-                      patchSelected({
-                        room_id: e.target.value ? Number(e.target.value) : null,
-                      })
-                    }
-                  >
+                  <select value={assignRoomId} onChange={(e) => setAssignRoomId(e.target.value)}>
                     <option value="">Unassigned</option>
                     {rooms.map((r) => {
                       const clash = resourceBusy("room", r.id, selectedWindow, selected.id);
@@ -811,7 +960,6 @@ export default function BookingsPage() {
                 </label>
               </div>
             ) : null}
-            {error ? <div className="error">{error}</div> : null}
 
             <div className="detail-grid">
               <div>
@@ -826,53 +974,248 @@ export default function BookingsPage() {
               </div>
             </div>
 
-            <div className="btn-row" style={{ marginTop: "0.35rem" }}>
-              {!isPaid(selected.payment_status) ? (
-                <>
-                  <button
-                    className="btn"
-                    onClick={() =>
-                      patchSelected({ payment_status: "paid", status: "confirmed" })
-                    }
-                  >
-                    Mark paid
-                  </button>
-                  {selected.payment_url ? (
-                    <button className="btn secondary" onClick={() => setShowQr((v) => !v)}>
-                      {showQr ? "Hide QR" : "QR pay"}
-                    </button>
-                  ) : null}
-                </>
-              ) : null}
-              {selected.status !== "completed" ? (
+            {error ? <div className="error">{error}</div> : null}
+
+            <div className="btn-row booking-sheet-actions">
+              {profile.supportsResources ? (
                 <button
-                  className="btn secondary"
-                  onClick={() => patchSelected({ status: "completed" })}
+                  type="button"
+                  className={assignDirty ? "btn" : "btn secondary"}
+                  disabled={busy || !assignDirty}
+                  onClick={() => void onAssign()}
+                >
+                  {busy ? "Saving…" : assignLabel}
+                </button>
+              ) : null}
+              {selected.status !== "cancelled" ? (
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={busy}
+                  onClick={() => void onComplete()}
                 >
                   Complete
                 </button>
               ) : null}
               {selected.status !== "cancelled" ? (
                 <button
+                  type="button"
                   className="btn secondary"
-                  onClick={() => patchSelected({ status: "cancelled" })}
+                  disabled={busy}
+                  onClick={() => void patchSelected({ status: "cancelled" }).then((u) => u && closeBooking())}
                 >
                   Cancel
                 </button>
               ) : null}
             </div>
+          </div>
+        </div>
+      ) : null}
 
-            {showQr && selected.payment_url ? (
-              <div style={{ marginTop: "0.35rem" }}>
-                <QrPayPanel
-                  paymentUrl={selected.payment_url}
-                  amountLabel={`${selected.currency} ${amountDue(selected).toFixed(2)}`}
-                  subtitle={`Booking #${selected.id}`}
-                  onPaid={() => refresh()}
-                  onClose={() => setShowQr(false)}
-                />
+      {selected && sheetStep === "pay" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="booking-pay-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2 id="booking-pay-title">Choose payment</h2>
+                <p>
+                  {selected.customer?.name || selected.customer?.phone || "Customer"} ·{" "}
+                  {selected.currency} {dueAmount.toFixed(2)}
+                </p>
               </div>
-            ) : null}
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => {
+                  setSheetStep("detail");
+                  setError("");
+                }}
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="pos-pay-options">
+              <button
+                type="button"
+                className="pos-pay-option"
+                disabled={busy}
+                onClick={() => {
+                  setTenderInput("");
+                  setError("");
+                  setSheetStep("cash");
+                }}
+              >
+                <strong>Cash</strong>
+                <span className="muted">Enter cash received and calculate change</span>
+              </button>
+              <button
+                type="button"
+                className="pos-pay-option"
+                disabled={busy || !selected.payment_url}
+                onClick={() => {
+                  setError("");
+                  setSheetStep("qr");
+                }}
+                title={selected.payment_url ? "Show payment QR" : "No payment link on this booking"}
+              >
+                <strong>QR pay</strong>
+                <span className="muted">
+                  {selected.payment_url
+                    ? "Show a payment QR for the customer"
+                    : "Payment link unavailable"}
+                </span>
+              </button>
+            </div>
+            {error ? <div className="error">{error}</div> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {selected && sheetStep === "cash" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="booking-cash-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2 id="booking-cash-title">Cash received</h2>
+                <p>
+                  Amount due {selected.currency} {dueAmount.toFixed(2)} — change prints on the
+                  receipt.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => {
+                  setSheetStep("pay");
+                  setError("");
+                }}
+              >
+                Back
+              </button>
+            </div>
+
+            <div className="pos-calc">
+              <div className="pos-calc-readout">
+                <div>
+                  <span className="muted">Cash received</span>
+                  <strong>
+                    {selected.currency} {tenderInput ? tenderInput : "0"}
+                  </strong>
+                </div>
+                <div className={balanceDue > 0 ? "pos-balance warn" : "pos-balance ok"}>
+                  <span className="muted">{balanceDue > 0 ? "Still due" : "Change"}</span>
+                  <strong>
+                    {selected.currency} {(balanceDue > 0 ? balanceDue : changeDue).toFixed(2)}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="pos-keypad">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"].map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className="pos-key"
+                    onClick={() => {
+                      if (key === "⌫") setTenderInput((prev) => prev.slice(0, -1));
+                      else appendDigit(key);
+                    }}
+                  >
+                    {key}
+                  </button>
+                ))}
+              </div>
+
+              <div className="btn-row pos-calc-tools">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setTenderInput(dueAmount.toFixed(2))}
+                >
+                  Exact
+                </button>
+                <button type="button" className="btn secondary" onClick={() => setTenderInput("")}>
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            {error ? <div className="error">{error}</div> : null}
+
+            <div className="btn-row pos-actions">
+              <button
+                type="button"
+                className="btn"
+                disabled={busy || !canTakeCash}
+                onClick={() => void completeWithCash()}
+              >
+                {busy ? "Saving…" : "Take cash & issue receipt"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selected && sheetStep === "qr" && selected.payment_url ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QrPayPanel
+              paymentUrl={selected.payment_url}
+              amountLabel={`${selected.currency} ${dueAmount.toFixed(2)}`}
+              subtitle={`Booking #${selected.id}`}
+              onPaid={() => void completeAfterQrPaid()}
+              onClose={() => {
+                setSheetStep("pay");
+                setError("");
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {selected && sheetStep === "receipt" ? (
+        <div className="modal-backdrop" onClick={closeBooking} role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal receipt-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pos-receipt-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <SaleReceipt
+              token={token}
+              shopName={user?.tenant?.name || "BaseApp"}
+              bookingId={selected.id}
+              customerName={selected.customer?.name || selected.customer?.phone || "Customer"}
+              customerPhone={selected.customer?.phone || ""}
+              lineItems={[selected.service?.name || "Booking"]}
+              currency={selected.currency || "MYR"}
+              amountDue={Number(selected.amount || dueAmount || 0)}
+              paymentLabel={receiptPayLabel}
+              cash={lastCash}
+              paidAt={selected.paid_at}
+              doneLabel="Done"
+              onDone={closeBooking}
+              onClose={closeBooking}
+            />
           </div>
         </div>
       ) : null}

@@ -255,5 +255,11 @@ def update_booking(
 
     for key, value in data.items():
         setattr(booking, key, value)
+
+    # Stamp paid_at when payment flips to a paid state (cash complete, mark paid, etc.)
+    next_payment = getattr(booking.payment_status, "value", booking.payment_status)
+    if next_payment in {"paid", "deposit_paid"} and booking.paid_at is None:
+        booking.paid_at = datetime.now(timezone.utc)
+
     db.commit()
     return _booking_query(db).filter(Booking.id == booking.id).one()

@@ -16,6 +16,7 @@ type Props = {
   cash?: CashInfo;
   paidAt?: string | null;
   onDone?: () => void;
+  doneLabel?: string;
   onClose?: () => void;
 };
 
@@ -74,7 +75,7 @@ const PRINT_STYLES = `
     margin: 0;
     padding: 0;
     background: #fff;
-    color: #0F2744;
+    color: #14201c;
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     font-size: 13px;
     line-height: 1.45;
@@ -139,6 +140,7 @@ export default function SaleReceipt({
   cash = null,
   paidAt,
   onDone,
+  doneLabel = "New sale",
   onClose,
 }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
@@ -371,7 +373,7 @@ export default function SaleReceipt({
         {onDone ? (
           <div className="btn-row pos-actions">
             <button type="button" className="btn" onClick={onDone}>
-              New sale
+              {doneLabel}
             </button>
           </div>
         ) : null}
