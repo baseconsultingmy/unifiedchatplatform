@@ -547,24 +547,17 @@ export default function BookingsPage() {
                         <button
                           key={b.id}
                           type="button"
-                          className={`agenda-card pay-${paymentTone(b.payment_status)} ${dense ? "compact" : ""} ${isNow ? "now" : ""} ${isPast ? "past" : ""} ${b.status === "cancelled" ? "cancelled" : ""}`}
+                          className={`agenda-card pay-${paymentTone(b.payment_status)} ${dense ? "shared" : ""} ${isNow ? "now" : ""} ${isPast ? "past" : ""} ${b.status === "cancelled" ? "cancelled" : ""}`}
                           onClick={() => openBooking(b)}
                         >
-                          {!dense ? (
-                            <span className="agenda-avatar">{initials(name)}</span>
-                          ) : null}
+                          <span className="agenda-avatar">{initials(name)}</span>
                           <div className="agenda-main">
                             <strong className="agenda-guest">{name}</strong>
-                            <div className="agenda-meta">
-                              {b.service?.name || "Booking"}
-                              {dense ? ` · ${bookingDurationMinutes(b)}m` : ""}
+                            <div className="agenda-meta">{b.service?.name || "Booking"}</div>
+                            <div className="agenda-money muted">
+                              {b.currency} {amountDue(b).toFixed(2)}
+                              {b.status === "cancelled" ? " · Cancelled" : ""}
                             </div>
-                            {!dense ? (
-                              <div className="agenda-money muted">
-                                {b.currency} {amountDue(b).toFixed(2)}
-                                {b.status === "cancelled" ? " · Cancelled" : ""}
-                              </div>
-                            ) : null}
                           </div>
                           <div className="agenda-pills">
                             <span className={`agenda-pill pay-${paymentTone(b.payment_status)}`}>

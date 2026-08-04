@@ -1060,33 +1060,28 @@ p {
   min-width: 0;
 }
 
-.agenda-card.compact {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.35rem;
-  align-items: start;
-  padding: 0.65rem 0.7rem;
-  border-radius: 14px;
+.agenda-card.shared {
+  gap: 0.45rem;
+  padding: 0.7rem 0.7rem;
 }
 
-.agenda-card.compact .agenda-pills {
-  justify-items: start;
-  grid-auto-flow: column;
-  grid-template-columns: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+.agenda-card.shared .agenda-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 0.7rem;
 }
 
-.agenda-card.compact .agenda-guest {
+.agenda-card.shared .agenda-guest {
   font-size: 0.92rem;
 }
 
-.agenda-card.compact .agenda-meta {
+.agenda-card.shared .agenda-meta,
+.agenda-card.shared .agenda-money {
   font-size: 0.78rem;
 }
 
-.agenda-card.compact .agenda-pill {
-  max-width: 100%;
+.agenda-card.shared .agenda-pill {
+  max-width: 96px;
   font-size: 0.68rem;
   padding: 0.14rem 0.45rem;
 }
@@ -2381,16 +2376,6 @@ p {
   .agenda-slot.count-3 .agenda-slot-cards,
   .agenda-slot.count-2 .agenda-slot-cards {
     grid-template-columns: 1fr !important;
-  }
-
-  .agenda-card.compact {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-  }
-
-  .agenda-card.compact .agenda-pills {
-    display: grid;
-    justify-items: end;
   }
 
   .agenda-pill,
