@@ -497,7 +497,8 @@ export default function BookingsPage() {
               const isNow = now >= start.getTime() && now < end.getTime();
               const isPast = end.getTime() < now && isToday;
               const name = b.customer?.name || b.customer?.phone || "Guest";
-              const assign = [b.person?.name, b.room?.name].filter(Boolean).join(" · ");
+              const staffName = b.person?.name || "";
+              const roomName = b.room?.name || "";
               return (
                 <button
                   key={b.id}
@@ -512,20 +513,27 @@ export default function BookingsPage() {
                   </div>
                   <span className="agenda-avatar">{initials(name)}</span>
                   <div className="agenda-main">
-                    <div className="agenda-title-row">
-                      <strong>{name}</strong>
-                      <span className={`agenda-pay pay-${paymentTone(b.payment_status)}`}>
-                        {paymentLabel(b.payment_status)}
-                      </span>
-                    </div>
-                    <div className="agenda-meta">
-                      {b.service?.name || "Booking"}
-                      {assign ? ` · ${assign}` : ""}
-                    </div>
+                    <strong className="agenda-guest">{name}</strong>
+                    <div className="agenda-meta">{b.service?.name || "Booking"}</div>
                     <div className="agenda-money muted">
                       {b.currency} {amountDue(b).toFixed(2)}
                       {b.status === "cancelled" ? " · Cancelled" : ""}
                     </div>
+                  </div>
+                  <div className="agenda-pills">
+                    <span className={`agenda-pill pay-${paymentTone(b.payment_status)}`}>
+                      {paymentLabel(b.payment_status)}
+                    </span>
+                    {staffName ? (
+                      <span className="agenda-pill staff" title={profile.personNoun}>
+                        {staffName}
+                      </span>
+                    ) : null}
+                    {roomName ? (
+                      <span className="agenda-pill room" title={profile.roomNoun}>
+                        {roomName}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               );
