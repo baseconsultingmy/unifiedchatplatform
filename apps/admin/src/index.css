@@ -885,6 +885,287 @@ p {
   flex-wrap: wrap;
 }
 
+/* Bookings — agenda-first tablet layout */
+.bookings-app {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0;
+  height: 100%;
+}
+
+.page-frame > .bookings-app {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.bookings-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.bookings-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.bookings-nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.bookings-date-label {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  padding: 0 0.2rem;
+}
+
+.bookings-date-label strong {
+  font-family: "Literata", serif;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.bookings-date-label span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookings-today-btn {
+  margin-left: 0.15rem;
+}
+
+.bookings-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
+.bookings-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.bookings-summary strong {
+  color: var(--ink);
+}
+
+.bookings-summary-due {
+  color: var(--warn);
+}
+
+.bookings-filters {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.bookings-chip {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.bookings-chip.active {
+  background: rgba(15, 118, 110, 0.14);
+  border-color: rgba(15, 118, 110, 0.28);
+  color: var(--ink);
+}
+
+.bookings-agenda {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  padding-bottom: 0.35rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bookings-empty {
+  margin: auto;
+  text-align: center;
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+}
+
+.bookings-empty strong {
+  color: var(--ink);
+  font-size: 1.15rem;
+}
+
+.agenda-card {
+  display: grid;
+  grid-template-columns: 64px auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 16px;
+  padding: 0.85rem 0.95rem;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  box-shadow: 0 1px 0 rgba(20, 32, 28, 0.03);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.agenda-card:hover {
+  border-color: rgba(15, 118, 110, 0.35);
+}
+
+.agenda-card.now {
+  border-color: rgba(15, 118, 110, 0.45);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+}
+
+.agenda-card.past {
+  opacity: 0.72;
+}
+
+.agenda-card.cancelled {
+  opacity: 0.55;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.agenda-card.pay-due {
+  border-left: 3px solid var(--warn);
+}
+
+.agenda-card.pay-ok {
+  border-left: 3px solid var(--ok);
+}
+
+.agenda-time {
+  display: grid;
+  gap: 0.1rem;
+  justify-items: start;
+}
+
+.agenda-time strong {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-time span {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.agenda-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(145deg, #0f766e, #134e4a);
+}
+
+.agenda-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.agenda-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.agenda-title-row strong {
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-meta,
+.agenda-money {
+  font-size: 0.86rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agenda-pay {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  text-transform: capitalize;
+}
+
+.agenda-pay.pay-due {
+  color: #9a3412;
+  background: rgba(180, 83, 9, 0.14);
+}
+
+.agenda-pay.pay-ok {
+  color: #166534;
+  background: rgba(21, 128, 61, 0.14);
+}
+
+.agenda-pay.pay-muted {
+  color: var(--muted);
+  background: rgba(20, 32, 28, 0.06);
+}
+
+.bookings-board-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.booking-sheet-status {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .segmented {
   display: inline-flex;
   padding: 0.2rem;
@@ -931,7 +1212,8 @@ p {
 }
 
 .bookings-day > .calendar-panel,
-.bookings-list > .table-panel {
+.bookings-list > .table-panel,
+.bookings-app > .bookings-board-panel {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -2019,6 +2301,15 @@ p {
   .calendar-nav,
   .toolbar-actions {
     gap: 0.55rem;
+  }
+
+  .agenda-card {
+    grid-template-columns: 56px auto minmax(0, 1fr);
+    padding: 0.75rem 0.8rem;
+  }
+
+  .bookings-date-label span {
+    display: none;
   }
 
   .app-topbar {

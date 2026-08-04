@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import QrPayPanel from "../components/QrPayPanel";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
 
-type ViewMode = "day" | "list";
+type ViewMode = "agenda" | "board";
 type BoardMode = "person" | "room";
 
-const DAY_START_HOUR = 8;
-const DAY_END_HOUR = 22; // exclusive
+const DAY_START_HOUR = 9;
+const DAY_END_HOUR = 21; // exclusive
 const SLOT_MINUTES = 30;
 const TOTAL_MINUTES = (DAY_END_HOUR - DAY_START_HOUR) * 60;
 const SLOT_COUNT = TOTAL_MINUTES / SLOT_MINUTES;
@@ -33,12 +33,26 @@ function sameDay(a: Date, b: Date) {
   );
 }
 
-function formatDayTitle(d: Date) {
+function formatDayShort(d: Date) {
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatDayLong(d: Date) {
   return d.toLocaleDateString(undefined, {
     weekday: "long",
     day: "numeric",
-    month: "short",
-    year: "numeric",
+    month: "long",
+  });
+}
+
+function formatTime(value: string | Date) {
+  return new Date(value).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -51,9 +65,26 @@ function isPaid(status: string) {
   return status === "paid" || status === "deposit_paid";
 }
 
+function paymentTone(status: string) {
+  if (isPaid(status)) return "ok";
+  if (status === "deposit_due" || status === "unpaid") return "due";
+  return "muted";
+}
+
+function paymentLabel(status: string) {
+  if (status === "paid") return "Paid";
+  if (status === "deposit_paid") return "Deposit paid";
+  if (status === "deposit_due") return "Deposit due";
+  if (status === "unpaid") return "Unpaid";
+  return status.replace(/_/g, " ");
+}
+
 function bookingDurationMinutes(b: any) {
   if (b.ends_at && b.starts_at) {
-    return Math.max(SLOT_MINUTES, (new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime()) / 60000);
+    return Math.max(
+      SLOT_MINUTES,
+      (new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime()) / 60000,
+    );
   }
   return Number(b.service?.duration_minutes || 60);
 }
@@ -63,14 +94,23 @@ function toLocalDateTimeValue(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p: string) => p[0]?.toUpperCase() || "")
+    .join("");
+}
+
 export default function BookingsPage() {
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
-  const [view, setView] = useState<ViewMode>("day");
+  const [view, setView] = useState<ViewMode>("agenda");
   const [dayAnchor, setDayAnchor] = useState(() => startOfDay(new Date()));
   const [boardMode, setBoardMode] = useState<BoardMode>("person");
+  const [filterId, setFilterId] = useState<string>("all");
   const [bookings, setBookings] = useState<any[]>([]);
-  const [listBookings, setListBookings] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
@@ -78,6 +118,7 @@ export default function BookingsPage() {
   const [selected, setSelected] = useState<any | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const agendaRef = useRef<HTMLDivElement | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -95,10 +136,22 @@ export default function BookingsPage() {
     [resources],
   );
 
-  const dayBookings = useMemo(
-    () => bookings.filter((b) => b.starts_at && sameDay(new Date(b.starts_at), dayAnchor)),
-    [bookings, dayAnchor],
-  );
+  const dayBookings = useMemo(() => {
+    return bookings
+      .filter((b) => b.starts_at && sameDay(new Date(b.starts_at), dayAnchor))
+      .slice()
+      .sort(
+        (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+      );
+  }, [bookings, dayAnchor]);
+
+  const filteredAgenda = useMemo(() => {
+    if (filterId === "all") return dayBookings;
+    if (filterId === "unassigned") {
+      return dayBookings.filter((b) => !b.person_id);
+    }
+    return dayBookings.filter((b) => String(b.person_id || "") === filterId);
+  }, [dayBookings, filterId]);
 
   const columns = useMemo(() => {
     if (!profile.supportsResources) {
@@ -108,8 +161,15 @@ export default function BookingsPage() {
       boardMode === "person"
         ? people.map((p) => ({ id: String(p.id), name: p.name, kind: "person" as const }))
         : rooms.map((r) => ({ id: String(r.id), name: r.name, kind: "room" as const }));
-    return [...base, { id: "unassigned", name: "Unassigned", kind: "unassigned" as const }];
-  }, [profile.supportsResources, boardMode, people, rooms]);
+    const unassignedCount = dayBookings.filter((b) =>
+      boardMode === "person" ? !b.person_id : !b.room_id,
+    ).length;
+    return unassignedCount > 0
+      ? [...base, { id: "unassigned", name: "Unassigned", kind: "unassigned" as const }]
+      : base.length
+        ? base
+        : [{ id: "all", name: "Schedule", kind: "all" as const }];
+  }, [profile.supportsResources, boardMode, people, rooms, dayBookings]);
 
   const timeLabels = useMemo(() => {
     const labels: string[] = [];
@@ -122,26 +182,28 @@ export default function BookingsPage() {
     return labels;
   }, []);
 
+  const dueCount = useMemo(
+    () => dayBookings.filter((b) => !isPaid(b.payment_status) && b.status !== "cancelled").length,
+    [dayBookings],
+  );
+
   async function refresh() {
     if (!token) return;
     const from = startOfDay(dayAnchor).toISOString();
     const to = addDays(startOfDay(dayAnchor), 1).toISOString();
-    const [day, all, c, s, r] = await Promise.all([
+    const [day, c, s, r] = await Promise.all([
       api.bookings(token, { from, to }),
-      api.bookings(token),
       api.customers(token),
       api.services(token),
       profile.supportsResources ? api.resources(token) : Promise.resolve([]),
     ]);
     setBookings(day);
-    setListBookings(all);
     setCustomers(c);
     setServices(s);
     setResources(r);
     if (!serviceId && s[0]) setServiceId(String(s[0].id));
     if (selected) {
-      const fresh =
-        all.find((b: any) => b.id === selected.id) || day.find((b: any) => b.id === selected.id);
+      const fresh = day.find((b: any) => b.id === selected.id);
       setSelected(fresh || null);
     }
   }
@@ -161,6 +223,14 @@ export default function BookingsPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (view !== "agenda" || !agendaRef.current || !sameDay(dayAnchor, new Date())) return;
+    const nowEl = agendaRef.current.querySelector("[data-now='1']");
+    if (nowEl instanceof HTMLElement) {
+      nowEl.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [view, dayAnchor, filteredAgenda.length]);
+
   function openBooking(b: any) {
     setSelected(b);
     setShowQr(false);
@@ -179,12 +249,31 @@ export default function BookingsPage() {
     setStartsAt(toLocalDateTimeValue(start));
     if (profile.supportsResources) {
       if (boardMode === "person") {
-        setPersonId(columnId === "unassigned" ? "" : columnId);
+        setPersonId(columnId === "unassigned" || columnId === "all" ? "" : columnId);
         setRoomId("");
       } else {
-        setRoomId(columnId === "unassigned" ? "" : columnId);
+        setRoomId(columnId === "unassigned" || columnId === "all" ? "" : columnId);
         setPersonId("");
       }
+    }
+    setShowCreate(true);
+    setSelected(null);
+    setShowQr(false);
+  }
+
+  function openCreateBlank() {
+    const start = new Date();
+    start.setMinutes(start.getMinutes() < 30 ? 30 : 60, 0, 0);
+    if (!sameDay(start, dayAnchor)) {
+      // keep selected day at 10:00
+      const d = new Date(dayAnchor);
+      d.setHours(10, 0, 0, 0);
+      setStartsAt(toLocalDateTimeValue(d));
+    } else {
+      setStartsAt(toLocalDateTimeValue(start));
+    }
+    if (filterId !== "all" && filterId !== "unassigned") {
+      setPersonId(filterId);
     }
     setShowCreate(true);
     setSelected(null);
@@ -236,11 +325,6 @@ export default function BookingsPage() {
     await refresh();
   }
 
-  function assignmentLabel(b: any) {
-    const bits = [b.person?.name, b.room?.name].filter(Boolean);
-    return bits.join(" · ");
-  }
-
   function bookingsForColumn(columnId: string) {
     if (columnId === "all") return dayBookings;
     if (columnId === "unassigned") {
@@ -269,216 +353,252 @@ export default function BookingsPage() {
   }
 
   const isToday = sameDay(dayAnchor, new Date());
-  const bookedCount = dayBookings.length;
+  const now = Date.now();
 
   return (
-    <div className={`grid page-fill ${view === "day" ? "bookings-day" : "bookings-list"}`}>
-      <div className="bookings-toolbar page-head">
-        <div>
-          <h1>Bookings</h1>
-          <p>
-            {isToday ? "Today’s" : "Day"} board by{" "}
-            {boardMode === "person" ? profile.personNoun.toLowerCase() : profile.roomNoun.toLowerCase()}{" "}
-            — booked slots are filled.
-          </p>
-        </div>
-        <div className="toolbar-actions">
-          <div className="segmented">
-            <button
-              type="button"
-              className={view === "day" ? "active" : ""}
-              onClick={() => setView("day")}
-            >
-              Day
-            </button>
-            <button
-              type="button"
-              className={view === "list" ? "active" : ""}
-              onClick={() => setView("list")}
-            >
-              List
-            </button>
+    <div className={`bookings-app ${view === "agenda" ? "is-agenda" : "is-board"}`}>
+      <header className="bookings-top">
+        <div className="bookings-date-nav">
+          <button
+            type="button"
+            className="bookings-nav-btn"
+            aria-label="Previous day"
+            onClick={() => setDayAnchor(addDays(dayAnchor, -1))}
+          >
+            ‹
+          </button>
+          <div className="bookings-date-label">
+            <strong>{isToday ? "Today" : formatDayShort(dayAnchor)}</strong>
+            <span>{formatDayLong(dayAnchor)}</span>
           </div>
           <button
             type="button"
-            className="btn"
-            onClick={() => {
-              setStartsAt("");
-              setShowCreate(true);
-              setSelected(null);
-              setShowQr(false);
-            }}
+            className="bookings-nav-btn"
+            aria-label="Next day"
+            onClick={() => setDayAnchor(addDays(dayAnchor, 1))}
           >
-            New booking
+            ›
+          </button>
+          {!isToday ? (
+            <button
+              type="button"
+              className="btn secondary bookings-today-btn"
+              onClick={() => setDayAnchor(startOfDay(new Date()))}
+            >
+              Today
+            </button>
+          ) : null}
+        </div>
+
+        <div className="bookings-top-actions">
+          <div className="segmented">
+            <button
+              type="button"
+              className={view === "agenda" ? "active" : ""}
+              onClick={() => setView("agenda")}
+            >
+              Agenda
+            </button>
+            <button
+              type="button"
+              className={view === "board" ? "active" : ""}
+              onClick={() => setView("board")}
+            >
+              Board
+            </button>
+          </div>
+          <button type="button" className="btn" onClick={openCreateBlank}>
+            New
           </button>
         </div>
+      </header>
+
+      <div className="bookings-summary">
+        <span>
+          <strong>{dayBookings.length}</strong> booking{dayBookings.length === 1 ? "" : "s"}
+        </span>
+        {dueCount > 0 ? (
+          <span className="bookings-summary-due">
+            <strong>{dueCount}</strong> need payment
+          </span>
+        ) : (
+          <span className="muted">All clear on payments</span>
+        )}
       </div>
+
+      {profile.supportsResources && people.length > 0 && view === "agenda" ? (
+        <div className="bookings-filters">
+          <button
+            type="button"
+            className={`bookings-chip ${filterId === "all" ? "active" : ""}`}
+            onClick={() => setFilterId("all")}
+          >
+            Everyone
+          </button>
+          {people.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`bookings-chip ${filterId === String(p.id) ? "active" : ""}`}
+              onClick={() => setFilterId(String(p.id))}
+            >
+              {p.name}
+            </button>
+          ))}
+          {dayBookings.some((b) => !b.person_id) ? (
+            <button
+              type="button"
+              className={`bookings-chip ${filterId === "unassigned" ? "active" : ""}`}
+              onClick={() => setFilterId("unassigned")}
+            >
+              Unassigned
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {profile.supportsResources && view === "board" ? (
+        <div className="bookings-filters">
+          <button
+            type="button"
+            className={`bookings-chip ${boardMode === "person" ? "active" : ""}`}
+            onClick={() => setBoardMode("person")}
+          >
+            By {profile.personNoun.toLowerCase()}
+          </button>
+          <button
+            type="button"
+            className={`bookings-chip ${boardMode === "room" ? "active" : ""}`}
+            onClick={() => setBoardMode("room")}
+          >
+            By {profile.roomNoun.toLowerCase()}
+          </button>
+        </div>
+      ) : null}
 
       {error && !showCreate ? <div className="error">{error}</div> : null}
 
-      {view === "day" ? (
-        <section className="panel calendar-panel page-panel">
-          <div className="calendar-nav">
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={() => setDayAnchor(addDays(dayAnchor, -1))}
-            >
-              Prev
-            </button>
-            <div>
-              <strong>{formatDayTitle(dayAnchor)}</strong>
-              <div className="muted">
-                {bookedCount} booking{bookedCount === 1 ? "" : "s"} · {DAY_START_HOUR}:00–
-                {DAY_END_HOUR}:00 · {SLOT_MINUTES}-min slots
-              </div>
-            </div>
-            <div className="btn-row">
-              {profile.supportsResources ? (
-                <div className="segmented">
-                  <button
-                    type="button"
-                    className={boardMode === "person" ? "active" : ""}
-                    onClick={() => setBoardMode("person")}
-                  >
-                    {profile.personNoun}s
-                  </button>
-                  <button
-                    type="button"
-                    className={boardMode === "room" ? "active" : ""}
-                    onClick={() => setBoardMode("room")}
-                  >
-                    {profile.roomNoun}s
-                  </button>
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setDayAnchor(startOfDay(new Date()))}
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setDayAnchor(addDays(dayAnchor, 1))}
-              >
-                Next
+      {view === "agenda" ? (
+        <section className="bookings-agenda" ref={agendaRef}>
+          {filteredAgenda.length === 0 ? (
+            <div className="bookings-empty">
+              <strong>No bookings {isToday ? "today" : "this day"}</strong>
+              <p>Tap New, or switch days with the arrows above.</p>
+              <button type="button" className="btn" onClick={openCreateBlank}>
+                New booking
               </button>
             </div>
-          </div>
-
-          <div className="day-board-scroll">
-          <div
-            className="day-board"
-            style={{ gridTemplateColumns: `64px repeat(${columns.length}, minmax(140px, 1fr))` }}
-          >
-            <div className="day-board-hours">
-              <div className="day-board-corner" />
-              {timeLabels.map((label, idx) => (
-                <div key={label} className={`day-board-hour ${idx % 2 === 0 ? "hour" : "half"}`}>
-                  {idx % 2 === 0 ? label : ""}
-                </div>
-              ))}
-            </div>
-
-            {columns.map((col) => {
-              const colBookings = bookingsForColumn(col.id);
+          ) : (
+            filteredAgenda.map((b) => {
+              const start = new Date(b.starts_at);
+              const end = b.ends_at
+                ? new Date(b.ends_at)
+                : new Date(start.getTime() + bookingDurationMinutes(b) * 60000);
+              const isNow = now >= start.getTime() && now < end.getTime();
+              const isPast = end.getTime() < now && isToday;
+              const name = b.customer?.name || b.customer?.phone || "Guest";
+              const assign = [b.person?.name, b.room?.name].filter(Boolean).join(" · ");
               return (
-                <div key={col.id} className={`day-board-col ${col.kind === "unassigned" ? "unassigned" : ""}`}>
-                  <div className="day-board-col-head">
-                    <strong>{col.name}</strong>
-                    <span className="muted">
-                      {colBookings.length} booked
-                    </span>
+                <button
+                  key={b.id}
+                  type="button"
+                  className={`agenda-card pay-${paymentTone(b.payment_status)} ${isNow ? "now" : ""} ${isPast ? "past" : ""} ${b.status === "cancelled" ? "cancelled" : ""}`}
+                  data-now={isNow ? "1" : "0"}
+                  onClick={() => openBooking(b)}
+                >
+                  <div className="agenda-time">
+                    <strong>{formatTime(start)}</strong>
+                    <span>{bookingDurationMinutes(b)}m</span>
                   </div>
-                  <div className="day-board-col-body">
-                    {timeLabels.map((label, idx) => (
-                      <button
-                        key={label}
-                        type="button"
-                        className={`day-board-slot ${idx % 2 === 0 ? "hour" : "half"}`}
-                        title={`Book ${label} · ${col.name}`}
-                        onClick={() => openCreateAt(col.id, idx)}
-                      />
-                    ))}
-                    {colBookings.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        className={`calendar-event day-board-event pay-${b.payment_status}`}
-                        style={blockStyle(b)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openBooking(b);
-                        }}
-                        title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}`}
-                      >
-                        <strong>{b.service?.name || "Booking"}</strong>
-                        <span>{b.customer?.name || b.customer?.phone}</span>
-                        <span className="calendar-assign">
-                          {new Date(b.starts_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {" · "}
-                          {bookingDurationMinutes(b)}m
-                          {boardMode === "person" && b.room?.name ? ` · ${b.room.name}` : ""}
-                          {boardMode === "room" && b.person?.name ? ` · ${b.person.name}` : ""}
-                        </span>
-                      </button>
-                    ))}
+                  <span className="agenda-avatar">{initials(name)}</span>
+                  <div className="agenda-main">
+                    <div className="agenda-title-row">
+                      <strong>{name}</strong>
+                      <span className={`agenda-pay pay-${paymentTone(b.payment_status)}`}>
+                        {paymentLabel(b.payment_status)}
+                      </span>
+                    </div>
+                    <div className="agenda-meta">
+                      {b.service?.name || "Booking"}
+                      {assign ? ` · ${assign}` : ""}
+                    </div>
+                    <div className="agenda-money muted">
+                      {b.currency} {amountDue(b).toFixed(2)}
+                      {b.status === "cancelled" ? " · Cancelled" : ""}
+                    </div>
                   </div>
-                </div>
+                </button>
               );
-            })}
-          </div>
-          </div>
+            })
+          )}
         </section>
       ) : (
-        <section className="panel page-panel table-panel">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Service</th>
-                {profile.supportsResources ? <th>Assigned</th> : null}
-                <th>When</th>
-                <th>Payment</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {listBookings.map((b) => (
-                <tr key={b.id}>
-                  <td>
-                    <strong>{b.customer?.name || b.customer?.phone}</strong>
-                    <div className="muted">{b.channel}</div>
-                  </td>
-                  <td>{b.service?.name || "—"}</td>
-                  {profile.supportsResources ? (
-                    <td>{assignmentLabel(b) || <span className="muted">Unassigned</span>}</td>
-                  ) : null}
-                  <td>{b.starts_at ? new Date(b.starts_at).toLocaleString() : "TBD"}</td>
-                  <td>
-                    <span className="badge">{b.status}</span>{" "}
-                    <span className={`badge ${isPaid(b.payment_status) ? "" : "warn"}`}>
-                      {b.payment_status}
-                    </span>
-                    <div className="muted">
-                      {b.currency} {amountDue(b)}
+        <section className="panel calendar-panel bookings-board-panel">
+          <div className="day-board-scroll">
+            <div
+              className="day-board"
+              style={{
+                gridTemplateColumns: `56px repeat(${Math.max(columns.length, 1)}, minmax(150px, 1fr))`,
+              }}
+            >
+              <div className="day-board-hours">
+                <div className="day-board-corner" />
+                {timeLabels.map((label, idx) => (
+                  <div
+                    key={label}
+                    className={`day-board-hour ${idx % 2 === 0 ? "hour" : "half"}`}
+                  >
+                    {idx % 2 === 0 ? label : ""}
+                  </div>
+                ))}
+              </div>
+
+              {columns.map((col) => {
+                const colBookings = bookingsForColumn(col.id);
+                return (
+                  <div
+                    key={col.id}
+                    className={`day-board-col ${col.kind === "unassigned" ? "unassigned" : ""}`}
+                  >
+                    <div className="day-board-col-head">
+                      <strong>{col.name}</strong>
+                      <span className="muted">{colBookings.length}</span>
                     </div>
-                  </td>
-                  <td>
-                    <button className="btn secondary" onClick={() => openBooking(b)}>
-                      Open
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <div className="day-board-col-body">
+                      {timeLabels.map((label, idx) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className={`day-board-slot ${idx % 2 === 0 ? "hour" : "half"}`}
+                          title={`Book ${label} · ${col.name}`}
+                          onClick={() => openCreateAt(col.id, idx)}
+                        />
+                      ))}
+                      {colBookings.map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          className={`calendar-event day-board-event pay-${b.payment_status}`}
+                          style={blockStyle(b)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openBooking(b);
+                          }}
+                          title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}`}
+                        >
+                          <strong>{formatTime(b.starts_at)}</strong>
+                          <span>{b.customer?.name || b.customer?.phone}</span>
+                          <span className="calendar-assign">
+                            {b.service?.name || "Booking"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </section>
       )}
 
@@ -493,15 +613,27 @@ export default function BookingsPage() {
           >
             <div className="bookings-toolbar">
               <div>
-                <h2 id="booking-modal-title">Booking #{selected.id}</h2>
+                <h2 id="booking-modal-title">
+                  {selected.customer?.name || selected.customer?.phone || "Booking"}
+                </h2>
                 <p>
-                  {selected.service?.name || "Service"} ·{" "}
-                  {selected.customer?.name || selected.customer?.phone}
+                  {selected.service?.name || "Service"}
+                  {selected.starts_at ? ` · ${formatTime(selected.starts_at)}` : ""}
                 </p>
               </div>
               <button type="button" className="btn secondary" onClick={closeBooking}>
                 Close
               </button>
+            </div>
+
+            <div className="booking-sheet-status">
+              <span className={`agenda-pay pay-${paymentTone(selected.payment_status)}`}>
+                {paymentLabel(selected.payment_status)}
+              </span>
+              <span className="badge">{selected.status}</span>
+              <span className="muted">
+                {selected.currency} {amountDue(selected).toFixed(2)}
+              </span>
             </div>
 
             {profile.supportsResources ? (
@@ -556,38 +688,22 @@ export default function BookingsPage() {
                 <span className="muted">Channel</span>
                 <div>{selected.channel}</div>
               </div>
-              <div>
-                <span className="muted">Status</span>
-                <div>
-                  <span className="badge">{selected.status}</span>
-                </div>
-              </div>
-              <div>
-                <span className="muted">Payment</span>
-                <div>
-                  <span className={`badge ${isPaid(selected.payment_status) ? "" : "warn"}`}>
-                    {selected.payment_status}
-                  </span>
-                  <div className="muted">
-                    {selected.currency} {amountDue(selected)}
-                    {selected.paid_at ? ` · ${new Date(selected.paid_at).toLocaleString()}` : ""}
-                  </div>
-                </div>
-              </div>
             </div>
 
-            <div className="btn-row" style={{ marginTop: "0.85rem" }}>
+            <div className="btn-row" style={{ marginTop: "0.35rem" }}>
               {!isPaid(selected.payment_status) ? (
                 <>
                   <button
                     className="btn"
-                    onClick={() => patchSelected({ payment_status: "paid", status: "confirmed" })}
+                    onClick={() =>
+                      patchSelected({ payment_status: "paid", status: "confirmed" })
+                    }
                   >
                     Mark paid
                   </button>
                   {selected.payment_url ? (
                     <button className="btn secondary" onClick={() => setShowQr((v) => !v)}>
-                      {showQr ? "Hide QR" : "Show QR pay"}
+                      {showQr ? "Hide QR" : "QR pay"}
                     </button>
                   ) : null}
                 </>
@@ -611,7 +727,7 @@ export default function BookingsPage() {
             </div>
 
             {showQr && selected.payment_url ? (
-              <div style={{ marginTop: "0.85rem" }}>
+              <div style={{ marginTop: "0.35rem" }}>
                 <QrPayPanel
                   paymentUrl={selected.payment_url}
                   amountLabel={`${selected.currency} ${amountDue(selected).toFixed(2)}`}
@@ -635,7 +751,7 @@ export default function BookingsPage() {
             <div className="bookings-toolbar">
               <div>
                 <h2>New booking</h2>
-                <p>Create a reservation and optionally assign room/staff.</p>
+                <p>Quick add for walk-ins or phone bookings.</p>
               </div>
               <button type="button" className="btn secondary" onClick={() => setShowCreate(false)}>
                 Close
