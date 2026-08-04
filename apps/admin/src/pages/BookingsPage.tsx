@@ -461,6 +461,8 @@ export default function BookingsPage() {
     Boolean(selected) &&
     (assignPersonId !== (selected.person_id ? String(selected.person_id) : "") ||
       assignRoomId !== (selected.room_id ? String(selected.room_id) : ""));
+  const alreadyAssigned = Boolean(selected?.person_id || selected?.room_id);
+  const assignLabel = alreadyAssigned ? "Reassign" : "Assign";
 
   function appendDigit(digit: string) {
     setTenderInput((prev) => {
@@ -971,7 +973,7 @@ export default function BookingsPage() {
                   disabled={busy || !assignDirty}
                   onClick={() => void onAssign()}
                 >
-                  {busy ? "Saving…" : "Assign"}
+                  {busy ? "Saving…" : assignLabel}
                 </button>
               ) : null}
               {selected.status !== "completed" && selected.status !== "cancelled" ? (
