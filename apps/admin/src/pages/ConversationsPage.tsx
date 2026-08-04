@@ -410,30 +410,31 @@ export default function ConversationsPage() {
               </div>
             </header>
 
-            {error ? <div className="chat-error">{error}</div> : null}
-
-            <div className="chat-messages" ref={threadRef}>
-              {threadItems.length === 0 ? (
-                <div className="chat-empty-thread">
-                  <p>No messages in this thread yet. Say hello below.</p>
-                </div>
-              ) : (
-                threadItems.map((item) =>
-                  item.kind === "day" ? (
-                    <div key={item.id} className="chat-day-sep">
-                      <span>{item.label}</span>
-                    </div>
-                  ) : (
-                    <div
-                      key={item.id}
-                      className={`chat-bubble ${item.message.direction === "inbound" ? "in" : "out"}`}
-                    >
-                      <div className="chat-bubble-body">{item.message.body}</div>
-                      <time className="chat-bubble-meta">{clock(item.message.created_at)}</time>
-                    </div>
-                  ),
-                )
-              )}
+            <div className="chat-stage-body">
+              {error ? <div className="chat-error">{error}</div> : null}
+              <div className="chat-messages" ref={threadRef}>
+                {threadItems.length === 0 ? (
+                  <div className="chat-empty-thread">
+                    <p>No messages in this thread yet. Say hello below.</p>
+                  </div>
+                ) : (
+                  threadItems.map((item) =>
+                    item.kind === "day" ? (
+                      <div key={item.id} className="chat-day-sep">
+                        <span>{item.label}</span>
+                      </div>
+                    ) : (
+                      <div
+                        key={item.id}
+                        className={`chat-bubble ${item.message.direction === "inbound" ? "in" : "out"}`}
+                      >
+                        <div className="chat-bubble-body">{item.message.body}</div>
+                        <time className="chat-bubble-meta">{clock(item.message.created_at)}</time>
+                      </div>
+                    ),
+                  )
+                )}
+              </div>
             </div>
 
             <form className="chat-composer" onSubmit={onSend}>
@@ -442,8 +443,9 @@ export default function ConversationsPage() {
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder={`Message on ${channelLabel(activeChannel)}… Enter to send`}
+                placeholder={`Reply on ${channelLabel(activeChannel)}…`}
                 rows={1}
+                aria-label={`Reply on ${channelLabel(activeChannel)}`}
               />
               <button
                 className="chat-send-btn"

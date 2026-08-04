@@ -406,8 +406,10 @@ p {
 
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   border: 1px solid var(--line);
   border-radius: 18px;
   overflow: hidden;
@@ -466,6 +468,8 @@ p {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
   border-right: 1px solid var(--line);
   background: rgba(248, 250, 252, 0.92);
 }
@@ -590,6 +594,8 @@ p {
 .chat-list {
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 0 0.45rem 0.7rem;
   display: grid;
   gap: 0.2rem;
@@ -793,8 +799,10 @@ p {
 .chat-stage {
   min-width: 0;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background:
     radial-gradient(720px 300px at 100% 0%, var(--chat-stage-tint), transparent 58%),
     radial-gradient(480px 220px at 0% 100%, var(--chat-brand-soft), transparent 55%),
@@ -803,18 +811,21 @@ p {
 }
 
 .chat-stage:has(.chat-empty-stage) {
-  grid-template-rows: minmax(0, 1fr);
+  display: grid;
+  place-items: stretch;
 }
 
 .chat-stage-head {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  flex: 0 0 auto;
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--line);
   border-top: 3px solid var(--chat-brand);
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  z-index: 2;
 }
 
 .chat-back-btn {
@@ -852,7 +863,16 @@ p {
   gap: 0.35rem;
 }
 
+.chat-stage-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .chat-error {
+  flex: 0 0 auto;
   margin: 0.55rem 1rem 0;
   padding: 0.55rem 0.75rem;
   border-radius: 12px;
@@ -863,12 +883,16 @@ p {
 }
 
 .chat-messages {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   gap: 0.45rem;
   align-content: start;
   overflow: auto;
-  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 1rem 1.1rem 0.85rem;
+  scroll-padding-bottom: 0.5rem;
 }
 
 .chat-day-sep {
@@ -939,9 +963,13 @@ p {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.55rem;
   align-items: end;
-  padding: 0.75rem 0.9rem 0.9rem;
+  flex: 0 0 auto;
+  padding: 0.7rem 0.9rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 -8px 24px rgba(15, 39, 68, 0.06);
+  z-index: 2;
 }
 
 .chat-composer textarea {
@@ -950,10 +978,11 @@ p {
   padding: 0.75rem 0.9rem;
   resize: none;
   min-height: 46px;
-  max-height: 140px;
+  max-height: 120px;
   background: #fff;
   outline: none;
   line-height: 1.35;
+  width: 100%;
 }
 
 .chat-composer textarea:focus {
@@ -1820,6 +1849,13 @@ p {
 .page-frame > .chat-app {
   flex: 1 1 auto;
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
+}
+
+.chat-sidebar,
+.chat-stage {
+  max-height: 100%;
 }
 
 .page-fill > .modal-backdrop {
@@ -2917,6 +2953,12 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .chat-app {
+    height: 100%;
+    max-height: 100%;
+    border-radius: 14px;
+  }
+
   .chat-app.show-list .chat-stage {
     display: none;
   }
@@ -2926,11 +2968,35 @@ p {
   }
 
   .chat-app.show-thread .chat-stage {
-    display: grid;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
   }
 
   .chat-back-btn {
     display: grid;
+  }
+
+  .chat-sidebar-head {
+    padding: 0.8rem 0.85rem 0.45rem;
+  }
+
+  .chat-channel-legend {
+    margin-top: 0.4rem;
+  }
+
+  .chat-composer {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .chat-send-btn {
+    min-width: 64px;
+  }
+
+  .chat-bubble {
+    max-width: min(86%, 520px);
   }
 
   .pos-shell {
