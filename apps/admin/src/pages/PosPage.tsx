@@ -15,7 +15,18 @@ type CartLine = {
   modLabels: string[];
 };
 type PayMethod = "cash" | "qr" | "card";
-type CheckoutStep = null | "customer" | "payment" | "cash" | "qr" | "done" | "customize";
+type CheckoutStep =
+  | null
+  | "customer"
+  | "destination"
+  | "find-table"
+  | "payment"
+  | "cash"
+  | "qr"
+  | "done"
+  | "customize";
+
+const TABLE_PRESETS = ["A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4"];
 
 function parseMoney(raw: string): number {
   if (!raw || raw === ".") return 0;
@@ -64,8 +75,11 @@ export default function PosPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
-  const [tableLabel, setTableLabel] = useState("Takeaway");
+  const [tableLabel, setTableLabel] = useState("");
+  const [customTable, setCustomTable] = useState("");
   const [activeTicketId, setActiveTicketId] = useState<number | null>(null);
+  const [payMode, setPayMode] = useState<"takeaway" | "table">("takeaway");
+  const [tableSearch, setTableSearch] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
   const [tenderInput, setTenderInput] = useState("");
   const [error, setError] = useState("");
@@ -109,14 +123,16 @@ export default function PosPage() {
         setCustomizeItem(null);
       } else if (step === "cash") setStep("payment");
       else if (step === "payment") {
-        if (fast) unlockCart();
+        if (payMode === "table") setStep("find-table");
+        else if (fast) setStep("destination");
         else setStep("customer");
-      } else if (step === "customer") setStep(null);
+      } else if (step === "destination" || step === "find-table") unlockCart();
+      else if (step === "customer") setStep(null);
       else if (step === "qr" || step === "done") resetSale();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, fast]);
+  }, [step, fast, payMode]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -175,7 +191,7 @@ export default function PosPage() {
   const tendered = parseMoney(tenderInput);
   const changeDue = Math.max(0, tendered - amountDue);
   const balanceDue = Math.max(0, amountDue - tendered);
-  const canTakeCash = cartDetails.length > 0 && tendered + 1e-9 >= amountDue && amountDue > 0;
+  const canTakeCash = amountDue > 0 && tendered + 1e-9 >= amountDue;
   const depositAllowed =
     profile.showDeposit &&
     cartDetails.length === 1 &&
@@ -186,7 +202,7 @@ export default function PosPage() {
   const guestLabel =
     selectedCustomer?.name ||
     customerName.trim() ||
-    (tableLabel.trim() && tableLabel !== "Takeaway" ? `Table ${tableLabel.trim()}` : "") ||
+    (payMode === "table" && tableLabel ? `Table ${tableLabel}` : "") ||
     (fast ? "Walk-in" : "Walk-in guest");
   const guestPhone = selectedCustomer?.phone || customerPhone.trim() || "";
 
@@ -202,6 +218,26 @@ export default function PosPage() {
       )
       .slice(0, 8);
   }, [customers, customerQuery]);
+
+  const filteredTickets = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return tickets;
+    return tickets.filter(
+      (t) =>
+        String(t.table_label || "")
+          .toLowerCase()
+          .includes(q) || String(t.id).includes(q),
+    );
+  }, [tickets, tableSearch]);
+
+  const occupiedTables = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of tickets) {
+      const label = String(t.table_label || "").trim().toLowerCase();
+      if (label) set.add(label);
+    }
+    return set;
+  }, [tickets]);
 
   const cashQuickAmounts = useMemo(() => {
     const exact = Number(amountDue.toFixed(2));
@@ -232,6 +268,10 @@ export default function PosPage() {
     setStatusMsg("");
     setCustomizeItem(null);
     setActiveTicketId(null);
+    setTableLabel("");
+    setCustomTable("");
+    setPayMode("takeaway");
+    setTableSearch("");
   }
 
   function computeUnit(service: any, optionIds: number[]) {
@@ -330,7 +370,7 @@ export default function PosPage() {
   }
 
   function setQty(key: string, quantity: number) {
-    if (orderConfirmed || step) return;
+    if (orderConfirmed || (step && step !== "customize")) return;
     setCart((prev) => {
       if (quantity <= 0) return prev.filter((l) => l.key !== key);
       return prev.map((l) => (l.key === key ? { ...l, quantity } : l));
@@ -363,16 +403,10 @@ export default function PosPage() {
     if (cartDetails.length === 0 || amountDue <= 0) return;
     setError("");
     setOrderConfirmed(true);
+    setActiveTicketId(null);
+    setPayMode("takeaway");
     if (fast) {
-      if (!customerName.trim() && !customerId) {
-        setCustomerName(
-          tableLabel.trim() && tableLabel !== "Takeaway"
-            ? `Table ${tableLabel.trim()}`
-            : "Walk-in",
-        );
-      }
-      setStep("payment");
-      setTenderInput("");
+      setStep("destination");
       return;
     }
     setStep("customer");
@@ -383,12 +417,88 @@ export default function PosPage() {
     setStep(null);
     setTenderInput("");
     setError("");
+    setActiveTicketId(null);
+    setPayMode("takeaway");
   }
 
   function proceedToPayment(withCustomer: boolean) {
     if (!withCustomer && !customerName.trim() && !customerId) {
       setCustomerName("Walk-in");
     }
+    setStep("payment");
+    setTenderInput("");
+    setError("");
+  }
+
+  function chooseTakeaway() {
+    setPayMode("takeaway");
+    setTableLabel("Takeaway");
+    setActiveTicketId(null);
+    setCustomerName((n) => n || "Walk-in");
+    setStep("payment");
+    setTenderInput("");
+    setError("");
+  }
+
+  async function chooseTable(label: string) {
+    const table = label.trim();
+    if (!token || !table || cartDetails.length === 0) return;
+    setBusy(true);
+    setError("");
+    try {
+      const ticket = await api.createPosTicket(token, {
+        table_label: table,
+        notes: notes.trim() || null,
+        lines: saleItemsPayload().map(({ service_id, quantity, remarks, option_ids }) => ({
+          service_id,
+          quantity,
+          remarks,
+          option_ids,
+        })),
+      });
+      const sent = await api.sendKitchen(token, ticket.id);
+      printKitchenSlip(sent.slip_text, `Table ${table}`);
+      setStatusMsg(`Table ${table} · sent to kitchen · pay anytime from Pay table`);
+      setCart([]);
+      setOrderConfirmed(false);
+      setStep(null);
+      setNotes("");
+      setCustomTable("");
+      setActiveTicketId(null);
+      await refreshTickets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not park table order");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openFindTable() {
+    setError("");
+    setStatusMsg("");
+    setTableSearch("");
+    setPayMode("table");
+    setOrderConfirmed(true);
+    await refreshTickets();
+    setStep("find-table");
+  }
+
+  function selectTicketToPay(ticket: any) {
+    setActiveTicketId(ticket.id);
+    setTableLabel(ticket.table_label || "");
+    setPayMode("table");
+    setCustomerName(`Table ${ticket.table_label}`);
+    setCart(
+      (ticket.lines || []).map((ln: any) => ({
+        key: `t-${ticket.id}-${ln.id}`,
+        serviceId: ln.service_id,
+        quantity: ln.quantity,
+        remarks: ln.remarks || undefined,
+        optionIds: [],
+        unitPrice: Number(ln.unit_price || 0),
+        modLabels: (ln.mods || []).map((m: any) => m.name),
+      })),
+    );
     setStep("payment");
     setTenderInput("");
     setError("");
@@ -429,86 +539,10 @@ export default function PosPage() {
     }));
   }
 
-  async function sendToKitchen() {
-    if (!token || cartDetails.length === 0) return;
-    setBusy(true);
-    setError("");
-    setStatusMsg("");
-    try {
-      const body = {
-        table_label: tableLabel.trim() || "Takeaway",
-        notes: notes.trim() || null,
-        lines: saleItemsPayload().map(({ service_id, quantity, remarks, option_ids }) => ({
-          service_id,
-          quantity,
-          remarks,
-          option_ids,
-        })),
-      };
-      let ticket;
-      if (activeTicketId) {
-        ticket = await api.addPosTicketLines(token, activeTicketId, {
-          lines: body.lines,
-          notes: body.notes,
-        });
-      } else {
-        ticket = await api.createPosTicket(token, body);
-      }
-      const sent = await api.sendKitchen(token, ticket.id);
-      printKitchenSlip(sent.slip_text, `Table ${ticket.table_label}`);
-      setActiveTicketId(sent.ticket.id);
-      setTableLabel(sent.ticket.table_label || tableLabel);
-      // Keep ticket lines on screen so staff can pay later without rebuilding.
-      setCart(
-        (sent.ticket.lines || []).map((ln: any) => ({
-          key: `t-${sent.ticket.id}-${ln.id}`,
-          serviceId: ln.service_id,
-          quantity: ln.quantity,
-          remarks: ln.remarks || undefined,
-          optionIds: [],
-          unitPrice: Number(ln.unit_price || 0),
-          modLabels: (ln.mods || []).map((m: any) => m.name),
-        })),
-      );
-      setStatusMsg(`Sent to kitchen · Table ${sent.ticket.table_label} · order stays open until pay`);
-      setOrderConfirmed(false);
-      setStep(null);
-      await refreshTickets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send to kitchen");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function loadTicket(ticket: any) {
-    setActiveTicketId(ticket.id);
-    setTableLabel(ticket.table_label || "Takeaway");
-    setNotes(ticket.notes || "");
-    setCart(
-      (ticket.lines || []).map((ln: any) => ({
-        key: `t-${ticket.id}-${ln.id}`,
-        serviceId: ln.service_id,
-        quantity: ln.quantity,
-        remarks: ln.remarks || undefined,
-        optionIds: [],
-        unitPrice: Number(ln.unit_price || 0),
-        modLabels: (ln.mods || []).map((m: any) => m.name),
-      })),
-    );
-    setStatusMsg(`Editing open order · Table ${ticket.table_label}`);
-    setOrderConfirmed(false);
-    setStep(null);
-  }
-
   async function checkout(method: "cash" | "qr") {
     if (!token) return;
     if (!activeTicketId && cartDetails.length === 0) return;
-    if (method === "cash" && !canTakeCash && !activeTicketId) {
-      setError("Cash received must cover the amount due");
-      return;
-    }
-    if (method === "cash" && activeTicketId && cartDetails.length && !canTakeCash) {
+    if (method === "cash" && !canTakeCash) {
       setError("Cash received must cover the amount due");
       return;
     }
@@ -516,7 +550,7 @@ export default function PosPage() {
     setBusy(true);
     try {
       const saleNotes = [
-        tableLabel.trim() ? `Table ${tableLabel.trim()}` : null,
+        tableLabel ? `Table ${tableLabel}` : payMode === "takeaway" ? "Takeaway" : null,
         notes.trim(),
         method === "cash"
           ? `Cash received ${currency} ${formatMoney(tendered)}; change ${currency} ${formatMoney(changeDue)}`
@@ -525,33 +559,16 @@ export default function PosPage() {
         .filter(Boolean)
         .join(" · ");
 
-      let ticketId = activeTicketId;
-      if (ticketId) {
-        // Only append lines that were added after the ticket was loaded/sent.
-        const fresh = cartDetails.filter((l) => !String(l.key).startsWith(`t-${ticketId}-`));
-        if (fresh.length) {
-          await api.addPosTicketLines(token, ticketId, {
-            lines: fresh.map((l) => ({
-              service_id: l.serviceId,
-              quantity: l.quantity,
-              remarks: l.remarks || null,
-              option_ids: l.optionIds,
-            })),
-            notes: notes.trim() || null,
-          });
-        }
-      }
-
       const sale = await api.posSale(token, {
-        items: ticketId ? undefined : saleItemsPayload(),
-        ticket_id: ticketId || undefined,
+        items: activeTicketId ? undefined : saleItemsPayload(),
+        ticket_id: activeTicketId || undefined,
         customer_id: customerId,
-        customer_name: customerName || null,
+        customer_name: customerName || (payMode === "takeaway" ? "Takeaway" : null),
         customer_phone: customerPhone || null,
         payment_method: method,
         charge_mode: depositAllowed && chargeMode === "deposit" ? "deposit" : "full",
         notes: saleNotes || null,
-        table_label: tableLabel || null,
+        table_label: tableLabel || (payMode === "takeaway" ? "Takeaway" : null),
       });
       setResult(sale);
       if (method === "qr") {
@@ -570,77 +587,40 @@ export default function PosPage() {
   }
 
   const locked = orderConfirmed || Boolean(step && step !== "customize");
+  const openTicketCount = tickets.length;
 
   return (
-    <div className={`pos-shell page-fill ${fast ? "pos-fnb" : ""}`}>
+    <div className={`pos-shell page-fill ${fast ? "pos-fnb pos-fnb-clean" : ""}`}>
       <section className="panel pos-catalog page-panel">
         <div className="pos-catalog-head">
           <div>
             <h1>{profile.posTitle}</h1>
-            <p>{profile.posHint}</p>
+            <p>{fast ? "Tap items into the order, then confirm." : profile.posHint}</p>
           </div>
-          {fast ? (
-            <label className="pos-menu-search">
-              <span className="muted">Search menu</span>
-              <input
-                value={menuQuery}
-                onChange={(e) => setMenuQuery(e.target.value)}
-                placeholder="Milo, teh, nasi…"
-                disabled={locked}
-              />
-            </label>
-          ) : null}
-        </div>
-
-        {fast ? (
-          <div className="pos-open-tickets">
-            <div className="pos-table-picker">
-              {["Takeaway", "A1", "A2", "A3", "B1", "B2"].map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={`pos-chip ${tableLabel === t ? "active" : ""}`}
+          <div className="pos-catalog-tools">
+            {fast ? (
+              <button
+                type="button"
+                className="pos-pay-table-btn"
+                onClick={openFindTable}
+                disabled={busy}
+              >
+                Pay table{openTicketCount ? ` (${openTicketCount})` : ""}
+              </button>
+            ) : null}
+            {fast ? (
+              <label className="pos-menu-search">
+                <span className="muted">Search</span>
+                <input
+                  value={menuQuery}
+                  onChange={(e) => setMenuQuery(e.target.value)}
+                  placeholder="Milo, teh…"
                   disabled={locked}
-                  onClick={() => {
-                    setTableLabel(t);
-                    setActiveTicketId(null);
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-              <input
-                className="pos-table-custom"
-                value={tableLabel}
-                disabled={locked}
-                onChange={(e) => setTableLabel(e.target.value)}
-                placeholder="Table"
-              />
-            </div>
-            {tickets.length ? (
-              <div className="pos-ticket-strip">
-                {tickets.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`pos-open-ticket ${activeTicketId === t.id ? "active" : ""}`}
-                    onClick={() => loadTicket(t)}
-                  >
-                    <strong>{t.table_label}</strong>
-                    <span>
-                      {t.currency} {Number(t.total_amount).toFixed(2)}
-                    </span>
-                    <span className="muted">{t.status}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                Open orders park on a table until the guest pays.
-              </p>
-            )}
+                />
+              </label>
+            ) : null}
           </div>
-        ) : null}
+        </div>
 
         <div className="pos-category-row">
           {categories.map((c) => (
@@ -690,10 +670,7 @@ export default function PosPage() {
       <aside className="panel pos-cart-side page-panel">
         <div className="pos-register-head">
           <div>
-            <h2>
-              {profile.posTicketNoun}
-              {fast ? ` · ${tableLabel}` : ""}
-            </h2>
+            <h2>{profile.posTicketNoun}</h2>
             <p className="muted">
               {itemCount
                 ? `${itemCount} item${itemCount === 1 ? "" : "s"}`
@@ -704,11 +681,13 @@ export default function PosPage() {
             type="button"
             className="btn secondary"
             onClick={resetSale}
-            disabled={!cart.length && !result && step !== "done" && !activeTicketId}
+            disabled={!cart.length && !result && step !== "done"}
           >
-            {fast ? "New order" : "New sale"}
+            Clear
           </button>
         </div>
+
+        {statusMsg ? <p className="pos-status-msg">{statusMsg}</p> : null}
 
         {profile.posShowOrderNote && !locked ? (
           <label className="pos-field">
@@ -716,19 +695,15 @@ export default function PosPage() {
             <input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Less spicy, no ice…"
+              placeholder="Optional"
             />
           </label>
         ) : null}
 
-        {statusMsg ? <p className="muted">{statusMsg}</p> : null}
-
         <div className="pos-register-body">
           {cartDetails.length === 0 ? (
             <div className="pos-register-empty muted">
-              {fast
-                ? "Tap a menu item — customisations open if the item has them."
-                : "Tap services on the left to build the cart."}
+              {fast ? "Build the order, then confirm." : "Tap services on the left to build the cart."}
             </div>
           ) : (
             <div className="pos-register-lines">
@@ -737,7 +712,7 @@ export default function PosPage() {
                   <div className="pos-register-line-main">
                     <strong>{line.service.name}</strong>
                     <span className="muted">
-                      {currency} {formatMoney(line.unit)} each
+                      {currency} {formatMoney(line.unit)}
                       {line.remarks ? ` · ${line.remarks}` : ""}
                     </span>
                   </div>
@@ -766,18 +741,6 @@ export default function PosPage() {
         </div>
 
         <div className={`pos-ticket-footer ${orderConfirmed ? "locked" : ""}`}>
-          {orderConfirmed && step !== "done" && step !== "qr" ? (
-            <div className="pos-confirmed-head compact">
-              <div>
-                <h3>{fast ? "Charging order" : "Locked for checkout"}</h3>
-                <p className="muted">{guestLabel}</p>
-              </div>
-              <button type="button" className="btn secondary" onClick={unlockCart}>
-                Edit
-              </button>
-            </div>
-          ) : null}
-
           {depositAllowed && !locked ? (
             <div className="segmented pos-charge-mode">
               <button
@@ -805,33 +768,21 @@ export default function PosPage() {
           </div>
 
           {!orderConfirmed ? (
-            <div className="btn-row pos-actions" style={{ flexWrap: "wrap" }}>
-              {fast ? (
-                <button
-                  type="button"
-                  className="btn secondary"
-                  disabled={cartDetails.length === 0 || busy}
-                  onClick={sendToKitchen}
-                >
-                  Send to kitchen
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="btn pos-charge-btn"
-                disabled={cartDetails.length === 0 || amountDue <= 0}
-                onClick={startConfirmOrder}
-              >
-                {activeTicketId ? "Pay table" : profile.posChargeLabel}
-                {amountDue > 0 ? ` · ${currency} ${formatMoney(amountDue)}` : ""}
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn pos-charge-btn"
+              disabled={cartDetails.length === 0 || amountDue <= 0}
+              onClick={startConfirmOrder}
+            >
+              Confirm order
+              {amountDue > 0 ? ` · ${currency} ${formatMoney(amountDue)}` : ""}
+            </button>
           ) : null}
-          {error ? <div className="error">{error}</div> : null}
+          {error && !step ? <div className="error">{error}</div> : null}
         </div>
       </aside>
 
-      {/* Customise popup */}
+      {/* Customise */}
       {step === "customize" && customizeItem ? (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -844,8 +795,7 @@ export default function PosPage() {
               <div>
                 <h2>{customizeItem.name}</h2>
                 <p>
-                  {customizeItem.currency} {Number(customizeItem.price_amount).toFixed(2)} · choose
-                  options for the kitchen
+                  {customizeItem.currency} {Number(customizeItem.price_amount).toFixed(2)}
                 </p>
               </div>
               <button
@@ -859,7 +809,6 @@ export default function PosPage() {
                 Cancel
               </button>
             </div>
-
             {(customizeItem.modifiers || []).map((g: any) => (
               <div key={g.id} style={{ marginBottom: "0.85rem" }}>
                 <strong>{g.name}</strong>
@@ -883,14 +832,13 @@ export default function PosPage() {
                 </div>
               </div>
             ))}
-
             <div className="btn-row" style={{ alignItems: "end" }}>
               <label className="pos-field" style={{ flex: 1 }}>
                 Extra remark
                 <input
                   value={customRemark}
                   onChange={(e) => setCustomRemark(e.target.value)}
-                  placeholder="Optional note for kitchen"
+                  placeholder="Optional"
                 />
               </label>
               <label className="pos-field" style={{ width: "5rem" }}>
@@ -904,11 +852,139 @@ export default function PosPage() {
                 />
               </label>
             </div>
-
             {error ? <div className="error">{error}</div> : null}
             <button type="button" className="btn pos-charge-btn" onClick={confirmCustomize}>
               Add to order
             </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Destination: Takeaway vs Table */}
+      {step === "destination" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal pos-dest-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2>Where is this order?</h2>
+                <p>
+                  {currency} {formatMoney(amountDue)} · {itemCount} item
+                  {itemCount === 1 ? "" : "s"}
+                </p>
+              </div>
+              <button type="button" className="btn secondary" onClick={unlockCart}>
+                Back
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="pos-dest-takeaway"
+              disabled={busy}
+              onClick={chooseTakeaway}
+            >
+              <strong>Takeaway</strong>
+              <span>Go straight to payment</span>
+            </button>
+
+            <p className="pos-dest-label">Or send to a table · kitchen first, pay later</p>
+            <div className="pos-dest-tables">
+              {TABLE_PRESETS.map((t) => {
+                const busyTable = occupiedTables.has(t.toLowerCase());
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    className={`pos-dest-table ${busyTable ? "busy" : ""}`}
+                    disabled={busy}
+                    onClick={() => chooseTable(t)}
+                  >
+                    {t}
+                    {busyTable ? <small>open</small> : null}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="pos-dest-custom">
+              <input
+                value={customTable}
+                onChange={(e) => setCustomTable(e.target.value)}
+                placeholder="Custom table…"
+                disabled={busy}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && customTable.trim()) {
+                    e.preventDefault();
+                    void chooseTable(customTable.trim());
+                  }
+                }}
+              />
+              <button
+                type="button"
+                disabled={busy || !customTable.trim()}
+                onClick={() => chooseTable(customTable.trim())}
+              >
+                Send
+              </button>
+            </div>
+            {error ? <div className="error">{error}</div> : null}
+            {busy ? <p className="muted">Sending to kitchen…</p> : null}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Find open table order to pay */}
+      {step === "find-table" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="modal-card booking-modal pos-flow-modal"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bookings-toolbar">
+              <div>
+                <h2>Pay table</h2>
+                <p>Search open orders by table number</p>
+              </div>
+              <button type="button" className="btn secondary" onClick={unlockCart}>
+                Close
+              </button>
+            </div>
+            <input
+              className="pos-ticket-search"
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+              placeholder="Search table or order #…"
+              autoFocus
+            />
+            <div className="pos-ticket-pick-list">
+              {filteredTickets.length === 0 ? (
+                <p className="muted">No open table orders.</p>
+              ) : (
+                filteredTickets.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="pos-ticket-pick"
+                    onClick={() => selectTicketToPay(t)}
+                  >
+                    <strong>{t.table_label}</strong>
+                    <span>
+                      #{t.id} · {(t.lines || []).length} item
+                      {(t.lines || []).length === 1 ? "" : "s"}
+                    </span>
+                    <em>
+                      {t.currency} {Number(t.total_amount).toFixed(2)}
+                    </em>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </div>
       ) : null}
@@ -960,28 +1036,6 @@ export default function PosPage() {
                 </button>
               ))}
             </div>
-            <div className="pos-customer-fields">
-              <label className="pos-field">
-                Name
-                <input
-                  value={customerName}
-                  onChange={(e) => {
-                    setCustomerName(e.target.value);
-                    setCustomerId(null);
-                  }}
-                />
-              </label>
-              <label className="pos-field">
-                Phone
-                <input
-                  value={customerPhone}
-                  onChange={(e) => {
-                    setCustomerPhone(e.target.value);
-                    setCustomerId(null);
-                  }}
-                />
-              </label>
-            </div>
             <div className="btn-row pos-actions">
               <button type="button" className="btn" onClick={() => proceedToPayment(true)}>
                 Confirm &amp; pay
@@ -1012,7 +1066,11 @@ export default function PosPage() {
               <button
                 type="button"
                 className="btn secondary"
-                onClick={() => (fast ? unlockCart() : setStep("customer"))}
+                onClick={() => {
+                  if (payMode === "table") setStep("find-table");
+                  else if (fast) setStep("destination");
+                  else setStep("customer");
+                }}
               >
                 Back
               </button>

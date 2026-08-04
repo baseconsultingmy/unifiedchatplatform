@@ -2653,6 +2653,186 @@ p {
     rgba(255, 255, 255, 0.72);
 }
 
+/* Clean F&B: confirm → takeaway/table → pay later */
+.pos-fnb-clean .pos-cart-side {
+  background: #fafafa;
+}
+.pos-fnb-clean .pos-ticket-footer {
+  background: #fff;
+  border-color: #e5e7eb;
+}
+.pos-fnb-clean .pos-ticket-footer.locked {
+  border-color: #d1d5db;
+  background: #fff;
+}
+.pos-status-msg {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+.pos-pay-table-btn {
+  border: 1px solid #0f766e;
+  background: #ecfdf5;
+  color: #0f766e;
+  border-radius: 999px;
+  padding: 0.42rem 0.9rem;
+  font-weight: 800;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.pos-pay-table-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: var(--line);
+  background: #f3f4f6;
+  color: var(--muted);
+}
+.pos-dest-modal {
+  max-width: 420px;
+}
+.pos-dest-takeaway {
+  width: 100%;
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+  border: 2px solid #0f766e;
+  background: #ecfdf5;
+  color: #0f766e;
+  border-radius: 14px;
+  padding: 0.95rem 1.05rem;
+  cursor: pointer;
+}
+.pos-dest-takeaway strong {
+  font-size: 1.1rem;
+}
+.pos-dest-takeaway span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.pos-dest-takeaway:hover:not(:disabled) {
+  background: #d1fae5;
+}
+.pos-dest-takeaway:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pos-dest-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0.95rem 0 0.45rem;
+}
+.pos-dest-tables {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+.pos-dest-table {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 0.65rem 0.35rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.pos-dest-table small {
+  display: block;
+  font-weight: 600;
+  font-size: 0.65rem;
+  color: #92400e;
+  margin-top: 0.1rem;
+}
+.pos-dest-table.busy {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+.pos-dest-table:hover:not(:disabled) {
+  border-color: #0f766e;
+}
+.pos-dest-table:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pos-dest-custom {
+  display: flex;
+  gap: 0.4rem;
+}
+.pos-dest-custom input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  background: #fff;
+}
+.pos-dest-custom button {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.pos-dest-custom button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pos-ticket-search {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.95rem;
+  font: inherit;
+  background: #fff;
+}
+.pos-ticket-pick-list {
+  display: grid;
+  gap: 0.4rem;
+  max-height: min(50vh, 360px);
+  overflow: auto;
+}
+.pos-ticket-pick {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+}
+.pos-ticket-pick:hover {
+  border-color: #0f766e;
+  background: #f0fdfa;
+}
+.pos-ticket-pick strong {
+  font-size: 1.1rem;
+  min-width: 2.2rem;
+}
+.pos-ticket-pick span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.pos-ticket-pick em {
+  font-style: normal;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 .pos-cash-quick {
   flex-wrap: wrap;
   gap: 0.35rem;
