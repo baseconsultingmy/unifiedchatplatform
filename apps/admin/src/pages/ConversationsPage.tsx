@@ -1,6 +1,94 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+
+function initials(name: string | undefined | null, fallback = "?") {
+  const raw = (name || fallback).trim();
+  const parts = raw.split(/\s+/).filter(Boolean);
+  if (!parts.length) return fallback.slice(0, 1).toUpperCase();
+  return parts
+    .slice(0, 2)
+    .map((p: string) => p[0]?.toUpperCase() || "")
+    .join("");
+}
+
+function relativeTime(value: string | null | undefined) {
+  if (!value) return "";
+  const t = new Date(value).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function dayLabel(value: string) {
+  const d = new Date(value);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  if (sameDay(d, today)) return "Today";
+  if (sameDay(d, yesterday)) return "Yesterday";
+  return d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function clock(value: string) {
+  return new Date(value).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function lastMessage(c: any) {
+  const messages = c.messages || [];
+  return messages[messages.length - 1] || null;
+}
+
+function displayName(c: any) {
+  return c?.customer?.name || c?.external_thread_id || "Customer";
+}
+
+function displayPhone(c: any) {
+  return c?.customer?.phone || c?.external_thread_id || "";
+}
+
+type ThreadItem =
+  | { kind: "day"; id: string; label: string }
+  | { kind: "msg"; id: string | number; message: any };
+
+function buildThread(messages: any[]): ThreadItem[] {
+  const items: ThreadItem[] = [];
+  let lastDay = "";
+  for (const m of messages) {
+    const label = dayLabel(m.created_at);
+    if (label !== lastDay) {
+      items.push({ kind: "day", id: `day-${label}-${m.id}`, label });
+      lastDay = label;
+    }
+    items.push({ kind: "msg", id: m.id, message: m });
+  }
+  return items;
+}
 
 export default function ConversationsPage() {
   const { token } = useAuth();
@@ -8,13 +96,32 @@ export default function ConversationsPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
   const [draft, setDraft] = useState("");
+  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [mobileShowThread, setMobileShowThread] = useState(false);
   const threadRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   const selectedPreview = useMemo(
     () => items.find((c) => c.id === selectedId) || null,
     [items, selectedId],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((c) => {
+      const name = displayName(c).toLowerCase();
+      const phone = displayPhone(c).toLowerCase();
+      const last = (lastMessage(c)?.body || "").toLowerCase();
+      return name.includes(q) || phone.includes(q) || last.includes(q);
+    });
+  }, [items, query]);
+
+  const threadItems = useMemo(
+    () => buildThread(selected?.messages || []),
+    [selected?.messages],
   );
 
   async function loadList(preferId?: number | null) {
@@ -48,7 +155,7 @@ export default function ConversationsPage() {
     const timer = window.setInterval(() => {
       loadThread(selectedId).catch(() => undefined);
       api.conversations(token).then(setItems).catch(() => undefined);
-    }, 5000);
+    }, 4000);
     return () => window.clearInterval(timer);
   }, [token, selectedId]);
 
@@ -57,11 +164,21 @@ export default function ConversationsPage() {
     threadRef.current.scrollTop = threadRef.current.scrollHeight;
   }, [selected?.messages?.length, selectedId]);
 
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  }, [draft]);
+
   async function onSelect(id: number) {
     setSelectedId(id);
+    setMobileShowThread(true);
     setError("");
+    setDraft("");
     try {
       await loadThread(id);
+      composerRef.current?.focus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load thread");
     }
@@ -70,14 +187,17 @@ export default function ConversationsPage() {
   async function onSend(e?: FormEvent) {
     e?.preventDefault();
     if (!token || !selectedId || !draft.trim() || sending) return;
+    const body = draft.trim();
     setSending(true);
     setError("");
+    setDraft("");
     try {
-      await api.sendMessage(token, selectedId, draft.trim());
-      setDraft("");
+      await api.sendMessage(token, selectedId, body);
       await loadThread(selectedId);
       await loadList(selectedId);
+      composerRef.current?.focus();
     } catch (err) {
+      setDraft(body);
       setError(err instanceof Error ? err.message : "Send failed");
     } finally {
       setSending(false);
@@ -91,116 +211,170 @@ export default function ConversationsPage() {
     }
   }
 
-  return (
-    <div className="grid page-fill inbox-page">
-      <div className="bookings-toolbar page-head">
-        <div>
-          <h1>Inbox</h1>
-          <p>Live WhatsApp chat. Reply within the 24-hour customer care window.</p>
-        </div>
-        <button className="btn secondary" onClick={() => loadList(selectedId).catch((e) => setError(e.message))}>
-          Refresh
-        </button>
-      </div>
-      {error ? <div className="error">{error}</div> : null}
-      <div className="grid split-2 chat-layout page-panel">
-        <section className="panel table-panel">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Customer</th>
-                <th>Channel</th>
-                <th>Last message</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="muted">
-                    No conversations yet. When a customer messages your WhatsApp number, it appears here.
-                  </td>
-                </tr>
-              ) : (
-                items.map((c) => {
-                  const last = (c.messages || [])[c.messages.length - 1];
-                  return (
-                    <tr
-                      key={c.id}
-                      onClick={() => onSelect(c.id)}
-                      style={{
-                        cursor: "pointer",
-                        background: selectedId === c.id ? "rgba(15,118,110,0.06)" : undefined,
-                      }}
-                    >
-                      <td>
-                        <strong>{c.customer?.name || c.external_thread_id}</strong>
-                        <div className="muted">{c.customer?.phone || c.external_thread_id}</div>
-                      </td>
-                      <td>
-                        <span className="badge">{c.channel}</span>
-                      </td>
-                      <td>
-                        <div className="muted" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {last?.body || "—"}
-                        </div>
-                        <div className="muted" style={{ fontSize: "0.8rem" }}>
-                          {c.last_message_at ? new Date(c.last_message_at).toLocaleString() : ""}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </section>
+  const active = selected || selectedPreview;
+  const activeName = displayName(active);
+  const activePhone = displayPhone(active);
 
-        <section className="panel chat-thread page-panel">
-          <div className="chat-thread-head">
-            <div>
-              <h2 style={{ margin: 0 }}>
-                {selected?.customer?.name || selectedPreview?.customer?.name || "Thread"}
-              </h2>
-              <p className="muted">
-                {selected?.customer?.phone || selected?.external_thread_id || "Select a conversation"}
+  return (
+    <div className={`chat-app ${mobileShowThread ? "show-thread" : "show-list"}`}>
+      <aside className="chat-sidebar">
+        <div className="chat-sidebar-head">
+          <div>
+            <h1>Chat</h1>
+            <p>{items.length ? `${items.length} conversation${items.length === 1 ? "" : "s"}` : "WhatsApp inbox"}</p>
+          </div>
+          <button
+            type="button"
+            className="chat-icon-btn"
+            title="Refresh"
+            onClick={() => loadList(selectedId).catch((e) => setError(e.message))}
+          >
+            ↻
+          </button>
+        </div>
+
+        <label className="chat-search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, number, message"
+          />
+        </label>
+
+        <div className="chat-list">
+          {filtered.length === 0 ? (
+            <div className="chat-empty-list">
+              <strong>{query ? "No matches" : "No chats yet"}</strong>
+              <p>
+                {query
+                  ? "Try another name or number."
+                  : "When a customer messages your WhatsApp number, the chat appears here."}
               </p>
             </div>
-          </div>
-
-          {!selected ? (
-            <p className="muted">Select a conversation</p>
           ) : (
-            <>
-              <div className="chat-messages" ref={threadRef}>
-                {(selected.messages || []).map((m: any) => (
-                  <div
-                    key={m.id}
-                    className={`chat-bubble ${m.direction === "inbound" ? "in" : "out"}`}
-                  >
-                    <div className="muted" style={{ fontSize: "0.78rem", marginBottom: 4 }}>
-                      {m.direction} · {new Date(m.created_at).toLocaleString()}
-                    </div>
-                    <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
-                  </div>
-                ))}
-              </div>
-
-              <form className="chat-composer" onSubmit={onSend}>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  placeholder="Type a reply… (Enter to send, Shift+Enter for new line)"
-                  rows={3}
-                />
-                <button className="btn" disabled={sending || !draft.trim()}>
-                  {sending ? "Sending…" : "Send on WhatsApp"}
+            filtered.map((c) => {
+              const last = lastMessage(c);
+              const name = displayName(c);
+              const phone = displayPhone(c);
+              const activeRow = selectedId === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  className={`chat-row ${activeRow ? "active" : ""}`}
+                  onClick={() => onSelect(c.id)}
+                >
+                  <span className="chat-avatar">{initials(name, phone)}</span>
+                  <span className="chat-row-main">
+                    <span className="chat-row-top">
+                      <strong>{name}</strong>
+                      <time>{relativeTime(c.last_message_at || last?.created_at)}</time>
+                    </span>
+                    <span className="chat-row-bottom">
+                      <span className="chat-row-preview">
+                        {last?.direction === "outbound" ? "You: " : ""}
+                        {last?.body || "No messages yet"}
+                      </span>
+                      <span className="chat-channel-pill">{c.channel || "whatsapp"}</span>
+                    </span>
+                  </span>
                 </button>
-              </form>
-            </>
+              );
+            })
           )}
-        </section>
-      </div>
+        </div>
+      </aside>
+
+      <section className="chat-stage">
+        {!active ? (
+          <div className="chat-empty-stage">
+            <div className="chat-empty-card">
+              <span className="chat-avatar lg">WA</span>
+              <h2>Pick a conversation</h2>
+              <p>Select a chat on the left to reply inside the 24-hour WhatsApp window.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <header className="chat-stage-head">
+              <button
+                type="button"
+                className="chat-back-btn"
+                onClick={() => setMobileShowThread(false)}
+                aria-label="Back to chats"
+              >
+                ←
+              </button>
+              <span className="chat-avatar">{initials(activeName, activePhone)}</span>
+              <div className="chat-stage-identity">
+                <strong>{activeName}</strong>
+                <span>{activePhone || "WhatsApp"}</span>
+              </div>
+              <div className="chat-stage-actions">
+                <button
+                  type="button"
+                  className="chat-icon-btn"
+                  title="Refresh thread"
+                  onClick={() =>
+                    selectedId &&
+                    loadThread(selectedId).catch((e) =>
+                      setError(e instanceof Error ? e.message : "Refresh failed"),
+                    )
+                  }
+                >
+                  ↻
+                </button>
+              </div>
+            </header>
+
+            {error ? <div className="chat-error">{error}</div> : null}
+
+            <div className="chat-messages" ref={threadRef}>
+              {threadItems.length === 0 ? (
+                <div className="chat-empty-thread">
+                  <p>No messages in this thread yet. Say hello below.</p>
+                </div>
+              ) : (
+                threadItems.map((item) =>
+                  item.kind === "day" ? (
+                    <div key={item.id} className="chat-day-sep">
+                      <span>{item.label}</span>
+                    </div>
+                  ) : (
+                    <div
+                      key={item.id}
+                      className={`chat-bubble ${item.message.direction === "inbound" ? "in" : "out"}`}
+                    >
+                      <div className="chat-bubble-body">{item.message.body}</div>
+                      <time className="chat-bubble-meta">{clock(item.message.created_at)}</time>
+                    </div>
+                  ),
+                )
+              )}
+            </div>
+
+            <form className="chat-composer" onSubmit={onSend}>
+              <textarea
+                ref={composerRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Message… Enter to send"
+                rows={1}
+              />
+              <button
+                className="chat-send-btn"
+                disabled={sending || !draft.trim()}
+                type="submit"
+                aria-label="Send"
+              >
+                {sending ? "…" : "Send"}
+              </button>
+            </form>
+          </>
+        )}
+      </section>
     </div>
   );
 }
