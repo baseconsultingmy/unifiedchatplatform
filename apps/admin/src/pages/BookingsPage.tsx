@@ -9,11 +9,11 @@ type ViewMode = "agenda" | "board";
 type BoardMode = "person" | "room";
 type BookingSheetStep = "detail" | "pay" | "cash" | "qr" | "receipt";
 
-const DAY_START_HOUR = 9;
-const DAY_END_HOUR = 21; // exclusive
+const DEFAULT_DAY_START_HOUR = 9;
+const DEFAULT_DAY_END_HOUR = 21; // exclusive
+const MIN_BOARD_START_HOUR = 6;
+const MAX_BOARD_END_HOUR = 24; // exclusive, allows 23:00 slots
 const SLOT_MINUTES = 30;
-const TOTAL_MINUTES = (DAY_END_HOUR - DAY_START_HOUR) * 60;
-const SLOT_COUNT = TOTAL_MINUTES / SLOT_MINUTES;
 
 function startOfDay(d: Date) {
   const x = new Date(d);
@@ -182,12 +182,47 @@ function layoutBoardLanes(items: any[]) {
   return placed;
 }
 
-function nowBoardPercent(anchor: Date) {
+function minutesOnDay(value: Date, dayAnchor: Date) {
+  const day0 = startOfDay(dayAnchor).getTime();
+  const day1 = day0 + 24 * 60 * 60 * 1000;
+  const t = value.getTime();
+  if (t <= day0) return 0;
+  if (t >= day1) return 24 * 60;
+  return value.getHours() * 60 + value.getMinutes();
+}
+
+function computeBoardHours(dayBookings: any[], dayAnchor: Date) {
+  let startHour = DEFAULT_DAY_START_HOUR;
+  let endHour = DEFAULT_DAY_END_HOUR;
+
+  for (const b of dayBookings) {
+    if (!b?.starts_at) continue;
+    const start = new Date(b.starts_at);
+    if (Number.isNaN(start.getTime()) || !sameDay(start, dayAnchor)) continue;
+    const end = b.ends_at
+      ? new Date(b.ends_at)
+      : new Date(start.getTime() + bookingDurationMinutes(b) * 60000);
+    const startMins = minutesOnDay(start, dayAnchor);
+    const endMins = Math.max(minutesOnDay(end, dayAnchor), startMins + SLOT_MINUTES);
+    startHour = Math.min(startHour, Math.floor(startMins / 60));
+    endHour = Math.max(endHour, Math.ceil(endMins / 60));
+  }
+
+  startHour = Math.max(MIN_BOARD_START_HOUR, Math.min(startHour, DEFAULT_DAY_START_HOUR));
+  endHour = Math.min(MAX_BOARD_END_HOUR, Math.max(endHour, startHour + 1));
+  // Keep slot alignment on the hour so 30-min rows stay even.
+  if ((endHour - startHour) * 60 % SLOT_MINUTES !== 0) {
+    endHour = Math.min(MAX_BOARD_END_HOUR, endHour + 1);
+  }
+  return { startHour, endHour };
+}
+
+function nowBoardPercent(anchor: Date, startHour: number, totalMinutes: number) {
   const n = new Date();
   if (!sameDay(n, anchor)) return null;
-  const mins = n.getHours() * 60 + n.getMinutes() - DAY_START_HOUR * 60;
-  if (mins < 0 || mins > TOTAL_MINUTES) return null;
-  return (mins / TOTAL_MINUTES) * 100;
+  const mins = n.getHours() * 60 + n.getMinutes() - startHour * 60;
+  if (mins < 0 || mins > totalMinutes) return null;
+  return (mins / totalMinutes) * 100;
 }
 
 export default function BookingsPage() {
@@ -281,16 +316,25 @@ export default function BookingsPage() {
         : [{ id: "all", name: "Schedule", kind: "all" as const }];
   }, [profile.supportsResources, boardMode, people, rooms, dayBookings]);
 
+  const boardHours = useMemo(
+    () => computeBoardHours(dayBookings, dayAnchor),
+    [dayBookings, dayAnchor],
+  );
+  const dayStartHour = boardHours.startHour;
+  const dayEndHour = boardHours.endHour;
+  const totalMinutes = (dayEndHour - dayStartHour) * 60;
+  const slotCount = totalMinutes / SLOT_MINUTES;
+
   const timeLabels = useMemo(() => {
     const labels: string[] = [];
-    for (let i = 0; i < SLOT_COUNT; i++) {
-      const mins = DAY_START_HOUR * 60 + i * SLOT_MINUTES;
+    for (let i = 0; i < slotCount; i++) {
+      const mins = dayStartHour * 60 + i * SLOT_MINUTES;
       const h = Math.floor(mins / 60);
       const m = mins % 60;
       labels.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
     }
     return labels;
-  }, []);
+  }, [dayStartHour, slotCount]);
 
   const dueCount = useMemo(
     () => dayBookings.filter((b) => !isPaid(b.payment_status) && b.status !== "cancelled").length,
@@ -434,7 +478,7 @@ export default function BookingsPage() {
   }
 
   function openCreateAt(columnId: string, slotIndex: number) {
-    const mins = DAY_START_HOUR * 60 + slotIndex * SLOT_MINUTES;
+    const mins = dayStartHour * 60 + slotIndex * SLOT_MINUTES;
     const start = new Date(dayAnchor);
     start.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
     setStartsAt(toLocalDateTimeValue(start));
@@ -674,17 +718,19 @@ export default function BookingsPage() {
     laneCount = 1,
   ): { top: string; height: string; left: string; width: string } {
     const start = new Date(b.starts_at);
-    const minutesFromStart =
-      start.getHours() * 60 + start.getMinutes() - DAY_START_HOUR * 60;
     const duration = bookingDurationMinutes(b);
-    const top = (minutesFromStart / TOTAL_MINUTES) * 100;
-    const height = (duration / TOTAL_MINUTES) * 100;
+    const startMins = minutesOnDay(start, dayAnchor) - dayStartHour * 60;
+    const rawTop = (startMins / totalMinutes) * 100;
+    const rawHeight = (duration / totalMinutes) * 100;
+    // Clamp so late/early bookings never paint outside the column body.
+    const top = Math.min(Math.max(rawTop, 0), 100);
+    const height = Math.min(Math.max(rawHeight, 4.5), Math.max(100 - top, 4.5));
     const gap = 1.5;
     const width = (100 - gap * (laneCount + 1)) / laneCount;
     const left = gap + lane * (width + gap);
     return {
-      top: `${Math.max(top, 0)}%`,
-      height: `${Math.min(Math.max(height, 4.5), 100 - Math.max(top, 0))}%`,
+      top: `${top}%`,
+      height: `${height}%`,
       left: `${left}%`,
       width: `${width}%`,
     };
@@ -692,7 +738,7 @@ export default function BookingsPage() {
 
   const isToday = sameDay(dayAnchor, new Date());
   const now = Date.now();
-  const nowPct = nowBoardPercent(dayAnchor);
+  const nowPct = nowBoardPercent(dayAnchor, dayStartHour, totalMinutes);
   const nowLabel = new Date().toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
@@ -917,7 +963,7 @@ export default function BookingsPage() {
               className="day-board"
               style={{
                 gridTemplateColumns: `64px repeat(${Math.max(columns.length, 1)}, minmax(168px, 1fr))`,
-                ["--board-slots" as string]: String(SLOT_COUNT),
+                ["--board-slots" as string]: String(slotCount),
               }}
             >
               <div className="day-board-hours">
@@ -925,7 +971,7 @@ export default function BookingsPage() {
                   <span>Time</span>
                 </div>
                 {timeLabels.map((label, idx) => {
-                  const hourMins = DAY_START_HOUR * 60 + idx * SLOT_MINUTES;
+                  const hourMins = dayStartHour * 60 + idx * SLOT_MINUTES;
                   const isCurrentHour =
                     isToday &&
                     (() => {
@@ -968,7 +1014,7 @@ export default function BookingsPage() {
                     </div>
                     <div className="day-board-col-body">
                       {timeLabels.map((label, idx) => {
-                        const hourMins = DAY_START_HOUR * 60 + idx * SLOT_MINUTES;
+                        const hourMins = dayStartHour * 60 + idx * SLOT_MINUTES;
                         const n = new Date();
                         const nowMins = n.getHours() * 60 + n.getMinutes();
                         const isCurrentHour =

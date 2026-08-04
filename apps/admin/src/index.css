@@ -2007,6 +2007,7 @@ p {
   position: relative;
   border-right: 1px solid var(--line);
   height: calc(var(--board-slot-h) * var(--board-slots, 24));
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(229, 161, 0, 0.03), transparent 28%),
     rgba(255, 255, 255, 0.35);
