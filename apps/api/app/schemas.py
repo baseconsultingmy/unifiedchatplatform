@@ -421,6 +421,7 @@ class PosTicketLineModOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    option_id: int | None = None
     name: str
     price_delta: float = 0
 

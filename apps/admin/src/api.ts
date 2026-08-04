@@ -145,6 +145,12 @@ export const api = {
       { method: "POST", body: JSON.stringify(body) },
       token,
     ),
+  replacePosTicketLines: (token: string, ticketId: number, body: unknown) =>
+    request<any>(
+      `/v1/pos/tickets/${ticketId}/lines`,
+      { method: "PUT", body: JSON.stringify(body) },
+      token,
+    ),
   sendKitchen: (token: string, ticketId: number) =>
     request<any>(`/v1/pos/tickets/${ticketId}/send-kitchen`, { method: "POST" }, token),
   cancelPosTicket: (token: string, ticketId: number) =>

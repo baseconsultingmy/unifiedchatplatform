@@ -2674,6 +2674,12 @@ p {
   font-size: 0.86rem;
   font-weight: 600;
 }
+.pos-register-head-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .pos-pay-table-btn {
   border: 1px solid #0f766e;
   background: #ecfdf5;

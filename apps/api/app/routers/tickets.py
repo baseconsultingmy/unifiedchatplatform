@@ -249,6 +249,32 @@ def add_ticket_lines(
     return _ticket_query(db, user.tenant_id).filter(PosTicket.id == ticket.id).one()
 
 
+@router.put("/{ticket_id}/lines", response_model=PosTicketOut)
+def replace_ticket_lines(
+    ticket_id: int,
+    payload: PosTicketAddLinesIn,
+    user: User = Depends(require_vendor_user),
+    db: Session = Depends(get_db),
+) -> PosTicket:
+    """Replace all lines after staff review/edit before payment."""
+    ticket = _ticket_query(db, user.tenant_id).filter(PosTicket.id == ticket_id).first()
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    if ticket.status in (PosTicketStatus.paid.value, PosTicketStatus.cancelled.value):
+        raise HTTPException(status_code=400, detail="Ticket is closed")
+    db.query(PosTicketLine).filter(PosTicketLine.ticket_id == ticket.id).delete(
+        synchronize_session=False
+    )
+    db.flush()
+    ticket.lines = []
+    _add_lines(db, ticket, payload.lines, user.tenant_id)
+    if payload.notes is not None:
+        ticket.notes = payload.notes
+    ticket.status = PosTicketStatus.open.value
+    db.commit()
+    return _ticket_query(db, user.tenant_id).filter(PosTicket.id == ticket.id).one()
+
+
 @router.post("/{ticket_id}/send-kitchen", response_model=KitchenSendOut)
 def send_to_kitchen(
     ticket_id: int,

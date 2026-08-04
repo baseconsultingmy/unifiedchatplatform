@@ -81,17 +81,20 @@ def create_walkin_sale(
             PosTicketStatus.cancelled.value,
         ):
             raise HTTPException(status_code=400, detail="Ticket is already closed")
-        # Build sale lines from the parked ticket
-        raw_items = [
-            PosSaleItemIn(
-                service_id=int(ln.service_id or 0),
-                quantity=ln.quantity,
-                remarks=ln.remarks,
-                unit_price=Decimal(str(ln.unit_price or 0)),
-            )
-            for ln in open_ticket.lines
-            if ln.service_id
-        ]
+        # Prefer cart items when settling after staff review/edits
+        if payload.items:
+            raw_items = _normalize_items(payload)
+        else:
+            raw_items = [
+                PosSaleItemIn(
+                    service_id=int(ln.service_id or 0),
+                    quantity=ln.quantity,
+                    remarks=ln.remarks,
+                    unit_price=Decimal(str(ln.unit_price or 0)),
+                )
+                for ln in open_ticket.lines
+                if ln.service_id
+            ]
         if not raw_items:
             raise HTTPException(status_code=400, detail="Ticket has no items")
     else:

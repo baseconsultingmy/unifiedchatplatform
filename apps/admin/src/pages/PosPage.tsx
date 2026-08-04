@@ -13,6 +13,7 @@ type CartLine = {
   optionIds: number[];
   unitPrice: number;
   modLabels: string[];
+  ticketLineId?: number;
 };
 type PayMethod = "cash" | "qr" | "card";
 type CheckoutStep =
@@ -123,16 +124,22 @@ export default function PosPage() {
         setCustomizeItem(null);
       } else if (step === "cash") setStep("payment");
       else if (step === "payment") {
-        if (payMode === "table") setStep("find-table");
-        else if (fast) setStep("destination");
+        if (activeTicketId) {
+          setOrderConfirmed(false);
+          setStep(null);
+        } else if (fast) setStep("destination");
         else setStep("customer");
-      } else if (step === "destination" || step === "find-table") unlockCart();
-      else if (step === "customer") setStep(null);
+      } else if (step === "destination") unlockCart();
+      else if (step === "find-table") {
+        setStep(null);
+        setOrderConfirmed(false);
+        setTableSearch("");
+      } else if (step === "customer") setStep(null);
       else if (step === "qr" || step === "done") resetSale();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, fast, payMode]);
+  }, [step, fast, activeTicketId]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -402,8 +409,11 @@ export default function PosPage() {
   function startConfirmOrder() {
     if (cartDetails.length === 0 || amountDue <= 0) return;
     setError("");
+    if (activeTicketId) {
+      void proceedLoadedTicketPayment();
+      return;
+    }
     setOrderConfirmed(true);
-    setActiveTicketId(null);
     setPayMode("takeaway");
     if (fast) {
       setStep("destination");
@@ -417,8 +427,16 @@ export default function PosPage() {
     setStep(null);
     setTenderInput("");
     setError("");
+    if (!activeTicketId) setPayMode("takeaway");
+  }
+
+  function releaseLoadedTicket() {
     setActiveTicketId(null);
+    setTableLabel("");
     setPayMode("takeaway");
+    setStatusMsg("");
+    setOrderConfirmed(false);
+    setStep(null);
   }
 
   function proceedToPayment(withCustomer: boolean) {
@@ -475,10 +493,7 @@ export default function PosPage() {
 
   async function openFindTable() {
     setError("");
-    setStatusMsg("");
     setTableSearch("");
-    setPayMode("table");
-    setOrderConfirmed(true);
     await refreshTickets();
     setStep("find-table");
   }
@@ -488,20 +503,101 @@ export default function PosPage() {
     setTableLabel(ticket.table_label || "");
     setPayMode("table");
     setCustomerName(`Table ${ticket.table_label}`);
+    setCustomerId(null);
+    setCustomerPhone("");
+    setNotes(ticket.notes || "");
     setCart(
-      (ticket.lines || []).map((ln: any) => ({
-        key: `t-${ticket.id}-${ln.id}`,
-        serviceId: ln.service_id,
-        quantity: ln.quantity,
-        remarks: ln.remarks || undefined,
-        optionIds: [],
-        unitPrice: Number(ln.unit_price || 0),
-        modLabels: (ln.mods || []).map((m: any) => m.name),
-      })),
+      (ticket.lines || []).map((ln: any) => {
+        const optionIds = (ln.mods || [])
+          .map((m: any) => m.option_id)
+          .filter((id: unknown): id is number => typeof id === "number");
+        const modLabels = (ln.mods || []).map((m: any) => m.name);
+        return {
+          key: `t-${ticket.id}-${ln.id}`,
+          serviceId: ln.service_id,
+          quantity: ln.quantity,
+          remarks: ln.remarks || undefined,
+          optionIds,
+          unitPrice: Number(ln.unit_price || 0),
+          modLabels,
+          ticketLineId: ln.id,
+        };
+      }),
     );
-    setStep("payment");
+    setOrderConfirmed(false);
+    setStep(null);
     setTenderInput("");
     setError("");
+    setStatusMsg(
+      `Table ${ticket.table_label} loaded — check with customer, edit or add items, then pay`,
+    );
+    setResult(null);
+    setLastCash(null);
+  }
+
+  async function proceedLoadedTicketPayment() {
+    if (!token || !activeTicketId || cartDetails.length === 0) return;
+    setBusy(true);
+    setError("");
+    try {
+      const before = tickets.find((t) => t.id === activeTicketId);
+      const beforeQty = (before?.lines || []).reduce(
+        (n: number, ln: any) => n + Number(ln.quantity || 0),
+        0,
+      );
+      const afterQty = cartDetails.reduce((n, l) => n + l.quantity, 0);
+      const hadNewOrExtra = cartDetails.some((l) => !l.ticketLineId) || afterQty > beforeQty;
+
+      await api.replacePosTicketLines(token, activeTicketId, {
+        lines: saleItemsPayload().map(({ service_id, quantity, remarks, option_ids }) => ({
+          service_id,
+          quantity,
+          remarks,
+          option_ids,
+        })),
+        notes: notes.trim() || null,
+      });
+
+      if (hadNewOrExtra) {
+        const sent = await api.sendKitchen(token, activeTicketId);
+        printKitchenSlip(sent.slip_text, `Table ${tableLabel}`);
+      }
+
+      // Refresh cart keys from synced ticket so later pays stay linked
+      const fresh = await api.posTickets(token, "open");
+      setTickets(fresh);
+      const synced = fresh.find((t: any) => t.id === activeTicketId);
+      if (synced) {
+        setCart(
+          (synced.lines || []).map((ln: any) => {
+            const optionIds = (ln.mods || [])
+              .map((m: any) => m.option_id)
+              .filter((id: unknown): id is number => typeof id === "number");
+            return {
+              key: `t-${synced.id}-${ln.id}`,
+              serviceId: ln.service_id,
+              quantity: ln.quantity,
+              remarks: ln.remarks || undefined,
+              optionIds,
+              unitPrice: Number(ln.unit_price || 0),
+              modLabels: (ln.mods || []).map((m: any) => m.name),
+              ticketLineId: ln.id,
+            };
+          }),
+        );
+      }
+
+      setOrderConfirmed(true);
+      setPayMode("table");
+      setStep("payment");
+      setTenderInput("");
+      setStatusMsg(`Table ${tableLabel} · ready to pay`);
+      await refreshTickets();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update table order");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function choosePayment(method: PayMethod) {
@@ -560,7 +656,7 @@ export default function PosPage() {
         .join(" · ");
 
       const sale = await api.posSale(token, {
-        items: activeTicketId ? undefined : saleItemsPayload(),
+        items: saleItemsPayload(),
         ticket_id: activeTicketId || undefined,
         customer_id: customerId,
         customer_name: customerName || (payMode === "takeaway" ? "Takeaway" : null),
@@ -670,21 +766,39 @@ export default function PosPage() {
       <aside className="panel pos-cart-side page-panel">
         <div className="pos-register-head">
           <div>
-            <h2>{profile.posTicketNoun}</h2>
+            <h2>
+              {activeTicketId && tableLabel ? `Table ${tableLabel}` : profile.posTicketNoun}
+            </h2>
             <p className="muted">
-              {itemCount
-                ? `${itemCount} item${itemCount === 1 ? "" : "s"}`
-                : `Tap ${profile.catalogNounSingular.toLowerCase()}s to start`}
+              {activeTicketId
+                ? itemCount
+                  ? `${itemCount} item${itemCount === 1 ? "" : "s"} · review before pay`
+                  : "Add items, then pay"
+                : itemCount
+                  ? `${itemCount} item${itemCount === 1 ? "" : "s"}`
+                  : `Tap ${profile.catalogNounSingular.toLowerCase()}s to start`}
             </p>
           </div>
-          <button
-            type="button"
-            className="btn secondary"
-            onClick={resetSale}
-            disabled={!cart.length && !result && step !== "done"}
-          >
-            Clear
-          </button>
+          <div className="pos-register-head-actions">
+            {activeTicketId ? (
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={releaseLoadedTicket}
+                disabled={busy || Boolean(step && step !== "customize")}
+              >
+                Unload
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={resetSale}
+              disabled={!cart.length && !result && step !== "done"}
+            >
+              Clear
+            </button>
+          </div>
         </div>
 
         {statusMsg ? <p className="pos-status-msg">{statusMsg}</p> : null}
@@ -771,10 +885,10 @@ export default function PosPage() {
             <button
               type="button"
               className="btn pos-charge-btn"
-              disabled={cartDetails.length === 0 || amountDue <= 0}
+              disabled={cartDetails.length === 0 || amountDue <= 0 || busy}
               onClick={startConfirmOrder}
             >
-              Confirm order
+              {activeTicketId ? "Proceed to payment" : "Confirm order"}
               {amountDue > 0 ? ` · ${currency} ${formatMoney(amountDue)}` : ""}
             </button>
           ) : null}
@@ -951,7 +1065,15 @@ export default function PosPage() {
                 <h2>Pay table</h2>
                 <p>Search open orders by table number</p>
               </div>
-              <button type="button" className="btn secondary" onClick={unlockCart}>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={() => {
+                  setStep(null);
+                  setOrderConfirmed(false);
+                  setTableSearch("");
+                }}
+              >
                 Close
               </button>
             </div>
@@ -1067,8 +1189,10 @@ export default function PosPage() {
                 type="button"
                 className="btn secondary"
                 onClick={() => {
-                  if (payMode === "table") setStep("find-table");
-                  else if (fast) setStep("destination");
+                  if (activeTicketId) {
+                    setOrderConfirmed(false);
+                    setStep(null);
+                  } else if (fast) setStep("destination");
                   else setStep("customer");
                 }}
               >
