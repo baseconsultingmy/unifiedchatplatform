@@ -124,6 +124,72 @@ function isBlockingStatus(status: string | undefined) {
   return status !== "cancelled" && status !== "no_show";
 }
 
+/** Pack overlapping bookings into side-by-side lanes within a board column. */
+function layoutBoardLanes(items: any[]) {
+  const active = items
+    .filter((b) => b.starts_at && isBlockingStatus(b.status))
+    .sort(
+      (a, b) =>
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime() ||
+        bookingDurationMinutes(b) - bookingDurationMinutes(a),
+    );
+
+  const laneById = new Map<number, number>();
+  const laneEnds: number[] = [];
+
+  for (const booking of active) {
+    const win = bookingWindow(booking, bookingDurationMinutes(booking));
+    if (!win) continue;
+    let lane = laneEnds.findIndex((end) => end <= win.start.getTime());
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(win.end.getTime());
+    } else {
+      laneEnds[lane] = win.end.getTime();
+    }
+    laneById.set(booking.id, lane);
+  }
+
+  const clusterSize = new Map<number, number>();
+  for (const booking of active) {
+    const win = bookingWindow(booking, bookingDurationMinutes(booking));
+    if (!win) continue;
+    let maxLane = laneById.get(booking.id) || 0;
+    for (const other of active) {
+      const otherWin = bookingWindow(other, bookingDurationMinutes(other));
+      if (!otherWin || !windowsOverlap(win, otherWin)) continue;
+      maxLane = Math.max(maxLane, laneById.get(other.id) || 0);
+    }
+    const size = maxLane + 1;
+    for (const other of active) {
+      const otherWin = bookingWindow(other, bookingDurationMinutes(other));
+      if (!otherWin || !windowsOverlap(win, otherWin)) continue;
+      clusterSize.set(other.id, Math.max(clusterSize.get(other.id) || 1, size));
+    }
+    clusterSize.set(booking.id, Math.max(clusterSize.get(booking.id) || 1, size));
+  }
+
+  const placed = active.map((booking) => ({
+    booking,
+    lane: laneById.get(booking.id) || 0,
+    laneCount: clusterSize.get(booking.id) || 1,
+  }));
+
+  for (const booking of items) {
+    if (!booking.starts_at || isBlockingStatus(booking.status)) continue;
+    placed.push({ booking, lane: 0, laneCount: 1 });
+  }
+  return placed;
+}
+
+function nowBoardPercent(anchor: Date) {
+  const n = new Date();
+  if (!sameDay(n, anchor)) return null;
+  const mins = n.getHours() * 60 + n.getMinutes() - DAY_START_HOUR * 60;
+  if (mins < 0 || mins > TOTAL_MINUTES) return null;
+  return (mins / TOTAL_MINUTES) * 100;
+}
+
 export default function BookingsPage() {
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
@@ -146,6 +212,7 @@ export default function BookingsPage() {
   const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const agendaRef = useRef<HTMLDivElement | null>(null);
+  const boardScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -333,6 +400,14 @@ export default function BookingsPage() {
       nowEl.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }, [view, dayAnchor, filteredAgenda.length]);
+
+  useEffect(() => {
+    if (view !== "board" || !boardScrollRef.current || !sameDay(dayAnchor, new Date())) return;
+    const nowEl = boardScrollRef.current.querySelector("[data-now-line='1']");
+    if (nowEl instanceof HTMLElement) {
+      nowEl.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [view, dayAnchor, columns.length]);
 
   function openBooking(b: any) {
     setSelected(b);
@@ -593,21 +668,35 @@ export default function BookingsPage() {
     );
   }
 
-  function blockStyle(b: any) {
+  function blockStyle(
+    b: any,
+    lane = 0,
+    laneCount = 1,
+  ): { top: string; height: string; left: string; width: string } {
     const start = new Date(b.starts_at);
     const minutesFromStart =
       start.getHours() * 60 + start.getMinutes() - DAY_START_HOUR * 60;
     const duration = bookingDurationMinutes(b);
     const top = (minutesFromStart / TOTAL_MINUTES) * 100;
     const height = (duration / TOTAL_MINUTES) * 100;
+    const gap = 1.5;
+    const width = (100 - gap * (laneCount + 1)) / laneCount;
+    const left = gap + lane * (width + gap);
     return {
       top: `${Math.max(top, 0)}%`,
-      height: `${Math.min(Math.max(height, 3.5), 100 - Math.max(top, 0))}%`,
+      height: `${Math.min(Math.max(height, 4.5), 100 - Math.max(top, 0))}%`,
+      left: `${left}%`,
+      width: `${width}%`,
     };
   }
 
   const isToday = sameDay(dayAnchor, new Date());
   const now = Date.now();
+  const nowPct = nowBoardPercent(dayAnchor);
+  const nowLabel = new Date().toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 
   return (
     <div className={`bookings-app ${view === "agenda" ? "is-agenda" : "is-board"}`}>
@@ -823,27 +912,44 @@ export default function BookingsPage() {
         </section>
       ) : (
         <section className="panel calendar-panel bookings-board-panel">
-          <div className="day-board-scroll">
+          <div className="day-board-scroll" ref={boardScrollRef}>
             <div
               className="day-board"
               style={{
-                gridTemplateColumns: `56px repeat(${Math.max(columns.length, 1)}, minmax(150px, 1fr))`,
+                gridTemplateColumns: `64px repeat(${Math.max(columns.length, 1)}, minmax(168px, 1fr))`,
+                ["--board-slots" as string]: String(SLOT_COUNT),
               }}
             >
               <div className="day-board-hours">
-                <div className="day-board-corner" />
-                {timeLabels.map((label, idx) => (
-                  <div
-                    key={label}
-                    className={`day-board-hour ${idx % 2 === 0 ? "hour" : "half"}`}
-                  >
-                    {idx % 2 === 0 ? label : ""}
-                  </div>
-                ))}
+                <div className="day-board-corner">
+                  <span>Time</span>
+                </div>
+                {timeLabels.map((label, idx) => {
+                  const hourMins = DAY_START_HOUR * 60 + idx * SLOT_MINUTES;
+                  const isCurrentHour =
+                    isToday &&
+                    (() => {
+                      const n = new Date();
+                      const nowMins = n.getHours() * 60 + n.getMinutes();
+                      return nowMins >= hourMins && nowMins < hourMins + SLOT_MINUTES;
+                    })();
+                  return (
+                    <div
+                      key={label}
+                      className={`day-board-hour ${idx % 2 === 0 ? "hour" : "half"} ${isCurrentHour ? "is-now" : ""}`}
+                    >
+                      {idx % 2 === 0 ? label : ""}
+                    </div>
+                  );
+                })}
               </div>
 
               {columns.map((col) => {
                 const colBookings = bookingsForColumn(col.id);
+                const laidOut = layoutBoardLanes(colBookings);
+                const dueInCol = colBookings.filter(
+                  (b) => !isPaid(b.payment_status) && b.status !== "cancelled",
+                ).length;
                 return (
                   <div
                     key={col.id}
@@ -851,37 +957,92 @@ export default function BookingsPage() {
                   >
                     <div className="day-board-col-head">
                       <strong>{col.name}</strong>
-                      <span className="muted">{colBookings.length}</span>
+                      <span className="day-board-col-meta">
+                        <span className="muted">
+                          {colBookings.length} booking{colBookings.length === 1 ? "" : "s"}
+                        </span>
+                        {dueInCol > 0 ? (
+                          <span className="board-due-chip">{dueInCol} due</span>
+                        ) : null}
+                      </span>
                     </div>
                     <div className="day-board-col-body">
-                      {timeLabels.map((label, idx) => (
-                        <button
-                          key={label}
-                          type="button"
-                          className={`day-board-slot ${idx % 2 === 0 ? "hour" : "half"}`}
-                          title={`Book ${label} · ${col.name}`}
-                          onClick={() => openCreateAt(col.id, idx)}
-                        />
-                      ))}
-                      {colBookings.map((b) => (
-                        <button
-                          key={b.id}
-                          type="button"
-                          className={`calendar-event day-board-event pay-${b.payment_status}`}
-                          style={blockStyle(b)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openBooking(b);
-                          }}
-                          title={`${b.service?.name || "Booking"} · ${b.customer?.name || b.customer?.phone}`}
+                      {timeLabels.map((label, idx) => {
+                        const hourMins = DAY_START_HOUR * 60 + idx * SLOT_MINUTES;
+                        const n = new Date();
+                        const nowMins = n.getHours() * 60 + n.getMinutes();
+                        const isCurrentHour =
+                          isToday && nowMins >= hourMins && nowMins < hourMins + SLOT_MINUTES;
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            className={`day-board-slot ${idx % 2 === 0 ? "hour" : "half"} ${isCurrentHour ? "is-now" : ""}`}
+                            title={`Book ${label} · ${col.name}`}
+                            onClick={() => openCreateAt(col.id, idx)}
+                          />
+                        );
+                      })}
+
+                      {nowPct != null ? (
+                        <div
+                          className="day-board-now"
+                          data-now-line="1"
+                          style={{ top: `${nowPct}%` }}
+                          aria-hidden="true"
                         >
-                          <strong>{formatTime(b.starts_at)}</strong>
-                          <span>{b.customer?.name || b.customer?.phone}</span>
-                          <span className="calendar-assign">
-                            {b.service?.name || "Booking"}
-                          </span>
-                        </button>
-                      ))}
+                          <span className="day-board-now-dot" />
+                          {col === columns[0] ? (
+                            <span className="day-board-now-label">{nowLabel}</span>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      {laidOut.map(({ booking: b, lane, laneCount }) => {
+                        const start = new Date(b.starts_at);
+                        const end = b.ends_at
+                          ? new Date(b.ends_at)
+                          : new Date(start.getTime() + bookingDurationMinutes(b) * 60000);
+                        const isNow = now >= start.getTime() && now < end.getTime();
+                        const isPast = end.getTime() < now && isToday;
+                        const guest = b.customer?.name || b.customer?.phone || "Guest";
+                        return (
+                          <button
+                            key={b.id}
+                            type="button"
+                            className={[
+                              "calendar-event",
+                              "day-board-event",
+                              `pay-${b.payment_status}`,
+                              isNow ? "now" : "",
+                              isPast ? "past" : "",
+                              b.status === "cancelled" ? "cancelled" : "",
+                              b.status === "completed" ? "completed" : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
+                            style={blockStyle(b, lane, laneCount)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openBooking(b);
+                            }}
+                            title={`${formatTime(b.starts_at)} · ${guest} · ${b.service?.name || "Booking"} · ${paymentLabel(b.payment_status)}`}
+                          >
+                            <span className="board-event-top">
+                              <strong>{formatTime(b.starts_at)}</strong>
+                              <span
+                                className={`board-event-pay pay-${paymentTone(b.payment_status)}`}
+                              >
+                                {paymentLabel(b.payment_status)}
+                              </span>
+                            </span>
+                            <span className="board-event-guest">{guest}</span>
+                            <span className="board-event-service">
+                              {b.service?.name || "Booking"}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 );
