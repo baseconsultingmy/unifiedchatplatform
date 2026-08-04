@@ -37,6 +37,15 @@ When platform credentials are missing, publish / accept / ready callbacks run in
 | `POST` | `/v1/webhooks/grab/orders` | Grab submit order |
 | `POST` | `/v1/webhooks/grab/menu/sync-state` | Grab menu sync status |
 
+## Orders UI colors
+
+Marketplace tickets in **Orders** use channel brand accents:
+
+| Channel | Accent |
+|---|---|
+| Grab | Grab green `#00B14F` |
+| foodpanda | foodpanda pink `#D70F64` (UI ready; POS integration not live yet) |
+
 ## Demo
 
 - Login: `owner@demo-kitchen.baseapp.asia` (bootstrap password)

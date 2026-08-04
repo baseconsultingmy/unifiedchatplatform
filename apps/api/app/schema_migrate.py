@@ -99,10 +99,16 @@ def ensure_schema() -> None:
         )
         """,
         "CREATE INDEX IF NOT EXISTS ix_order_lines_order_id ON order_lines (order_id)",
-        # Best-effort add Grab to legacy Postgres enum used by bookings/conversations.
+        # Best-effort add marketplace channels to legacy Postgres enum.
         """
         DO $$ BEGIN
           ALTER TYPE channel ADD VALUE IF NOT EXISTS 'grab';
+        EXCEPTION WHEN others THEN NULL;
+        END $$
+        """,
+        """
+        DO $$ BEGIN
+          ALTER TYPE channel ADD VALUE IF NOT EXISTS 'foodpanda';
         EXCEPTION WHEN others THEN NULL;
         END $$
         """,

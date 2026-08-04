@@ -26,6 +26,7 @@ class Channel(str, enum.Enum):
     web = "web"
     manual = "manual"
     grab = "grab"
+    foodpanda = "foodpanda"
 
 
 class OrderStatus(str, enum.Enum):

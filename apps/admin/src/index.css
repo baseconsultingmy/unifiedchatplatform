@@ -539,10 +539,100 @@ p {
   border-color: rgba(15, 39, 68, 0.16);
 }
 
+.chat-channel-pill.channel-grab,
+.order-channel-pill.channel-grab {
+  color: #065f2e;
+  background: rgba(0, 177, 79, 0.16);
+  border-color: rgba(0, 177, 79, 0.4);
+}
+
+.chat-channel-pill.channel-foodpanda,
+.order-channel-pill.channel-foodpanda {
+  color: #8a0940;
+  background: rgba(215, 15, 100, 0.14);
+  border-color: rgba(215, 15, 100, 0.38);
+}
+
 .chat-channel-pill.inline {
   display: inline-flex;
   vertical-align: middle;
   margin-right: 0.15rem;
+}
+
+/* Marketplace order queue — Grab / Foodpanda brand accents */
+.orders-queue {
+  --ch-grab: #00b14f;
+  --ch-grab-deep: #009640;
+  --ch-foodpanda: #d70f64;
+  --ch-foodpanda-deep: #b00c52;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.order-card {
+  margin: 0;
+  box-shadow: none;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-left-color: var(--base-navy);
+  border-radius: 14px;
+  padding: 0.95rem 1rem;
+  background: rgba(255, 255, 255, 0.72);
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+
+.order-card.channel-grab {
+  border-left-color: var(--ch-grab);
+  background: linear-gradient(90deg, rgba(0, 177, 79, 0.08), rgba(255, 255, 255, 0.72) 42%);
+}
+
+.order-card.channel-foodpanda {
+  border-left-color: var(--ch-foodpanda);
+  background: linear-gradient(90deg, rgba(215, 15, 100, 0.08), rgba(255, 255, 255, 0.72) 42%);
+}
+
+.order-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.order-card-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.2rem;
+}
+
+.order-channel-pill {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid transparent;
+}
+
+.order-status-pill {
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-transform: capitalize;
+  color: var(--muted);
+  background: rgba(15, 39, 68, 0.06);
+  border-radius: 999px;
+  padding: 0.16rem 0.45rem;
+}
+
+.orders-channel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 0.85rem;
 }
 
 .chat-icon-btn,
