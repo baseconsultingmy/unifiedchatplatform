@@ -1,14 +1,11 @@
 {
-	email admin@baseapp.asia
-	key_type rsa2048
-	# Classic LE profile + RSA → YR*/X1 chain, more widely trusted than YE* ECDSA.
+	email {$ACME_EMAIL:admin@baseapp.asia}
+	# ZeroSSL — widely trusted in Chrome/Safari. Let's Encrypt Gen Y (YE/YR)
+	# was triggering NET::ERR_CERT_AUTHORITY_INVALID for some browsers.
 	cert_issuer acme {
-		dir https://acme-v02.api.letsencrypt.org/directory
-		email admin@baseapp.asia
-		profile classic
-		preferred_chains {
-			root_common_name "ISRG Root X1"
-		}
+		dir https://acme.zerossl.com/v2/DV90
+		email {$ACME_EMAIL:admin@baseapp.asia}
+		eab {$ZEROSSL_EAB_KID} {$ZEROSSL_EAB_HMAC_KEY}
 	}
 }
 
