@@ -37,6 +37,15 @@ class Settings(BaseSettings):
     # Google Identity Services (merchant social login / signup)
     google_client_id: str = ""
     public_admin_base: str = "https://admin.baseapp.asia"
+    # Cloudflare edge control (Master Admin → Edge)
+    cf_api_token: str = ""
+    cf_zone: str = "baseapp.asia"
+    origin_ip: str = "157.245.149.238"
+    # Exabytes / WHMCS API (optional — nameserver changes from Master Admin)
+    exabytes_api_url: str = "https://billing.exabytes.my/mypanel"
+    exabytes_api_identifier: str = ""
+    exabytes_api_secret: str = ""
+    exabytes_portal_url: str = "https://billing.exabytes.my/mypanel"
 
     @property
     def cors_origin_list(self) -> list[str]:

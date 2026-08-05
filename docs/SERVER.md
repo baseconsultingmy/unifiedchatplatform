@@ -20,7 +20,8 @@
 
 ## DNS
 
-**Recommended:** Cloudflare proxy + Universal SSL — see [`docs/CLOUDFLARE.md`](./CLOUDFLARE.md).
+**Recommended:** Cloudflare proxy + Universal SSL — see [`docs/CLOUDFLARE.md`](./CLOUDFLARE.md).  
+Master Admin control plane: **Edge / DNS** at `/edge` (requires `CF_API_TOKEN`; optional Exabytes WHMCS API for nameservers).
 
 Direct (pre-Cloudflare) A records at Exabytes / MSHosting:
 

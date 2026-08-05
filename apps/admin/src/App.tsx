@@ -23,6 +23,7 @@ import ServicesPage from "./pages/ServicesPage";
 import AccountPage from "./pages/AccountPage";
 import SettingsPage from "./pages/SettingsPage";
 import VendorsPage from "./pages/VendorsPage";
+import EdgePage from "./pages/EdgePage";
 
 function Protected() {
   const { token, loading } = useAuth();
@@ -125,6 +126,9 @@ function ProfileMenu({
               <NavLink to="/vendors" role="menuitem">
                 Vendors
               </NavLink>
+              <NavLink to="/edge" role="menuitem">
+                Edge / DNS
+              </NavLink>
             </>
           ) : (
             <>
@@ -210,6 +214,9 @@ function Shell() {
             <NavLink to="/vendors" className="app-tab">
               Vendors
             </NavLink>
+            <NavLink to="/edge" className="app-tab">
+              Edge / DNS
+            </NavLink>
             <NavLink to="/overview" className="app-tab">
               Overview
             </NavLink>
@@ -289,6 +296,7 @@ export default function App() {
             <Route index element={<HomeRedirect />} />
             <Route path="overview" element={<PlatformOrVendorOverview />} />
             <Route path="vendors" element={<VendorsPage />} />
+            <Route path="edge" element={<EdgePage />} />
             <Route path="account" element={<AccountPage />} />
             <Route element={<VendorOnly />}>
               <Route path="bookings" element={<BookingsPage />} />

@@ -12,6 +12,7 @@ from app.routers import (
     conversations,
     customers,
     dashboard,
+    edge,
     flows,
     grab,
     orders,
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/v1")
 app.include_router(dashboard.router, prefix="/v1")
 app.include_router(vendors.router, prefix="/v1")
+app.include_router(edge.router, prefix="/v1")
 app.include_router(services.router, prefix="/v1")
 app.include_router(resources.router, prefix="/v1")
 app.include_router(customers.router, prefix="/v1")

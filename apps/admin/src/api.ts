@@ -197,6 +197,36 @@ export const api = {
     request<any>(`/v1/vendors/${id}/grab/connect`, { method: "POST" }, token),
   simulateGrabOrder: (token: string, body?: unknown) =>
     request<any>("/v1/grab/simulate-order", { method: "POST", body: JSON.stringify(body || {}) }, token),
+  edgeStatus: (token: string) => request<any>("/v1/edge/status", {}, token),
+  edgeCloudflareBootstrap: (token: string) =>
+    request<any>("/v1/edge/cloudflare/bootstrap", { method: "POST" }, token),
+  edgeCloudflareSsl: (token: string, mode: "off" | "flexible" | "full" | "strict" = "strict") =>
+    request<any>("/v1/edge/cloudflare/ssl", { method: "POST", body: JSON.stringify({ mode }) }, token),
+  edgeCloudflareActivationCheck: (token: string) =>
+    request<any>("/v1/edge/cloudflare/activation-check", { method: "POST" }, token),
+  edgeDnsList: (token: string) => request<any>("/v1/edge/cloudflare/dns", {}, token),
+  edgeDnsCreate: (token: string, body: unknown) =>
+    request<any>("/v1/edge/cloudflare/dns", { method: "POST", body: JSON.stringify(body) }, token),
+  edgeDnsUpdate: (token: string, id: string, body: unknown) =>
+    request<any>(
+      `/v1/edge/cloudflare/dns/${id}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+      token,
+    ),
+  edgeDnsDelete: (token: string, id: string) =>
+    request<any>(`/v1/edge/cloudflare/dns/${id}`, { method: "DELETE" }, token),
+  edgeExabytesDomains: (token: string) => request<any>("/v1/edge/exabytes/domains", {}, token),
+  edgeExabytesNameservers: (token: string) =>
+    request<any>("/v1/edge/exabytes/nameservers", {}, token),
+  edgeExabytesSetNameservers: (
+    token: string,
+    body: { ns1: string; ns2: string; ns3?: string; ns4?: string; ns5?: string; use_cloudflare?: boolean },
+  ) =>
+    request<any>(
+      "/v1/edge/exabytes/nameservers",
+      { method: "POST", body: JSON.stringify(body) },
+      token,
+    ),
   orders: (token: string, params?: { status?: string; channel?: string }) => {
     const q = new URLSearchParams();
     if (params?.status) q.set("status", params.status);

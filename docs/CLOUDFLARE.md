@@ -4,6 +4,22 @@ Puts Cloudflare in front of `baseapp.asia` so browsers get a **Cloudflare-truste
 
 Origin IP: `157.245.149.238`
 
+## Master Admin → Edge / DNS
+
+Platform admins can manage most of this in-app at **https://admin.baseapp.asia/edge** once secrets are set in `deploy/.env`:
+
+| Env | Purpose |
+|---|---|
+| `CF_API_TOKEN` | Cloudflare token with **Zone DNS Edit** + **Zone Settings Edit** for `baseapp.asia` |
+| `CF_ZONE` | `baseapp.asia` |
+| `ORIGIN_IP` | `157.245.149.238` |
+| `EXABYTES_API_IDENTIFIER` / `EXABYTES_API_SECRET` | Optional WHMCS API — push nameservers from the panel |
+| `EXABYTES_API_URL` | Default `https://billing.exabytes.my/mypanel` |
+
+From the Edge page you can: bootstrap proxied A/CNAME records, force **Full (strict)**, re-check Cloudflare nameservers, edit/delete DNS records, probe public DNS, and (with Exabytes API) point registrar NS at Cloudflare.
+
+If Exabytes API access is not available, use the in-panel deep link to the Exabytes Nameservers tab and set the two Cloudflare NS manually (still required once).
+
 ## One-time setup (about 10 minutes)
 
 ### 1. Add the site in Cloudflare
