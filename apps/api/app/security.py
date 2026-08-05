@@ -46,7 +46,16 @@ def decode_token(token: str) -> dict:
 
 
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
-    user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
+    normalized = (email or "").strip().lower()
+    user = db.query(User).filter(User.email == normalized, User.is_active.is_(True)).first()
+    if user is None:
+        # Legacy rows may have mixed-case emails
+        user = (
+            db.query(User)
+            .filter(User.is_active.is_(True))
+            .filter(User.email.ilike(normalized))
+            .first()
+        )
     if not user or not verify_password(password, user.password_hash):
         return None
     return user

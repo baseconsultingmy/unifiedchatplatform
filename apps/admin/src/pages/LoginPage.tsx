@@ -5,7 +5,7 @@ import { BasePrimaryLogo } from "../brand/BaseWordmark";
 
 export default function LoginPage() {
   const { token, login } = useAuth();
-  const [email, setEmail] = useState("admin@baseapp.asia");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -49,7 +49,14 @@ export default function LoginPage() {
           </div>
           <label>
             Email
-            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              autoComplete="username"
+              placeholder="you@example.com"
+              required
+            />
           </label>
           <label>
             Password
@@ -57,6 +64,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               type="password"
+              autoComplete="current-password"
               required
             />
           </label>

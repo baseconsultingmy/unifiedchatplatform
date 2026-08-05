@@ -9,6 +9,7 @@ type AuthState = {
   user: any | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   viewAsVendor: (vendorId: number) => Promise<void>;
   exitViewAs: () => void;
   loading: boolean;
@@ -57,6 +58,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(MASTER_TOKEN_KEY);
         setToken(null);
         setUser(null);
+      },
+      async refreshUser() {
+        if (!token) return;
+        setUser(await api.me(token));
       },
       async viewAsVendor(vendorId: number) {
         if (!token) throw new Error("Not authenticated");

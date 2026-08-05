@@ -31,6 +31,15 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   me: (token: string) => request<any>("/v1/auth/me", {}, token),
+  updateAccount: (
+    token: string,
+    body: {
+      full_name?: string;
+      email?: string;
+      current_password: string;
+      new_password?: string | null;
+    },
+  ) => request<any>("/v1/auth/me", { method: "PATCH", body: JSON.stringify(body) }, token),
   dashboard: (token: string) => request<any>("/v1/dashboard", {}, token),
   services: (token: string) => request<any[]>("/v1/services", {}, token),
   createService: (token: string, body: unknown) =>

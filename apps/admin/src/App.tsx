@@ -20,6 +20,7 @@ import OrdersPage from "./pages/OrdersPage";
 import PosPage from "./pages/PosPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import ServicesPage from "./pages/ServicesPage";
+import AccountPage from "./pages/AccountPage";
 import SettingsPage from "./pages/SettingsPage";
 import VendorsPage from "./pages/VendorsPage";
 
@@ -154,6 +155,9 @@ function ProfileMenu({
               </NavLink>
             </>
           )}
+          <NavLink to="/account" role="menuitem">
+            Account
+          </NavLink>
           <div className="profile-dropdown-divider" />
           {impersonating ? (
             <button type="button" className="profile-action" onClick={onExitViewAs}>
@@ -285,6 +289,7 @@ export default function App() {
             <Route index element={<HomeRedirect />} />
             <Route path="overview" element={<PlatformOrVendorOverview />} />
             <Route path="vendors" element={<VendorsPage />} />
+            <Route path="account" element={<AccountPage />} />
             <Route element={<VendorOnly />}>
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="orders" element={<OrdersPage />} />

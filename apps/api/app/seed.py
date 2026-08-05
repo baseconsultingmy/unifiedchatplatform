@@ -37,7 +37,18 @@ def bootstrap(db: Session) -> None:
         db.add(platform)
         db.flush()
 
-    platform_admin = db.query(User).filter(User.email == settings.bootstrap_admin_email).first()
+    # Prefer the existing platform admin by role so changing BOOTSTRAP_ADMIN_EMAIL
+    # does not create a second master account on restart.
+    platform_admin = (
+        db.query(User)
+        .filter(
+            User.tenant_id == platform.id,
+            User.role == UserRole.platform_admin.value,
+        )
+        .first()
+    )
+    if platform_admin is None:
+        platform_admin = db.query(User).filter(User.email == settings.bootstrap_admin_email).first()
     if platform_admin is None:
         db.add(
             User(
@@ -52,6 +63,16 @@ def bootstrap(db: Session) -> None:
         platform_admin.tenant_id = platform.id
         platform_admin.role = UserRole.platform_admin.value
         platform_admin.full_name = platform_admin.full_name or "BaseApp Master Admin"
+        # Keep login email aligned with bootstrap env when that address is free.
+        desired = (settings.bootstrap_admin_email or "").strip().lower()
+        if desired and platform_admin.email.lower() != desired:
+            taken = (
+                db.query(User)
+                .filter(User.email == desired, User.id != platform_admin.id)
+                .first()
+            )
+            if taken is None:
+                platform_admin.email = desired
 
     # Sample vendor so Master Admin can see a shop immediately.
     vendor = db.query(Tenant).filter(Tenant.slug == "demo-studio").first()
