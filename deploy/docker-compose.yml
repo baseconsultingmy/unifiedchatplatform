@@ -30,13 +30,24 @@ services:
       META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
       META_PHONE_NUMBER_ID: ${META_PHONE_NUMBER_ID:-}
       PUBLIC_API_BASE: ${PUBLIC_API_BASE:-https://api.baseapp.asia}
+      PUBLIC_ADMIN_BASE: ${PUBLIC_ADMIN_BASE:-https://admin.baseapp.asia}
       PAYMENT_MODE: ${PAYMENT_MODE:-demo}
       WA_FLOW_PRIVATE_KEY: ${WA_FLOW_PRIVATE_KEY:-}
       WA_FLOW_PRIVATE_KEY_PASSWORD: ${WA_FLOW_PRIVATE_KEY_PASSWORD:-}
       WA_FLOW_PUBLIC_KEY: ${WA_FLOW_PUBLIC_KEY:-}
       WA_FLOW_DRAFT_MODE: ${WA_FLOW_DRAFT_MODE:-false}
       WA_FLOW_ENABLED: ${WA_FLOW_ENABLED:-true}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GRAB_CLIENT_ID: ${GRAB_CLIENT_ID:-}
+      GRAB_CLIENT_SECRET: ${GRAB_CLIENT_SECRET:-}
+      GRAB_PARTNER_WEBHOOK_SECRET: ${GRAB_PARTNER_WEBHOOK_SECRET:-}
       ENVIRONMENT: production
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     depends_on:
       db:
         condition: service_healthy
@@ -48,7 +59,8 @@ services:
         VITE_API_BASE: ${VITE_API_BASE:-https://api.baseapp.asia}
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   caddy:
     image: caddy:2.10-alpine
@@ -62,8 +74,10 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - api
-      - admin
+      api:
+        condition: service_healthy
+      admin:
+        condition: service_started
 
 volumes:
   pgdata:

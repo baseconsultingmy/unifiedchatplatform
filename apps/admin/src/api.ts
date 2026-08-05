@@ -9,14 +9,24 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string |
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  } catch {
+    throw new Error(
+      "Cannot reach the BaseApp API. Check your connection, then hard-refresh and try again.",
+    );
+  }
   if (!res.ok) {
     let detail = "Request failed";
     try {
       const data = await res.json();
-      detail = data.detail || detail;
+      if (typeof data.detail === "string") detail = data.detail;
+      else if (Array.isArray(data.detail)) {
+        detail = data.detail.map((d: any) => d.msg || JSON.stringify(d)).join("; ");
+      }
     } catch {
-      /* ignore */
+      if (res.status >= 500) detail = "Server temporarily unavailable. Please try again.";
     }
     throw new Error(detail);
   }
