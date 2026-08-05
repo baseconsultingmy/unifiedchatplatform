@@ -3646,6 +3646,25 @@ p {
   width: auto;
 }
 
+.vendor-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.vendor-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+a.btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .settings-notes {
   margin: 0.75rem 0 0;
   padding-left: 1.1rem;

@@ -23,6 +23,10 @@ import ServicesPage from "./pages/ServicesPage";
 import AccountPage from "./pages/AccountPage";
 import SettingsPage from "./pages/SettingsPage";
 import VendorsPage from "./pages/VendorsPage";
+import VendorCreatePage from "./pages/VendorCreatePage";
+import VendorMetaPage from "./pages/VendorMetaPage";
+import VendorGrabPage from "./pages/VendorGrabPage";
+import PlatformMetaPage from "./pages/PlatformMetaPage";
 import EdgePage from "./pages/EdgePage";
 
 function Protected() {
@@ -296,6 +300,10 @@ export default function App() {
             <Route index element={<HomeRedirect />} />
             <Route path="overview" element={<PlatformOrVendorOverview />} />
             <Route path="vendors" element={<VendorsPage />} />
+            <Route path="vendors/new" element={<VendorCreatePage />} />
+            <Route path="vendors/platform" element={<PlatformMetaPage />} />
+            <Route path="vendors/:id/meta" element={<VendorMetaPage />} />
+            <Route path="vendors/:id/grab" element={<VendorGrabPage />} />
             <Route path="edge" element={<EdgePage />} />
             <Route path="account" element={<AccountPage />} />
             <Route element={<VendorOnly />}>
