@@ -1,11 +1,15 @@
 {
 	email {$ACME_EMAIL:admin@baseapp.asia}
-	# ZeroSSL — widely trusted in Chrome/Safari. Let's Encrypt Gen Y (YE/YR)
-	# was triggering NET::ERR_CERT_AUTHORITY_INVALID for some browsers.
+	key_type rsa2048
+	# Prefer ZeroSSL RSA → Sectigo R46 (more widely trusted than ECC/E46).
 	cert_issuer acme {
 		dir https://acme.zerossl.com/v2/DV90
 		email {$ACME_EMAIL:admin@baseapp.asia}
 		eab {$ZEROSSL_EAB_KID} {$ZEROSSL_EAB_HMAC_KEY}
+	}
+	# Disable HTTP/3 — some Chrome builds mishandle Alt-Svc/QUIC during CA migrations.
+	servers {
+		protocols h1 h2
 	}
 }
 
@@ -29,6 +33,10 @@ api.baseapp.asia {
 }
 
 admin.baseapp.asia {
+	header {
+		# Stop browsers sticking to broken HTTP/3 from earlier deploys
+		-Alt-Svc
+	}
 	reverse_proxy admin:80 {
 		lb_try_duration 5s
 		lb_try_interval 250ms
