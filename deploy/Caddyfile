@@ -1,5 +1,15 @@
 {
 	email admin@baseapp.asia
+	key_type rsa2048
+	# Classic LE profile + RSA → YR*/X1 chain, more widely trusted than YE* ECDSA.
+	cert_issuer acme {
+		dir https://acme-v02.api.letsencrypt.org/directory
+		email admin@baseapp.asia
+		profile classic
+		preferred_chains {
+			root_common_name "ISRG Root X1"
+		}
+	}
 }
 
 baseapp.asia, www.baseapp.asia {
@@ -8,7 +18,6 @@ baseapp.asia, www.baseapp.asia {
 
 api.baseapp.asia {
 	reverse_proxy api:8000 {
-		# Survive brief Docker DNS blips when API is recreating
 		lb_try_duration 10s
 		lb_try_interval 250ms
 		fail_duration 2s
