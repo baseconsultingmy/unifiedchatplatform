@@ -194,6 +194,10 @@ def ensure_schema() -> None:
         EXCEPTION WHEN others THEN NULL;
         END $$
         """,
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(40) DEFAULT 'password'",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(128)",
+        "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub ON users (google_sub)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

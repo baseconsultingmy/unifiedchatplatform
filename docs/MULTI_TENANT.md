@@ -36,6 +36,8 @@ Created on first API boot from `deploy/.env`:
 - Sample wellness vendor: `owner@demo-studio.baseapp.asia` (same bootstrap password) · industry `health_beauty`
 - Sample food vendor: `owner@demo-kitchen.baseapp.asia` (same bootstrap password) · industry `fnb` · Grab merchant `demo-kitchen` (30% markup) — see `docs/GRAB.md`
 
+Merchants can also **self-serve sign up with Google** when `GOOGLE_CLIENT_ID` is configured — see `docs/AUTH.md`.
+
 ## View as (Master Admin)
 
 Master Admin can open a vendor workspace without knowing their password:

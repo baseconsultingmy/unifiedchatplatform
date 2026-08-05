@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     grab_client_id: str = ""
     grab_client_secret: str = ""
     grab_partner_webhook_secret: str = ""
+    # Google Identity Services (merchant social login / signup)
+    google_client_id: str = ""
+    public_admin_base: str = "https://admin.baseapp.asia"
 
     @property
     def cors_origin_list(self) -> list[str]:

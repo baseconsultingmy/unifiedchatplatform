@@ -2680,6 +2680,62 @@ p {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+
+.login-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: rgba(15, 39, 68, 0.06);
+}
+.login-mode-tabs button {
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--muted);
+}
+.login-mode-tabs button.active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(15, 39, 68, 0.12);
+}
+.login-social {
+  display: grid;
+  gap: 0.55rem;
+}
+.login-divider {
+  display: grid;
+  place-items: center;
+  margin: 0.15rem 0;
+}
+.login-divider span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.login-google-btn {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+}
+.login-google-btn.dim {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.login-social-hint {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.login-social-hint code {
+  font-size: 0.8em;
+}
 .pos-pay-table-btn {
   border: 1px solid #0f766e;
   background: #ecfdf5;

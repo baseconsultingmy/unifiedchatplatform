@@ -9,11 +9,12 @@ from app.grab_creds import apply_grab_fields
 from app.models import Booking, Service, Tenant, User, UserRole
 from app.routers.workspace import normalize_industry
 from app.schemas import PlatformMetaOut, TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
-from app.security import create_access_token, hash_password
-from app.seed import slugify
+from app.security import create_access_token
 from app.config import settings
 from app.flow_crypto import is_flow_crypto_configured, normalize_public_key_pem
 from app.flow_meta import FlowMetaError, ensure_booking_flow_published
+from app.seed import slugify
+from app.vendor_provision import provision_vendor
 from app.whatsapp_creds import apply_whatsapp_fields, refresh_whatsapp_status
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -149,41 +150,36 @@ def create_vendor(
     _: User = Depends(require_platform_admin),
     db: Session = Depends(get_db),
 ) -> VendorOut:
-    slug = slugify(payload.slug or payload.name)
-    if db.query(Tenant).filter(Tenant.slug == slug).first():
+    desired_slug = slugify(payload.slug or payload.name)
+    if db.query(Tenant).filter(Tenant.slug == desired_slug).first():
         raise HTTPException(status_code=400, detail="Vendor slug already exists")
-    if db.query(User).filter(User.email == payload.owner_email).first():
+    if db.query(User).filter(User.email == str(payload.owner_email).strip().lower()).first():
         raise HTTPException(status_code=400, detail="Owner email already exists")
 
     _ensure_unique_phone_id(db, payload.wa_phone_number_id)
 
-    tenant = Tenant(
-        name=payload.name,
-        slug=slug,
-        industry=normalize_industry(payload.industry),
-        timezone=payload.timezone,
-        country=payload.country.upper(),
-        is_platform=False,
-        is_active=True,
-        wa_phone_number_id=(payload.wa_phone_number_id or "").strip() or None,
-        wa_access_token=(payload.wa_access_token or "").strip() or None,
-        wa_business_account_id=(payload.wa_business_account_id or "").strip() or None,
-        wa_display_phone=(payload.wa_display_phone or "").strip() or None,
-        wa_verify_token=(payload.wa_verify_token or "").strip() or None,
-    )
-    refresh_whatsapp_status(tenant)
-    db.add(tenant)
-    db.flush()
-
-    db.add(
-        User(
-            tenant_id=tenant.id,
-            email=payload.owner_email,
-            full_name=payload.owner_full_name,
-            password_hash=hash_password(payload.owner_password),
-            role=UserRole.owner.value,
+    try:
+        tenant, _owner = provision_vendor(
+            db,
+            name=payload.name,
+            industry=payload.industry,
+            owner_email=str(payload.owner_email),
+            owner_full_name=payload.owner_full_name,
+            owner_password=payload.owner_password,
+            auth_provider="password",
+            timezone=payload.timezone,
+            country=payload.country,
+            slug=desired_slug,
         )
-    )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    tenant.wa_phone_number_id = (payload.wa_phone_number_id or "").strip() or None
+    tenant.wa_access_token = (payload.wa_access_token or "").strip() or None
+    tenant.wa_business_account_id = (payload.wa_business_account_id or "").strip() or None
+    tenant.wa_display_phone = (payload.wa_display_phone or "").strip() or None
+    tenant.wa_verify_token = (payload.wa_verify_token or "").strip() or None
+    refresh_whatsapp_status(tenant)
     db.commit()
     db.refresh(tenant)
     return _vendor_out(db, tenant)

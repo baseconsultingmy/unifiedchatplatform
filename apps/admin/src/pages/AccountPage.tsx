@@ -18,6 +18,9 @@ export default function AccountPage() {
     setEmail(user?.email || "");
   }, [user]);
 
+  const hasPassword = user?.has_password !== false;
+  const provider = user?.auth_provider || "password";
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -25,7 +28,7 @@ export default function AccountPage() {
     setError("");
     setSaved("");
     try {
-      if (!currentPassword.trim()) {
+      if (hasPassword && !currentPassword.trim()) {
         throw new Error("Enter your current password to save changes");
       }
       if (newPassword && newPassword.length < 8) {
@@ -37,7 +40,7 @@ export default function AccountPage() {
       await api.updateAccount(token, {
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
-        current_password: currentPassword,
+        current_password: currentPassword || undefined,
         new_password: newPassword || null,
       });
       await refreshUser();
@@ -62,7 +65,10 @@ export default function AccountPage() {
         <div className="bookings-toolbar">
           <div>
             <h1 style={{ margin: 0 }}>Account</h1>
-            <p>Set the email and password you use to sign in.</p>
+            <p>
+              Set the email and password you use to sign in.
+              {provider.includes("google") ? " Signed in with Google." : ""}
+            </p>
           </div>
         </div>
 
@@ -86,25 +92,31 @@ export default function AccountPage() {
               required
             />
           </label>
+          {hasPassword ? (
+            <label>
+              Current password
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+                placeholder="Required to save changes"
+              />
+            </label>
+          ) : (
+            <p className="muted">
+              This account uses Google. You can optionally set a password for email sign-in.
+            </p>
+          )}
           <label>
-            Current password
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-              placeholder="Required to save changes"
-            />
-          </label>
-          <label>
-            New password
+            {hasPassword ? "New password" : "Set password"}
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
-              placeholder="Leave blank to keep current password"
+              placeholder={hasPassword ? "Leave blank to keep current password" : "Optional"}
               minLength={8}
             />
           </label>

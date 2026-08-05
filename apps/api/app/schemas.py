@@ -21,8 +21,22 @@ class LoginIn(BaseModel):
 class AccountUpdateIn(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=120)
     email: EmailStr | None = None
-    current_password: str = Field(min_length=1, max_length=128)
+    current_password: str | None = Field(default=None, max_length=128)
     new_password: str | None = Field(default=None, min_length=8, max_length=128)
+
+
+class SocialStatusOut(BaseModel):
+    google_enabled: bool = False
+    google_client_id: str | None = None
+
+
+class GoogleAuthIn(BaseModel):
+    credential: str = Field(min_length=20)
+    mode: str = Field(default="login", pattern="^(login|signup)$")
+    shop_name: str | None = Field(default=None, max_length=120)
+    industry: str = "general"
+    timezone: str = "Asia/Kuala_Lumpur"
+    country: str = Field(default="MY", min_length=2, max_length=2)
 
 
 class TenantOut(BaseModel):
@@ -60,6 +74,8 @@ class UserOut(BaseModel):
     email: EmailStr
     full_name: str
     role: str
+    auth_provider: str = "password"
+    has_password: bool = True
     tenant: TenantOut
     impersonating: bool = False
     impersonator_id: int | None = None

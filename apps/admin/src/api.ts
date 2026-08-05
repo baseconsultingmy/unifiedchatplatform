@@ -30,13 +30,27 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  socialStatus: () =>
+    request<{ google_enabled: boolean; google_client_id: string | null }>("/v1/auth/social"),
+  googleAuth: (body: {
+    credential: string;
+    mode: "login" | "signup";
+    shop_name?: string;
+    industry?: string;
+    timezone?: string;
+    country?: string;
+  }) =>
+    request<TokenResponse>("/v1/auth/google", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   me: (token: string) => request<any>("/v1/auth/me", {}, token),
   updateAccount: (
     token: string,
     body: {
       full_name?: string;
       email?: string;
-      current_password: string;
+      current_password?: string;
       new_password?: string | null;
     },
   ) => request<any>("/v1/auth/me", { method: "PATCH", body: JSON.stringify(body) }, token),

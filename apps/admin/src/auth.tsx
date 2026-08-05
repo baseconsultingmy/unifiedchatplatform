@@ -8,6 +8,7 @@ type AuthState = {
   token: string | null;
   user: any | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithToken: (accessToken: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   viewAsVendor: (vendorId: number) => Promise<void>;
@@ -52,6 +53,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(MASTER_TOKEN_KEY);
         localStorage.setItem(TOKEN_KEY, res.access_token);
         setToken(res.access_token);
+      },
+      async loginWithToken(accessToken: string) {
+        localStorage.removeItem(MASTER_TOKEN_KEY);
+        localStorage.setItem(TOKEN_KEY, accessToken);
+        setToken(accessToken);
       },
       logout() {
         localStorage.removeItem(TOKEN_KEY);

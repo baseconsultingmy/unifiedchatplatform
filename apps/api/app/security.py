@@ -56,7 +56,9 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
             .filter(User.email.ilike(normalized))
             .first()
         )
-    if not user or not verify_password(password, user.password_hash):
+    if not user or not user.password_hash:
+        return None
+    if not verify_password(password, user.password_hash):
         return None
     return user
 
