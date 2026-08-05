@@ -18,16 +18,18 @@
 - Docker Engine + Compose plugin
 - Caddy reverse-proxy placeholder (`deploy/`)
 
-## DNS (Exabytes → DigitalOcean)
+## DNS
 
-In Exabytes DNS Manager for `baseapp.asia`, target A records:
+**Recommended:** Cloudflare proxy + Universal SSL — see [`docs/CLOUDFLARE.md`](./CLOUDFLARE.md).
 
-| Host | Type | Value | Status |
-|---|---|---|---|
-| `@` | A | `157.245.149.238` | Live + HTTPS |
-| `www` | CNAME → `baseapp.asia` | (via apex) | Live + HTTPS |
-| `api` | A | `157.245.149.238` | Live + HTTPS cert issued |
-| `admin` | A | `157.245.149.238` | Live + HTTPS cert issued |
+Direct (pre-Cloudflare) A records at Exabytes / MSHosting:
+
+| Host | Type | Value |
+|---|---|---|
+| `@` | A | `157.245.149.238` |
+| `www` | A | `157.245.149.238` |
+| `api` | A | `157.245.149.238` |
+| `admin` | A | `157.245.149.238` |
 
 Smoke checks:
 
