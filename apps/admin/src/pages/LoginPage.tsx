@@ -153,7 +153,7 @@ export default function LoginPage() {
           <div className="login-hero-glow" aria-hidden />
           <div className="login-hero-brand">
             <div className="login-primary-logo">
-              <BasePrimaryLogo width={240} />
+              <BasePrimaryLogo width={220} tone="dark" />
             </div>
           </div>
           <p className="login-hero-tagline">

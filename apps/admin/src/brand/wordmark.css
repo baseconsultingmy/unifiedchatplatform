@@ -102,18 +102,20 @@
   letter-spacing: 0.08em;
 }
 
-.base-primary-logo,
-.base-simplified-logo {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
 .base-mark {
   display: block;
   border-radius: 0;
   flex-shrink: 0;
   object-fit: contain;
+  background: transparent;
+}
+
+.base-primary-logo,
+.base-simplified-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: transparent;
 }
 
 .brand-lockup {

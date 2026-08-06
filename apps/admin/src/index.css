@@ -86,33 +86,77 @@ p {
 .app-topbar-brand {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.7rem;
   min-width: 0;
   justify-self: start;
 }
 
+.app-topbar-brand .base-mark {
+  width: 44px;
+  height: auto;
+  max-height: 32px;
+}
+
 .app-topbar-brand .brand-meta {
-  display: grid;
-  gap: 0.1rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.55rem;
   min-width: 0;
 }
 
-.app-topbar-brand .brand-meta > span,
-.app-topbar-shop {
-  color: var(--muted);
-  font-size: 0.82rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 28vw;
+.app-topbar-brand .base-wordmark {
+  gap: 0.38rem;
 }
 
 .app-topbar-brand .base-wordmark-base {
-  font-size: 1.05rem;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
 }
 
 .app-topbar-brand .base-wordmark-secondary {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
+}
+
+.app-topbar-brand .base-wordmark-divider {
+  height: 0.95rem;
+}
+
+.app-topbar-brand .base-wordmark-os {
+  min-width: 1.7rem;
+  height: 1.15rem;
+  font-size: 0.62rem;
+  padding: 0 0.35rem;
+}
+
+.app-topbar-shop,
+.app-topbar-shop-pill {
+  color: var(--base-navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(28vw, 12rem);
+}
+
+.app-topbar-shop-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.45rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 39, 68, 0.12);
+  background: rgba(15, 39, 68, 0.06);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.app-topbar-shop-pill.is-master {
+  border-color: rgba(229, 161, 0, 0.35);
+  background: rgba(229, 161, 0, 0.14);
+  color: #8a5a00;
 }
 
 .app-topbar-brand strong {
@@ -1364,15 +1408,18 @@ p {
 .login-primary-logo {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 1.1rem 1.25rem 0.85rem;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .login-primary-logo img {
   display: block;
+  width: min(220px, 72vw);
+  height: auto;
+  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.28));
 }
 
 .login-hero-arc {
@@ -3899,8 +3946,12 @@ a.btn {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .app-topbar-brand span {
+  .app-topbar-brand .brand-meta {
     display: none;
+  }
+
+  .app-topbar-brand .base-mark {
+    width: 48px;
   }
 
   .app-primary-tabs {
