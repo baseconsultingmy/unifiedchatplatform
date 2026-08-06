@@ -197,6 +197,13 @@ export const api = {
     request<any>(`/v1/vendors/${id}/grab/connect`, { method: "POST" }, token),
   simulateGrabOrder: (token: string, body?: unknown) =>
     request<any>("/v1/grab/simulate-order", { method: "POST", body: JSON.stringify(body || {}) }, token),
+  fetchGrabOrders: (token: string, date?: string) => {
+    const q = date ? `?date=${encodeURIComponent(date)}` : "";
+    return request<any>(`/v1/grab/fetch-orders${q}`, { method: "POST" }, token);
+  },
+  lineStatus: (token: string) => request<any>("/v1/line/status", {}, token),
+  updateLineSettings: (token: string, body: unknown) =>
+    request<any>("/v1/line/settings", { method: "PATCH", body: JSON.stringify(body) }, token),
   edgeStatus: (token: string) => request<any>("/v1/edge/status", {}, token),
   edgeCloudflareBootstrap: (token: string) =>
     request<any>("/v1/edge/cloudflare/bootstrap", { method: "POST" }, token),

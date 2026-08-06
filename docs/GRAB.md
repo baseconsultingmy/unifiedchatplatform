@@ -1,69 +1,80 @@
-# Grab Food POS integration
+# Grab Food POS integration (API v1.1.3)
 
-BaseApp supports two-way Grab Food integration for F&B tenants:
+BaseApp implements the GrabFood partner POS flow per
+[GrabFood API v1.1.3](https://developer.grab.com/docs/grabfood/api/v1-1-3/).
 
-1. **Orders in** — Grab submit-order webhooks create rows in the vendor **Orders** queue.
-2. **Menu out** — vendors publish the shop catalog; Grab pulls the menu after notification.
-3. **Smart pricing** — walk-in / dine-in uses `Service.price_amount`; Grab uses override **or** `base × (1 + markup%)` (tenant default 30%, rounded to `.00` / `.50`).
+1. **Orders in** — submit-order + order-state webhooks, plus optional **Fetch from Grab** (List Orders).
+2. **Menu out** — publish notifies Grab; Grab pulls Get Menu (items + modifiers + Grab prices).
+3. **Smart pricing** — walk-in uses `Service.price_amount`; Grab uses override **or** `base × (1 + markup%)`.
+4. **Status out** — Accept / Reject / Ready / Cancel call Grab partner APIs.
 
 ## Merchant connect flow
 
-1. **Settings → Grab Food → Connect Grab** (or Master Admin → Vendors → Grab setup)
-2. API calls Grab `POST /partner/v1/self-serve/activation` with `partner.merchantID` = tenant slug
+1. **Settings → Grab Food → Connect Grab** (or Master Admin → Vendors → Grab)
+2. API calls `POST /partner/v1/self-serve/activation` with `partner.merchantID` = tenant slug
 3. Merchant opens **activation URL** → Grab Merchant → **Enable Integration**
-4. Save Grab **merchant ID** (after Grab links the outlet)
+4. Grab pushes integration status → `POST /v1/webhooks/grab/push-integration-status` (saves real `grabMerchantID`)
 5. Set markup / overrides on **Menu**, then **Publish menu**
-6. Orders appear under **Orders**
+6. Orders arrive under **Orders** (webhook) or tap **Fetch from Grab**
 
-Without platform Grab credentials, Connect / Publish run in **dry-run** so the admin UX can be tested.
+Without platform Grab credentials, Connect / Publish / Fetch run in **dry-run**.
 
 ## Credentials
 
-Platform env (optional until partner activation):
+Platform env (from [Grab Developer Portal](https://developer.grab.com/)):
 
 | Env | Purpose |
 |---|---|
-| `GRAB_CLIENT_ID` | OAuth client id |
+| `GRAB_CLIENT_ID` | OAuth client id (`food.partner.api`) |
 | `GRAB_CLIENT_SECRET` | OAuth client secret |
 | `GRAB_PARTNER_WEBHOOK_SECRET` | Shared secret for inbound Grab webhooks |
 
-Per-tenant (Settings / Master Admin Vendors):
+Per-tenant:
 
-- `grab_merchant_id` — Grab merchant ID (demo kitchen uses `demo-kitchen`)
+- `grab_merchant_id` — Grab outlet ID (from integration-status webhook or paste)
 - `grab_markup_percent` — default Grab markup (e.g. `30`)
-- `grab_activation_url` — last self-serve activation link
 - `grab_sync_status` — `not_configured` → `activation_pending` → `ready` → `published` / `synced`
-- `grab_partner_token` — optional merchant token (write-only)
 
-When platform credentials are missing, publish / accept / ready callbacks run in **dry-run** mode so the panel can be tested end-to-end.
+Register these partner webhooks with Grab:
+
+| Grab event | Our URL |
+|---|---|
+| Get menu | `https://api.baseapp.asia/v1/webhooks/grab/merchant/menu` |
+| Submit order | `https://api.baseapp.asia/v1/webhooks/grab/orders` |
+| Menu sync state | `https://api.baseapp.asia/v1/webhooks/grab/menu/sync-state` |
+| Push integration status | `https://api.baseapp.asia/v1/webhooks/grab/push-integration-status` |
+| Push order state | `https://api.baseapp.asia/v1/webhooks/grab/order-state` |
 
 ## Endpoints
 
 | Method | Path | Who |
 |---|---|---|
 | `GET` | `/v1/grab/status` | Vendor |
-| `POST` | `/v1/grab/connect` | Vendor — start self-serve activation |
-| `POST` | `/v1/vendors/{id}/grab/connect` | Master Admin — same for a shop |
-| `POST` | `/v1/grab/publish` | Vendor — notify Grab + mark items published |
-| `POST` | `/v1/grab/simulate-order` | Vendor — local Grab-like order |
-| `PATCH` | `/v1/services/{id}/grab-price` | Vendor — override / per-item markup |
-| `GET` / `PATCH` | `/v1/orders` | Vendor order queue |
+| `POST` | `/v1/grab/connect` | Vendor — self-serve activation |
+| `POST` | `/v1/grab/publish` | Vendor — menu notification |
+| `POST` | `/v1/grab/fetch-orders` | Vendor — List Orders sync (prod; not in staging) |
+| `POST` | `/v1/grab/simulate-order` | Vendor — local dry-run ticket |
+| `PATCH` | `/v1/services/{id}/grab-price` | Vendor — override / markup |
+| `GET` / `PATCH` | `/v1/orders` | Vendor queue (+ cancel → Grab) |
 | `GET` | `/v1/webhooks/grab/merchant/menu` | Grab pulls menu |
 | `POST` | `/v1/webhooks/grab/orders` | Grab submit order |
-| `POST` | `/v1/webhooks/grab/menu/sync-state` | Grab menu sync status |
+| `POST` | `/v1/webhooks/grab/menu/sync-state` | Menu sync status |
+| `POST` | `/v1/webhooks/grab/push-integration-status` | Store integration status |
+| `POST` | `/v1/webhooks/grab/order-state` | Order state updates |
 
-## Orders UI colors
+## Sending prices
 
-Marketplace tickets in **Orders** use channel brand accents:
+1. **Menu** — set Grab override or markup per item  
+2. **Publish to Grab** — BaseApp calls `POST …/merchant/menu/notification`  
+3. Grab calls **Get menu** webhook — we return categories/items/modifiers with Grab prices (minor units)
 
-| Channel | Accent |
-|---|---|
-| Grab | Grab green `#00B14F` |
-| foodpanda | foodpanda pink `#D70F64` (UI ready; POS integration not live yet) |
+## Fetching orders
+
+- **Automatic:** Grab submit-order + order-state webhooks  
+- **Manual:** Orders → **Fetch from Grab** → `GET …/partner/v1/orders` (up to 30 days; prod only)
 
 ## Demo
 
-- Login: `owner@demo-kitchen.baseapp.asia` (bootstrap password)
+- Login: `owner@demo-kitchen.baseapp.asia`
 - Slug / merchant id: `demo-kitchen`
-- Default Grab markup: **30%** (e.g. Nasi Lemak walk-in RM12 → Grab RM15.50)
-- Admin: **Menu** shows walk-in vs Grab price; **Orders** shows the Grab queue; **Simulate Grab order** creates a dry-run ticket.
+- Default Grab markup: **30%**

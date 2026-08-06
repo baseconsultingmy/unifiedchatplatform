@@ -103,6 +103,22 @@ export default function OrdersPage() {
     }
   }
 
+  async function fetchFromGrab() {
+    if (!token) return;
+    setError("");
+    setMessage("");
+    try {
+      const res = await api.fetchGrabOrders(token);
+      await refresh();
+      setMessage(res.message || `Synced ${res.remote_count ?? 0} Grab orders`);
+      if (res.dry_run) {
+        setError("Grab partner credentials not configured — cannot fetch live orders yet.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fetch from Grab failed");
+    }
+  }
+
   return (
     <div className="page-scroll">
       <section className="panel">
@@ -114,6 +130,9 @@ export default function OrdersPage() {
           <div className="btn-row">
             <button type="button" className="btn secondary" onClick={() => refresh()}>
               Refresh
+            </button>
+            <button type="button" className="btn secondary" onClick={fetchFromGrab}>
+              Fetch from Grab
             </button>
             <button type="button" className="btn" onClick={simulate}>
               Simulate Grab order

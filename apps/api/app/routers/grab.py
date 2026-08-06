@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session, joinedload
 
 from app import grab_client
@@ -16,6 +16,7 @@ from app.config import settings
 from app.db import get_db
 from app.deps import require_vendor_user
 from app.grab_menu import build_grab_menu, channel_price_map
+from app.grab_order_sync import upsert_grab_order
 from app.models import Order, OrderLine, OrderStatus, Service, Tenant, User
 from app.pricing import compute_channel_price
 from app.schemas import (
@@ -94,6 +95,8 @@ def _grab_status_for_tenant(tenant: Tenant) -> GrabStatusOut:
         menu_webhook_url=f"{base}/v1/webhooks/grab/merchant/menu",
         orders_webhook_url=f"{base}/v1/webhooks/grab/orders",
         sync_state_webhook_url=f"{base}/v1/webhooks/grab/menu/sync-state",
+        integration_status_webhook_url=f"{base}/v1/webhooks/grab/push-integration-status",
+        order_state_webhook_url=f"{base}/v1/webhooks/grab/order-state",
         notes=notes,
     )
 
@@ -184,6 +187,79 @@ async def publish_menu_to_grab(
         message=message,
         sync_status=tenant.grab_sync_status,
     )
+
+
+@router.post("/grab/fetch-orders")
+async def fetch_grab_orders(
+    date: str | None = Query(default=None, description="YYYY-MM-DD (Grab local outlet date)"),
+    user: User = Depends(require_vendor_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Pull orders from Grab List Orders API and upsert into the local Orders queue.
+
+    Note: Grab documents this endpoint as unavailable in staging; requires live credentials.
+    """
+    from datetime import date as date_cls
+
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    merchant_id = (tenant.grab_merchant_id or "").strip()
+    if not merchant_id:
+        raise HTTPException(status_code=400, detail="Set Grab merchant ID before fetching orders")
+
+    report_date = date or date_cls.today().isoformat()
+    created = 0
+    updated = 0
+    page = 0
+    remote_count = 0
+    errors: list[str] = []
+
+    while page < 50:
+        result = await grab_client.list_orders(
+            merchant_id=merchant_id,
+            date=report_date,
+            page=page,
+        )
+        if result.get("dry_run"):
+            return {
+                "ok": True,
+                "dry_run": True,
+                "message": result.get("message"),
+                "created": 0,
+                "updated": 0,
+                "remote_count": 0,
+            }
+        if not result.get("ok"):
+            raise HTTPException(
+                status_code=502,
+                detail=result.get("detail") or "Grab list orders failed",
+            )
+        for raw in result.get("orders") or []:
+            remote_count += 1
+            try:
+                _, was_created = upsert_grab_order(db, tenant, raw)
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
+            except Exception as exc:  # noqa: BLE001
+                errors.append(str(exc))
+        db.commit()
+        if not result.get("more"):
+            break
+        page += 1
+
+    return {
+        "ok": True,
+        "dry_run": False,
+        "date": report_date,
+        "created": created,
+        "updated": updated,
+        "remote_count": remote_count,
+        "errors": errors[:10],
+        "message": f"Synced {remote_count} Grab orders ({created} new, {updated} updated)",
+    }
 
 
 @router.post("/grab/simulate-order", response_model=OrderOut, status_code=201)
@@ -295,119 +371,19 @@ async def grab_submit_order(
     x_grab_signature: str | None = Header(default=None, alias="X-Grab-Signature"),
     db: Session = Depends(get_db),
 ) -> dict:
-    """Inbound Grab submit-order webhook → create Order in panel."""
+    """Inbound Grab submit-order webhook → create/update Order in panel."""
     _verify_grab_webhook(authorization, x_grab_signature)
     body = await request.json()
     merchant_id = body.get("merchantID") or body.get("partnerMerchantID")
     tenant = _find_tenant_by_merchant(db, merchant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Merchant not found")
-
-    external_id = str(body.get("orderID") or body.get("orderId") or "").strip()
-    if not external_id:
-        raise HTTPException(status_code=400, detail="orderID required")
-
-    existing = (
-        db.query(Order)
-        .filter(
-            Order.tenant_id == tenant.id,
-            Order.channel == "grab",
-            Order.external_order_id == external_id,
-        )
-        .first()
-    )
-    if existing:
-        return {"ok": True, "order_id": existing.id, "duplicate": True}
-
-    prices = channel_price_map(db, tenant.id)
-    services = {
-        s.id: s
-        for s in db.query(Service).filter(Service.tenant_id == tenant.id).all()
-    }
-    by_external = {
-        (cp.external_id or f"svc-{cp.service_id}"): cp.service_id for cp in prices.values()
-    }
-    for sid in services:
-        by_external.setdefault(f"svc-{sid}", sid)
-
-    def from_grab_money(raw) -> float:
-        """Grab amounts are minor units (e.g. 1900 = RM19.00)."""
-        if raw is None:
-            return 0.0
-        val = float(raw)
-        return round(val / 100.0, 2)
-
-    price_block = body.get("price") or {}
-    currency = (body.get("currency") or {}).get("code") or "MYR"
-    items = body.get("items") or []
-    receiver = body.get("receiver") or {}
-    phones = receiver.get("phones") if isinstance(receiver.get("phones"), list) else []
-
-    order = Order(
-        tenant_id=tenant.id,
-        channel="grab",
-        status=OrderStatus.new.value,
-        external_order_id=external_id,
-        short_order_number=body.get("shortOrderNumber"),
-        customer_name=receiver.get("name") or body.get("customerName") or "Grab Customer",
-        customer_phone=(phones[0] if phones else None) or body.get("customerPhone"),
-        currency=currency,
-        notes=body.get("remark") or body.get("notes"),
-        raw_payload=json.dumps(body)[:20000],
-        subtotal_amount=from_grab_money(
-            price_block.get("subtotal") or price_block.get("eaterPayment") or 0
-        ),
-        total_amount=from_grab_money(
-            price_block.get("eaterPayment") or price_block.get("subtotal") or 0
-        ),
-    )
-    db.add(order)
-    db.flush()
-
-    computed_subtotal = Decimal("0")
-    for item in items:
-        ext_id = str(item.get("id") or item.get("itemID") or "")
-        sid = by_external.get(ext_id)
-        service = services.get(sid) if sid else None
-        qty = max(1, int(item.get("quantity") or 1))
-        if item.get("price") is not None:
-            unit = Decimal(str(from_grab_money(item.get("price"))))
-        elif service:
-            unit = compute_channel_price(
-                base_price=service.price_amount,
-                tenant=tenant,
-                channel_price=prices.get(service.id),
-                channel="grab",
-            )
-        else:
-            unit = Decimal("0")
-        line_total = unit * qty
-        computed_subtotal += line_total
-        db.add(
-            OrderLine(
-                order_id=order.id,
-                service_id=service.id if service else None,
-                external_item_id=ext_id or None,
-                name=item.get("name") or (service.name if service else "Item"),
-                quantity=qty,
-                unit_price=float(unit),
-                line_total=float(line_total),
-                notes=item.get("specifications") or item.get("notes"),
-            )
-        )
-
-    if not order.total_amount and computed_subtotal:
-        order.subtotal_amount = float(computed_subtotal)
-        order.total_amount = float(computed_subtotal)
-
+    try:
+        order, created = upsert_grab_order(db, tenant, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     db.commit()
-    logger.info(
-        "Grab order ingested tenant=%s external=%s total=%s",
-        tenant.slug,
-        external_id,
-        order.total_amount,
-    )
-    return {"ok": True, "order_id": order.id}
+    return {"ok": True, "order_id": order.id, "created": created, "duplicate": not created}
 
 
 @router.post("/webhooks/grab/menu/sync-state")
@@ -432,3 +408,68 @@ async def grab_menu_sync_state(
     tenant.grab_last_synced_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/webhooks/grab/push-integration-status", status_code=204)
+async def grab_push_integration_status(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Grab notifies partner when store integration status changes."""
+    _verify_grab_webhook(authorization)
+    body = await request.json()
+    partner_id = body.get("partnerMerchantID")
+    grab_id = body.get("grabMerchantID") or body.get("merchantID")
+    tenant = _find_tenant_by_merchant(db, partner_id) or _find_tenant_by_merchant(db, grab_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    status = str(body.get("integrationStatus") or "").upper()
+    if grab_id:
+        tenant.grab_merchant_id = str(grab_id)
+    if status == "ACTIVE":
+        tenant.grab_sync_status = "ready"
+    elif status == "SYNCING":
+        tenant.grab_sync_status = "syncing"
+    elif status == "FAILED":
+        tenant.grab_sync_status = "error"
+    elif status == "INACTIVE":
+        tenant.grab_sync_status = "not_configured"
+    tenant.grab_last_synced_at = datetime.now(timezone.utc)
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/webhooks/grab/order-state")
+async def grab_push_order_state(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Grab pushes order state updates (and optionally full order object)."""
+    _verify_grab_webhook(authorization)
+    body = await request.json()
+    order_block = body.get("order") if isinstance(body.get("order"), dict) else body
+    merchant_id = (
+        order_block.get("merchantID")
+        or order_block.get("partnerMerchantID")
+        or body.get("merchantID")
+        or body.get("partnerMerchantID")
+    )
+    tenant = _find_tenant_by_merchant(db, merchant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    # Normalize state onto the order payload
+    if body.get("state") and not order_block.get("orderState"):
+        order_block = {**order_block, "orderState": body.get("state")}
+    if body.get("orderID") and not order_block.get("orderID"):
+        order_block = {**order_block, "orderID": body.get("orderID")}
+
+    try:
+        order, created = upsert_grab_order(db, tenant, order_block)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    db.commit()
+    return {"ok": True, "order_id": order.id, "created": created}

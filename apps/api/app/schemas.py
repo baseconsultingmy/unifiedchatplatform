@@ -59,6 +59,10 @@ class TenantOut(BaseModel):
     wa_connected_at: datetime | None = None
     wa_access_token_set: bool = False
     line_channel_id: str | None = None
+    line_channel_secret_set: bool = False
+    line_channel_access_token_set: bool = False
+    line_webhook_status: str = "not_configured"
+    line_connected_at: datetime | None = None
     grab_merchant_id: str | None = None
     grab_markup_percent: float = 30
     grab_sync_status: str = "not_configured"
@@ -119,6 +123,10 @@ class VendorUpdateIn(WhatsAppFieldsIn):
     country: str | None = Field(default=None, min_length=2, max_length=2)
     is_active: bool | None = None
     line_channel_id: str | None = None
+    line_channel_secret: str | None = None
+    clear_line_channel_secret: bool = False
+    line_channel_access_token: str | None = None
+    clear_line_channel_access_token: bool = False
     grab_merchant_id: str | None = None
     grab_markup_percent: Decimal | None = None
     grab_sync_status: str | None = None
@@ -145,6 +153,10 @@ class VendorOut(BaseModel):
     wa_connected_at: datetime | None = None
     wa_access_token_set: bool = False
     line_channel_id: str | None = None
+    line_channel_secret_set: bool = False
+    line_channel_access_token_set: bool = False
+    line_webhook_status: str = "not_configured"
+    line_connected_at: datetime | None = None
     grab_merchant_id: str | None = None
     grab_markup_percent: float = 30
     grab_sync_status: str = "not_configured"
@@ -268,11 +280,35 @@ class WorkspaceUpdateIn(WhatsAppFieldsIn):
     industry: str | None = Field(default=None, max_length=80)
     name: str | None = Field(default=None, min_length=2, max_length=120)
     timezone: str | None = None
+    line_channel_id: str | None = None
+    line_channel_secret: str | None = None
+    clear_line_channel_secret: bool = False
+    line_channel_access_token: str | None = None
+    clear_line_channel_access_token: bool = False
     grab_merchant_id: str | None = None
     grab_markup_percent: Decimal | None = None
     grab_partner_token: str | None = None
     clear_grab_partner_token: bool = False
     grab_sync_status: str | None = None
+
+
+class LineStatusOut(BaseModel):
+    configured: bool = False
+    channel_id: str | None = None
+    channel_secret_set: bool = False
+    access_token_set: bool = False
+    webhook_status: str = "not_configured"
+    connected_at: datetime | None = None
+    webhook_url: str | None = None
+    notes: list[str] = Field(default_factory=list)
+
+
+class LineUpdateIn(BaseModel):
+    line_channel_id: str | None = None
+    line_channel_secret: str | None = None
+    clear_line_channel_secret: bool = False
+    line_channel_access_token: str | None = None
+    clear_line_channel_access_token: bool = False
 
 
 class WhatsAppSetupOut(BaseModel):
@@ -596,6 +632,8 @@ class GrabStatusOut(BaseModel):
     menu_webhook_url: str | None = None
     orders_webhook_url: str | None = None
     sync_state_webhook_url: str | None = None
+    integration_status_webhook_url: str | None = None
+    order_state_webhook_url: str | None = None
     notes: list[str] = Field(default_factory=list)
 
 

@@ -6,6 +6,7 @@ from app.db import get_db
 from app.deps import require_platform_admin
 from app.grab_client import grab_configured
 from app.grab_creds import apply_grab_fields
+from app.line_creds import apply_line_fields
 from app.models import Booking, Service, Tenant, User, UserRole
 from app.routers.workspace import normalize_industry
 from app.schemas import PlatformMetaOut, TokenOut, VendorCreateIn, VendorOut, VendorUpdateIn
@@ -66,6 +67,10 @@ def _vendor_out(db: Session, tenant: Tenant) -> VendorOut:
         wa_connected_at=tenant.wa_connected_at,
         wa_access_token_set=bool(tenant.wa_access_token),
         line_channel_id=tenant.line_channel_id,
+        line_channel_secret_set=bool(tenant.line_channel_secret),
+        line_channel_access_token_set=bool(tenant.line_channel_access_token),
+        line_webhook_status=tenant.line_webhook_status or "not_configured",
+        line_connected_at=tenant.line_connected_at,
         grab_merchant_id=tenant.grab_merchant_id,
         grab_markup_percent=float(tenant.grab_markup_percent or 30),
         grab_sync_status=tenant.grab_sync_status or "not_configured",
@@ -210,6 +215,7 @@ def update_vendor(
 
     apply_whatsapp_fields(tenant, data)
     apply_grab_fields(tenant, data)
+    apply_line_fields(tenant, data)
     for key, value in data.items():
         setattr(tenant, key, value)
     db.commit()

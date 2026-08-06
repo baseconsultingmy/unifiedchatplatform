@@ -88,6 +88,19 @@ class Tenant(Base):
     wa_webhook_status: Mapped[str] = mapped_column(String(32), default="not_configured")
     wa_connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     line_channel_id: Mapped[str | None] = mapped_column(String(64))
+    line_channel_secret: Mapped[str | None] = mapped_column(Text)
+    line_channel_access_token: Mapped[str | None] = mapped_column(Text)
+    line_webhook_status: Mapped[str] = mapped_column(String(32), default="not_configured")
+    line_connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    @property
+    def line_channel_secret_set(self) -> bool:
+        return bool(self.line_channel_secret)
+
+    @property
+    def line_channel_access_token_set(self) -> bool:
+        return bool(self.line_channel_access_token)
+
     # Grab Food POS integration
     grab_merchant_id: Mapped[str | None] = mapped_column(String(80))
     grab_partner_token: Mapped[str | None] = mapped_column(Text)

@@ -27,27 +27,38 @@ export default function SettingsPage() {
   const { token, user } = useAuth();
   const [setup, setSetup] = useState<any | null>(null);
   const [grab, setGrab] = useState<any | null>(null);
+  const [line, setLine] = useState<any | null>(null);
   const [form, setForm] = useState<WaForm>(emptyWa);
   const [shopName, setShopName] = useState("");
   const [grabMerchantId, setGrabMerchantId] = useState("");
   const [grabMarkup, setGrabMarkup] = useState(30);
+  const [lineChannelId, setLineChannelId] = useState("");
+  const [lineSecret, setLineSecret] = useState("");
+  const [lineToken, setLineToken] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const [grabMsg, setGrabMsg] = useState("");
+  const [lineMsg, setLineMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [grabBusy, setGrabBusy] = useState(false);
+  const [lineBusy, setLineBusy] = useState(false);
 
   const isFnb = industryProfile(user?.tenant?.industry).key === "fnb";
 
   async function refresh() {
     if (!token) return;
-    const [workspace, wa] = await Promise.all([
+    const [workspace, wa, lineStatus] = await Promise.all([
       api.workspace(token),
       api.whatsappSetup(token),
+      api.lineStatus(token).catch(() => null),
     ]);
     setShopName(workspace.name || "");
     setGrabMerchantId(workspace.grab_merchant_id || "");
     setGrabMarkup(Number(workspace.grab_markup_percent ?? 30));
+    setLine(lineStatus);
+    setLineChannelId(lineStatus?.channel_id || workspace.line_channel_id || "");
+    setLineSecret("");
+    setLineToken("");
     setSetup(wa);
     setForm({
       wa_display_phone: workspace.wa_display_phone || "",
@@ -90,6 +101,9 @@ export default function SettingsPage() {
         body.grab_merchant_id = grabMerchantId.trim() || null;
         body.grab_markup_percent = grabMarkup;
       }
+      body.line_channel_id = lineChannelId.trim() || null;
+      if (lineSecret.trim()) body.line_channel_secret = lineSecret.trim();
+      if (lineToken.trim()) body.line_channel_access_token = lineToken.trim();
       await api.updateWorkspace(token, body);
       setSaved("Settings saved");
       await refresh();
@@ -365,8 +379,8 @@ export default function SettingsPage() {
         <form className="panel form" onSubmit={onSave}>
           <h2>Shop credentials</h2>
           <p className="muted">
-            Owners can self-serve WhatsApp
-            {isFnb ? " and Grab Food" : ""} without waiting on Master Admin.
+            Owners can self-serve WhatsApp, LINE
+            {isFnb ? ", and Grab Food" : ""} without waiting on Master Admin.
           </p>
 
           <label>
@@ -403,6 +417,83 @@ export default function SettingsPage() {
             </>
           ) : null}
 
+          <h3 style={{ marginTop: "0.75rem" }}>LINE Messaging</h3>
+          <p className="muted">
+            Status: {line?.webhook_status || "not_configured"}
+            {line?.access_token_set ? " · token on file" : " · no access token"}
+            {line?.channel_secret_set ? " · secret on file" : ""}
+          </p>
+          <label>
+            Channel ID
+            <input
+              value={lineChannelId}
+              onChange={(e) => setLineChannelId(e.target.value)}
+              placeholder="From LINE Developers → Messaging API"
+            />
+          </label>
+          <label>
+            Channel secret
+            <input
+              type="password"
+              value={lineSecret}
+              onChange={(e) => setLineSecret(e.target.value)}
+              placeholder={line?.channel_secret_set ? "Leave blank to keep current" : "Channel secret"}
+            />
+          </label>
+          <label>
+            Channel access token
+            <input
+              type="password"
+              value={lineToken}
+              onChange={(e) => setLineToken(e.target.value)}
+              placeholder={
+                line?.access_token_set ? "Leave blank to keep current" : "Long-lived channel access token"
+              }
+            />
+          </label>
+          <div className="pos-receipt-row">
+            <span className="muted">Webhook URL</span>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => copyText(line?.webhook_url || "https://api.baseapp.asia/v1/webhooks/line")}
+            >
+              Copy
+            </button>
+          </div>
+          <code className="settings-code">
+            {line?.webhook_url || "https://api.baseapp.asia/v1/webhooks/line"}
+          </code>
+          {lineMsg ? <p className="muted">{lineMsg}</p> : null}
+          <button
+            type="button"
+            className="btn secondary"
+            disabled={lineBusy}
+            onClick={async () => {
+              if (!token) return;
+              setLineBusy(true);
+              setLineMsg("");
+              try {
+                const body: Record<string, unknown> = {
+                  line_channel_id: lineChannelId.trim() || null,
+                };
+                if (lineSecret.trim()) body.line_channel_secret = lineSecret.trim();
+                if (lineToken.trim()) body.line_channel_access_token = lineToken.trim();
+                const updated = await api.updateLineSettings(token, body);
+                setLine(updated);
+                setLineMsg("LINE settings saved");
+                setLineSecret("");
+                setLineToken("");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Could not save LINE settings");
+              } finally {
+                setLineBusy(false);
+              }
+            }}
+          >
+            {lineBusy ? "Saving…" : "Save LINE only"}
+          </button>
+
           <h3 style={{ marginTop: "0.75rem" }}>WhatsApp</h3>
           <label>
             Display phone
@@ -418,7 +509,6 @@ export default function SettingsPage() {
               value={form.wa_phone_number_id}
               onChange={(e) => setForm((f) => ({ ...f, wa_phone_number_id: e.target.value }))}
               placeholder="Meta → WhatsApp → API Setup"
-              required
             />
           </label>
           <label>

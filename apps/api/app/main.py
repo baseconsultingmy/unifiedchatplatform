@@ -15,6 +15,7 @@ from app.routers import (
     edge,
     flows,
     grab,
+    line,
     orders,
     payments,
     pos,
@@ -63,6 +64,7 @@ app.include_router(pos.router, prefix="/v1")
 app.include_router(tickets.router, prefix="/v1")
 app.include_router(orders.router, prefix="/v1")
 app.include_router(grab.router, prefix="/v1")
+app.include_router(line.router, prefix="/v1")
 app.include_router(workspace.router, prefix="/v1")
 app.include_router(conversations.router, prefix="/v1")
 app.include_router(whatsapp.router, prefix="/v1")

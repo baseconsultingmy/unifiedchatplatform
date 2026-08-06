@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.models import Service, ServiceChannelPrice, Tenant
+from app.models import ModifierGroup, Service, ServiceChannelPrice, Tenant
 from app.pricing import compute_channel_price
 
 
@@ -34,6 +34,9 @@ def build_grab_menu(db: Session, tenant: Tenant) -> dict:
     """Grab Get Menu response shape (simplified, production-compatible fields)."""
     services = (
         db.query(Service)
+        .options(
+            joinedload(Service.modifier_groups).joinedload(ModifierGroup.options),
+        )
         .filter(Service.tenant_id == tenant.id, Service.is_active.is_(True))
         .order_by(Service.category.asc(), Service.name.asc())
         .all()
@@ -65,6 +68,36 @@ def build_grab_menu(db: Session, tenant: Tenant) -> dict:
                 db.add(cp)
             elif not cp.external_id:
                 cp.external_id = external_id
+            modifier_groups = []
+            for g in service.modifier_groups or []:
+                if not g.is_active:
+                    continue
+                options = []
+                for opt in g.options or []:
+                    if not opt.is_active:
+                        continue
+                    options.append(
+                        {
+                            "id": f"mod-{opt.id}",
+                            "name": opt.name,
+                            "price": _minor(opt.price_delta or 0),
+                            "availableStatus": "AVAILABLE",
+                            "sequence": opt.sort_order or 0,
+                        }
+                    )
+                if not options:
+                    continue
+                modifier_groups.append(
+                    {
+                        "id": f"modg-{g.id}",
+                        "name": g.name,
+                        "availableStatus": "AVAILABLE",
+                        "selectionRangeMin": int(g.min_select or (1 if g.required else 0)),
+                        "selectionRangeMax": int(g.max_select or 1),
+                        "sequence": g.sort_order or 0,
+                        "modifiers": options,
+                    }
+                )
             menu_items.append(
                 {
                     "id": external_id,
@@ -73,7 +106,7 @@ def build_grab_menu(db: Session, tenant: Tenant) -> dict:
                     "description": (service.description or "")[:2000],
                     "price": _minor(grab_price),
                     "photos": [],
-                    "modifierGroups": [],
+                    "modifierGroups": modifier_groups,
                 }
             )
         categories.append(

@@ -6,6 +6,7 @@ from app.db import get_db
 from app.deps import require_vendor_user
 from app.flow_crypto import is_flow_crypto_configured
 from app.grab_creds import apply_grab_fields
+from app.line_creds import apply_line_fields
 from app.models import Tenant, User
 from app.schemas import TenantOut, WhatsAppSetupOut, WorkspaceUpdateIn
 from app.whatsapp_creds import apply_whatsapp_fields, resolve_verify_token, resolve_whatsapp_credentials
@@ -88,6 +89,7 @@ def update_workspace(
 
     apply_whatsapp_fields(tenant, data)
     apply_grab_fields(tenant, data)
+    apply_line_fields(tenant, data)
 
     for key, value in data.items():
         setattr(tenant, key, value)

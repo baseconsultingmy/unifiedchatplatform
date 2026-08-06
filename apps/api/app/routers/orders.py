@@ -112,6 +112,23 @@ async def update_order_status(
             order.accepted_at = order.accepted_at or now
         if order.channel == "grab" and order.external_order_id:
             await grab_client.mark_order_ready(order_id=order.external_order_id)
+    elif new_status == OrderStatus.cancelled.value:
+        if order.channel == "grab" and order.external_order_id:
+            from app.models import Tenant
+
+            tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+            merchant_id = (tenant.grab_merchant_id if tenant else None) or ""
+            if merchant_id:
+                result = await grab_client.cancel_order(
+                    order_id=order.external_order_id,
+                    merchant_id=merchant_id,
+                    cancel_code=1001,
+                )
+                if not result.get("ok") and not result.get("dry_run"):
+                    raise HTTPException(
+                        status_code=502,
+                        detail=result.get("detail") or "Grab cancel order failed",
+                    )
     elif new_status == OrderStatus.completed.value:
         order.completed_at = order.completed_at or now
         order.ready_at = order.ready_at or now
