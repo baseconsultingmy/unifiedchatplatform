@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 import { industryProfile } from "../industry";
 
 type PeriodKey =
@@ -13,15 +14,15 @@ type PeriodKey =
   | "year"
   | "custom";
 
-const PRESETS: { key: PeriodKey; label: string }[] = [
-  { key: "today", label: "Today" },
-  { key: "yesterday", label: "Yesterday" },
-  { key: "7d", label: "7 days" },
-  { key: "30d", label: "30 days" },
-  { key: "month", label: "This month" },
-  { key: "last_month", label: "Last month" },
-  { key: "year", label: "This year" },
-  { key: "custom", label: "Custom" },
+const PRESETS: { key: PeriodKey; labelKey: string }[] = [
+  { key: "today", labelKey: "reports.today" },
+  { key: "yesterday", labelKey: "reports.yesterday" },
+  { key: "7d", labelKey: "reports.days7" },
+  { key: "30d", labelKey: "reports.days30" },
+  { key: "month", labelKey: "reports.thisMonth" },
+  { key: "last_month", labelKey: "reports.lastMonth" },
+  { key: "year", labelKey: "reports.thisYear" },
+  { key: "custom", labelKey: "reports.custom" },
 ];
 
 function money(currency: string, value: number) {
@@ -36,13 +37,8 @@ function money(currency: string, value: number) {
   }
 }
 
-function deltaLabel(pct: number | null | undefined) {
-  if (pct == null || Number.isNaN(pct)) return null;
-  const sign = pct > 0 ? "+" : "";
-  return `${sign}${pct.toFixed(1)}% vs prior period`;
-}
-
 export default function ReportsPage() {
+  const t = useT();
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
   const [period, setPeriod] = useState<PeriodKey>("today");
@@ -80,14 +76,19 @@ export default function ReportsPage() {
     return Math.max(1, ...data.channels.map((r: any) => Number(r.collected) || 0));
   }, [data]);
 
+  function deltaLabel(pct: number | null | undefined) {
+    if (pct == null || Number.isNaN(pct)) return null;
+    const sign = pct > 0 ? "+" : "";
+    return t("reports.vsPrior", { pct: `${sign}${pct.toFixed(1)}` });
+  }
+
   return (
     <div className="grid page-scroll reports-page">
       <div className="reports-head">
         <div>
-          <h1>Sales reports</h1>
+          <h1>{t("reports.title")}</h1>
           <p className="muted">
-            Collected payments from {profile.key === "fnb" ? "POS, bookings, and marketplace" : "bookings, POS, and chat"}
-            — daily and monthly views for your shop.
+            {profile.key === "fnb" ? t("reports.subtitle") : t("reports.subtitleWellness")}
           </p>
         </div>
         {data ? (
@@ -111,20 +112,20 @@ export default function ReportsPage() {
               className={`reports-preset ${period === p.key ? "on" : ""}`}
               onClick={() => setPeriod(p.key)}
             >
-              {p.label}
+              {t(p.labelKey)}
             </button>
           ))}
         </div>
         <div className="reports-grain">
           <label>
-            Group by
+            {t("reports.groupBy")}
             <select
               value={grain}
               onChange={(e) => setGrain(e.target.value as "auto" | "day" | "month")}
             >
-              <option value="auto">Auto</option>
-              <option value="day">Day</option>
-              <option value="month">Month</option>
+              <option value="auto">{t("reports.auto")}</option>
+              <option value="day">{t("reports.day")}</option>
+              <option value="month">{t("reports.month")}</option>
             </select>
           </label>
         </div>
@@ -133,24 +134,24 @@ export default function ReportsPage() {
       {period === "custom" ? (
         <div className="reports-custom panel">
           <label>
-            From
+            {t("reports.from")}
             <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
           </label>
           <label>
-            To
+            {t("reports.to")}
             <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
           </label>
         </div>
       ) : null}
 
       {error ? <div className="error">{error}</div> : null}
-      {busy && !data ? <div className="muted">Loading report…</div> : null}
+      {busy && !data ? <div className="muted">{t("reports.loading")}</div> : null}
 
       {data ? (
         <>
           <div className="grid stats reports-stats">
             <div className="panel stat">
-              <span className="muted">Collected</span>
+              <span className="muted">{t("reports.collected")}</span>
               <strong>{money(data.currency, data.collected)}</strong>
               {deltaLabel(data.collected_delta_pct) ? (
                 <span
@@ -161,38 +162,46 @@ export default function ReportsPage() {
                   {deltaLabel(data.collected_delta_pct)}
                 </span>
               ) : (
-                <span className="muted reports-delta">No prior period sales</span>
+                <span className="muted reports-delta">{t("reports.noPrior")}</span>
               )}
             </div>
             <div className="panel stat">
-              <span className="muted">Transactions</span>
+              <span className="muted">{t("reports.transactions")}</span>
               <strong>{data.transactions}</strong>
               <span className="muted reports-delta">
-                Avg ticket {money(data.currency, data.average_ticket)}
+                {t("reports.avgTicket", { amount: money(data.currency, data.average_ticket) })}
               </span>
             </div>
             <div className="panel stat">
-              <span className="muted">Gross sales value</span>
+              <span className="muted">{t("reports.gross")}</span>
               <strong>{money(data.currency, data.gross)}</strong>
               <span className="muted reports-delta">
-                {data.booking_sales} booking · {data.order_sales} marketplace
+                {t("reports.bookingOrderSplit", {
+                  bookings: data.booking_sales,
+                  orders: data.order_sales,
+                })}
               </span>
             </div>
             <div className="panel stat">
-              <span className="muted">Outstanding</span>
+              <span className="muted">{t("reports.outstanding")}</span>
               <strong>{money(data.currency, data.outstanding)}</strong>
               <span className="muted reports-delta">
-                {data.outstanding_count} open payment
-                {data.outstanding_count === 1 ? "" : "s"}
+                {data.outstanding_count === 1
+                  ? t("reports.openPayments", { count: data.outstanding_count })
+                  : t("reports.openPayments_other", { count: data.outstanding_count })}
               </span>
             </div>
           </div>
 
           <div className="grid split-2 reports-split">
             <section className="panel">
-              <h2>{data.grain === "month" ? "Monthly sales" : "Daily sales"}</h2>
+              <h2>
+                {data.grain === "month" ? t("reports.monthlySales") : t("reports.dailySales")}
+              </h2>
               <p className="muted" style={{ marginTop: 0 }}>
-                Collected in each {data.grain === "month" ? "month" : "day"} of this range.
+                {t("reports.seriesHint", {
+                  grain: data.grain === "month" ? t("reports.month") : t("reports.day"),
+                })}
               </p>
               {data.series?.length ? (
                 <div className="reports-bars">
@@ -220,14 +229,14 @@ export default function ReportsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="muted">No collected sales in this range.</p>
+                <p className="muted">{t("reports.noSales")}</p>
               )}
             </section>
 
             <section className="panel">
-              <h2>By channel</h2>
+              <h2>{t("reports.byChannel")}</h2>
               <p className="muted" style={{ marginTop: 0 }}>
-                Where the money came from.
+                {t("reports.byChannelHint")}
               </p>
               {data.channels?.length ? (
                 <div className="reports-bars">
@@ -255,24 +264,24 @@ export default function ReportsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="muted">No channel sales yet.</p>
+                <p className="muted">{t("reports.noChannels")}</p>
               )}
             </section>
           </div>
 
           <section className="panel">
-            <h2>Top items</h2>
+            <h2>{t("reports.topItems")}</h2>
             <p className="muted" style={{ marginTop: 0 }}>
-              Best sellers in this period ({profile.catalogNoun.toLowerCase()} / menu).
+              {t("reports.topItemsHint")}
             </p>
             {data.top_items?.length ? (
               <div className="table-wrap">
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Item</th>
-                      <th>Qty</th>
-                      <th>Revenue</th>
+                      <th>{t("reports.item")}</th>
+                      <th>{t("reports.qty")}</th>
+                      <th>{t("reports.revenue")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -287,21 +296,18 @@ export default function ReportsPage() {
                 </table>
               </div>
             ) : (
-              <p className="muted">No item sales in this range.</p>
+              <p className="muted">{t("reports.noItems")}</p>
             )}
           </section>
 
           <p className="muted reports-footnote">
-            Collected = deposits and full payments received (by paid time). Marketplace orders count when
-            marked completed. Outstanding is open balances across all dates. Prior period is the same
-            length immediately before this range
+            {t("reports.footnote")}
             {data.previous_from
               ? ` (${data.previous_from} → ${data.previous_to}, ${money(
                   data.currency,
                   data.previous_collected,
                 )})`
               : ""}
-            .
           </p>
         </>
       ) : null}

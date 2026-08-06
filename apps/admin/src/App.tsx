@@ -10,6 +10,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./auth";
 import { BaseMark, BaseWordmark } from "./brand/BaseWordmark";
+import { LanguageSwitcher, useT } from "./i18n";
 import { industryProfile } from "./industry";
 import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
@@ -32,7 +33,8 @@ import EdgePage from "./pages/EdgePage";
 
 function Protected() {
   const { token, loading } = useAuth();
-  if (loading) return <div className="login-page">Loading…</div>;
+  const t = useT();
+  if (loading) return <div className="login-page">{t("common.loading")}</div>;
   if (!token) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
@@ -57,6 +59,7 @@ function ProfileMenu({
   supportsResources: boolean;
 }) {
   const { user, logout, impersonating, exitViewAs } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -103,17 +106,17 @@ function ProfileMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        title={user?.full_name || "Profile"}
+        title={user?.full_name || t("nav.account")}
       >
         <span className="profile-avatar">{initials || "•"}</span>
         <span className="profile-trigger-meta">
-          <strong>{user?.full_name || "Account"}</strong>
+          <strong>{user?.full_name || t("nav.account")}</strong>
           <span>
             {isPlatformAdmin
-              ? "Master Admin"
+              ? t("nav.masterAdmin")
               : impersonating
-                ? user?.tenant?.name || "Vendor"
-                : user?.tenant?.name || "Shop"}
+                ? user?.tenant?.name || t("nav.vendor")
+                : user?.tenant?.name || t("nav.shop")}
           </span>
         </span>
       </button>
@@ -126,33 +129,33 @@ function ProfileMenu({
           {isPlatformAdmin ? (
             <>
               <NavLink to="/overview" role="menuitem">
-                Overview
+                {t("nav.overview")}
               </NavLink>
               <NavLink to="/vendors" role="menuitem">
-                Vendors
+                {t("nav.vendors")}
               </NavLink>
               <NavLink to="/edge" role="menuitem">
-                Edge / DNS
+                {t("nav.edge")}
               </NavLink>
             </>
           ) : (
             <>
               <NavLink to="/overview" role="menuitem">
-                Overview
+                {t("nav.overview")}
               </NavLink>
               <NavLink to="/reports" role="menuitem">
-                Reports
+                {t("nav.reports")}
               </NavLink>
               <NavLink to="/customers" role="menuitem">
-                Customers
+                {t("nav.customers")}
               </NavLink>
               {industryProfile(user?.tenant?.industry).key === "fnb" ? (
                 <NavLink to="/orders" role="menuitem">
-                  Orders
+                  {t("nav.orders")}
                 </NavLink>
               ) : null}
               <NavLink to="/bookings" role="menuitem">
-                Bookings
+                {t("nav.bookings")}
               </NavLink>
               <NavLink to="/services" role="menuitem">
                 {catalogLabel}
@@ -163,21 +166,21 @@ function ProfileMenu({
                 </NavLink>
               ) : null}
               <NavLink to="/settings" role="menuitem">
-                Settings
+                {t("nav.settings")}
               </NavLink>
             </>
           )}
           <NavLink to="/account" role="menuitem">
-            Account
+            {t("nav.account")}
           </NavLink>
           <div className="profile-dropdown-divider" />
           {impersonating ? (
             <button type="button" className="profile-action" onClick={onExitViewAs}>
-              Exit view as
+              {t("nav.exitViewAs")}
             </button>
           ) : null}
           <button type="button" className="profile-action danger" onClick={logout}>
-            Sign out
+            {t("nav.signOut")}
           </button>
         </div>
       ) : null}
@@ -187,11 +190,12 @@ function ProfileMenu({
 
 function Shell() {
   const { user, impersonating, exitViewAs } = useAuth();
+  const t = useT();
   const navigate = useNavigate();
   const isPlatformAdmin = user?.role === "platform_admin" && !impersonating;
   const profile = industryProfile(user?.tenant?.industry);
-  const catalogLabel = profile.catalogNoun;
-  const resourcesLabel = profile.resourcesNoun;
+  const catalogLabel = t(`industry.catalog_${profile.key}`);
+  const resourcesLabel = t(`industry.resources_${profile.key}`);
   const supportsResources = profile.supportsResources;
   const isFnb = profile.key === "fnb";
 
@@ -201,9 +205,9 @@ function Shell() {
   }
 
   const shopLabel = isPlatformAdmin
-    ? "Master Admin"
+    ? t("nav.masterAdmin")
     : impersonating
-      ? user?.tenant?.name || "Vendor"
+      ? user?.tenant?.name || t("nav.vendor")
       : user?.tenant?.name || "BaseApp";
 
   return (
@@ -222,39 +226,40 @@ function Shell() {
         {isPlatformAdmin ? (
           <nav className="app-primary-tabs" aria-label="Primary">
             <NavLink to="/vendors" className="app-tab">
-              Vendors
+              {t("nav.vendors")}
             </NavLink>
             <NavLink to="/edge" className="app-tab">
-              Edge / DNS
+              {t("nav.edge")}
             </NavLink>
             <NavLink to="/overview" className="app-tab">
-              Overview
+              {t("nav.overview")}
             </NavLink>
           </nav>
         ) : (
           <nav className="app-primary-tabs" aria-label="Primary">
             <NavLink to="/pos" className="app-tab">
-              POS
+              {t("nav.pos")}
             </NavLink>
             <NavLink to="/conversations" className="app-tab">
-              Chat
+              {t("nav.chat")}
             </NavLink>
             <NavLink to="/reports" className="app-tab">
-              Reports
+              {t("nav.reports")}
             </NavLink>
             {isFnb ? (
               <NavLink to="/orders" className="app-tab">
-                Orders
+                {t("nav.orders")}
               </NavLink>
             ) : (
               <NavLink to="/bookings" className="app-tab">
-                Bookings
+                {t("nav.bookings")}
               </NavLink>
             )}
           </nav>
         )}
 
         <div className="app-topbar-right">
+          <LanguageSwitcher />
           <ProfileMenu
             isPlatformAdmin={isPlatformAdmin}
             catalogLabel={catalogLabel}
@@ -268,14 +273,14 @@ function Shell() {
         {impersonating ? (
           <div className="impersonation-banner">
             <div>
-              <strong>Viewing as vendor</strong>
+              <strong>{t("nav.viewingAs")}</strong>
               <span>
                 {user?.tenant?.name} · {user?.email}
                 {user?.impersonator_email ? ` · via ${user.impersonator_email}` : ""}
               </span>
             </div>
             <button className="btn secondary" onClick={onExitViewAs}>
-              Exit view as
+              {t("nav.exitViewAs")}
             </button>
           </div>
         ) : null}

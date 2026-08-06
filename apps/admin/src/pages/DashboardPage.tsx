@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 
 export default function DashboardPage() {
+  const t = useT();
   const { token, user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -18,21 +20,21 @@ export default function DashboardPage() {
   }, [token]);
 
   if (error) return <div className="error">{error}</div>;
-  if (!data) return <div className="muted">Loading overview…</div>;
+  if (!data) return <div className="muted">{t("common.loading")}</div>;
 
   if (isPlatformAdmin) {
     const cards = [
-      ["Vendors", data.vendors_total],
-      ["Active vendors", data.vendors_active],
-      ["All bookings", data.bookings_total],
-      ["Open chats", data.open_conversations],
-      ["Customers", data.customers_total],
+      [t("overview.vendors"), data.vendors_total],
+      [t("overview.activeVendors"), data.vendors_active],
+      [t("overview.allBookings"), data.bookings_total],
+      [t("overview.openChats"), data.open_conversations],
+      [t("overview.customers"), data.customers_total],
     ];
     return (
       <div className="grid page-scroll">
         <div>
-          <h1>Platform overview</h1>
-          <p>Master Admin controls vendors. Each vendor manages their own services and bookings.</p>
+          <h1>{t("overview.platformTitle")}</h1>
+          <p>{t("overview.platformHint")}</p>
         </div>
         <div className="grid stats">
           {cards.map(([label, value]) => (
@@ -43,12 +45,12 @@ export default function DashboardPage() {
           ))}
         </div>
         <div className="panel">
-          <h2>Next</h2>
+          <h2>{t("overview.next")}</h2>
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            Create a vendor, share their owner login, and let them add services.
+            {t("overview.createVendorHint")}
           </p>
           <Link className="btn btn-signal" to="/vendors">
-            Manage vendors
+            {t("overview.manageVendors")}
           </Link>
         </div>
       </div>
@@ -56,19 +58,19 @@ export default function DashboardPage() {
   }
 
   const cards = [
-    ["Bookings", data.bookings_total],
-    ["Confirmed", data.bookings_confirmed],
-    ["Today", data.bookings_today],
-    ["Open chats", data.open_conversations],
-    ["Services", data.services_active],
-    ["Customers", data.customers_total],
+    [t("overview.bookings"), data.bookings_total],
+    [t("overview.confirmed"), data.bookings_confirmed],
+    [t("overview.today"), data.bookings_today],
+    [t("overview.openChats"), data.open_conversations],
+    [t("overview.services"), data.services_active],
+    [t("overview.customers"), data.customers_total],
   ];
 
   return (
     <div className="grid page-scroll">
       <div>
-        <h1>Vendor overview</h1>
-        <p>Your shop workspace — services, reservations, walk-in POS, and WhatsApp inbox.</p>
+        <h1>{t("overview.vendorTitle")}</h1>
+        <p>{t("overview.vendorHint")}</p>
       </div>
       <div className="grid stats">
         {cards.map(([label, value]) => (
@@ -80,30 +82,30 @@ export default function DashboardPage() {
       </div>
       <div className="grid split-2">
         <div className="panel">
-          <h2>Bookings calendar</h2>
+          <h2>{t("overview.bookingsCalendar")}</h2>
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            See the week at a glance, update status, and collect deposits with QR.
+            {t("overview.bookingsCalendarHint")}
           </p>
           <Link className="btn" to="/bookings">
-            Open bookings
+            {t("overview.openBookings")}
           </Link>
         </div>
         <div className="panel">
-          <h2>Walk-in POS</h2>
+          <h2>{t("overview.walkInPos")}</h2>
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            Ring up a counter sale — cash or show a payment QR.
+            {t("overview.walkInPosHint")}
           </p>
           <Link className="btn btn-signal" to="/pos">
-            Open POS
+            {t("overview.openPos")}
           </Link>
         </div>
         <div className="panel">
-          <h2>Sales reports</h2>
+          <h2>{t("overview.salesReports")}</h2>
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            Daily and monthly collected sales, by channel, with top items.
+            {t("overview.salesReportsHint")}
           </p>
           <Link className="btn" to="/reports">
-            Open reports
+            {t("overview.openReports")}
           </Link>
         </div>
       </div>

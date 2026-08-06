@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 import { INDUSTRY_OPTIONS, industryProfile } from "../industry";
 
 export default function ServicesPage() {
+  const t = useT();
   const { token, user } = useAuth();
   const [services, setServices] = useState<any[]>([]);
   const [industry, setIndustry] = useState(
@@ -198,16 +200,12 @@ export default function ServicesPage() {
       <section className="panel">
         <div className="bookings-toolbar">
           <div>
-            <h1>{profile.catalogNoun}</h1>
-            <p>
-              Catalog for {profile.label.toLowerCase()} — used by POS
-              {profile.showDeposit ? " and WhatsApp booking" : ""}
-              {isFnb ? " and Grab Food" : ""}.
-            </p>
+            <h1>{isFnb ? t("services.menuTitle") : t("services.servicesTitle")}</h1>
+            <p>{isFnb ? t("services.menuHint") : t("services.servicesHint")}</p>
           </div>
           {isFnb ? (
             <button type="button" className="btn" disabled={busyPublish} onClick={publishGrab}>
-              {busyPublish ? "Publishing…" : "Publish to Grab"}
+              {busyPublish ? "Publishing…" : t("services.publishGrab")}
             </button>
           ) : null}
         </div>
@@ -225,22 +223,22 @@ export default function ServicesPage() {
         {grabMsg ? <p className="muted">{grabMsg}</p> : null}
 
         <p className="muted" style={{ marginBottom: "1rem" }}>
-          Business type: <strong>{profile.label}</strong>
+          {t("services.businessType")}: <strong>{t(`industry.${profile.key}`)}</strong>
           {" — "}
-          set by Master Admin (contact support to request a change).
+          {t("services.businessTypeLocked")}
         </p>
 
         <table className="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Category</th>
-              {profile.showDuration ? <th>Duration</th> : null}
-              <th>{isFnb ? "Walk-in" : "Price"}</th>
-              {isFnb ? <th>Grab</th> : null}
-              {profile.showDeposit ? <th>Deposit</th> : null}
-              {isFnb ? <th>Grab override</th> : null}
-              {isFnb ? <th>Customise</th> : null}
+              <th>{t("services.name")}</th>
+              <th>{t("services.category")}</th>
+              {profile.showDuration ? <th>{t("services.duration")}</th> : null}
+              <th>{isFnb ? t("services.walkInPrice") : t("services.price")}</th>
+              {isFnb ? <th>{t("services.grab")}</th> : null}
+              {profile.showDeposit ? <th>{t("services.deposit")}</th> : null}
+              {isFnb ? <th>{t("services.grabOverride")}</th> : null}
+              {isFnb ? <th>{t("services.customise")}</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -248,7 +246,7 @@ export default function ServicesPage() {
               <tr key={s.id}>
                 <td>
                   <strong>{s.name}</strong>
-                  {!s.is_active ? <div className="muted">Inactive</div> : null}
+                  {!s.is_active ? <div className="muted">{t("common.inactive")}</div> : null}
                   {isFnb && (s.modifiers || []).length ? (
                     <div className="muted" style={{ fontSize: "0.78rem" }}>
                       {(s.modifiers || []).map((g: any) => g.name).join(" · ")}
@@ -294,7 +292,7 @@ export default function ServicesPage() {
                         className="btn secondary"
                         onClick={() => saveGrabOverride(s.id)}
                       >
-                        Save
+                        {t("common.save")}
                       </button>
                     </div>
                   </td>
@@ -302,7 +300,7 @@ export default function ServicesPage() {
                 {isFnb ? (
                   <td>
                     <button type="button" className="btn secondary" onClick={() => openModifiers(s)}>
-                      {(s.modifiers || []).length ? "Edit" : "Add"}
+                      {(s.modifiers || []).length ? t("common.edit") : "Add"}
                     </button>
                   </td>
                 ) : null}
@@ -326,7 +324,7 @@ export default function ServicesPage() {
                 <p>Shown as a popup when this item is tapped on POS (e.g. less ice, less sweet).</p>
               </div>
               <button type="button" className="btn secondary" onClick={() => setModItem(null)}>
-                Close
+                {t("common.close")}
               </button>
             </div>
 
@@ -477,7 +475,7 @@ export default function ServicesPage() {
                 Add group
               </button>
               <button type="button" className="btn" disabled={modBusy} onClick={saveModifiers}>
-                {modBusy ? "Saving…" : "Save customisations"}
+                {modBusy ? t("common.saving") : "Save customisations"}
               </button>
             </div>
             {modMsg ? <p className="muted">{modMsg}</p> : null}
@@ -486,13 +484,13 @@ export default function ServicesPage() {
       ) : null}
 
       <form className="panel form" onSubmit={onCreate}>
-        <h2>Add {profile.catalogNounSingular.toLowerCase()}</h2>
+        <h2>{isFnb ? t("services.addItem") : t("services.addService")}</h2>
         <label>
-          Name
+          {t("services.name")}
           <input value={name} onChange={(e) => setName(e.target.value)} required />
         </label>
         <label>
-          Category
+          {t("services.category")}
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -505,12 +503,12 @@ export default function ServicesPage() {
             ))}
           </datalist>
           <span className="muted" style={{ display: "block", marginTop: "0.35rem", fontSize: "0.85rem" }}>
-            Type any name to create a category (e.g. Food, Drinks). Suggestions appear as you type.
+            {t("services.categoryHint")}
           </span>
         </label>
         {profile.showDuration ? (
           <label>
-            Duration (minutes)
+            {t("services.duration")}
             <input
               type="number"
               value={duration}
@@ -520,7 +518,7 @@ export default function ServicesPage() {
           </label>
         ) : null}
         <label>
-          {isFnb ? "Walk-in price (MYR)" : "Price (MYR)"}
+          {isFnb ? t("services.walkInPrice") : t("services.price")}
           <input
             type="number"
             value={price}
@@ -536,7 +534,7 @@ export default function ServicesPage() {
         ) : null}
         {profile.showDeposit ? (
           <label>
-            Deposit (MYR)
+            {t("services.deposit")}
             <input
               type="number"
               value={deposit}
@@ -546,7 +544,9 @@ export default function ServicesPage() {
           </label>
         ) : null}
         {error ? <div className="error">{error}</div> : null}
-        <button className="btn">Save {profile.catalogNounSingular.toLowerCase()}</button>
+        <button className="btn">
+          {isFnb ? t("services.saveItem") : t("services.saveService")}
+        </button>
       </form>
     </div>
   );

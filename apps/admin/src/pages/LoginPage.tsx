@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { BasePrimaryLogo } from "../brand/BaseWordmark";
+import { LanguageSwitcher, useT } from "../i18n";
 
 type Mode = "signin" | "signup";
 
@@ -20,12 +21,7 @@ declare global {
   }
 }
 
-const INDUSTRIES = [
-  { value: "fnb", label: "Food & Beverage" },
-  { value: "health_beauty", label: "Health & Beauty" },
-  { value: "retail", label: "Retail" },
-  { value: "general", label: "General" },
-];
+const INDUSTRIES = ["fnb", "health_beauty", "retail", "general"] as const;
 
 function loadGoogleScript(): Promise<void> {
   if (window.google?.accounts?.id) return Promise.resolve();
@@ -50,6 +46,7 @@ function loadGoogleScript(): Promise<void> {
 }
 
 export default function LoginPage() {
+  const t = useT();
   const { token, login, loginWithToken } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
@@ -148,6 +145,9 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
+      <div className="login-lang">
+        <LanguageSwitcher />
+      </div>
       <div className="login-stage">
         <aside className="login-hero">
           <div className="login-hero-glow" aria-hidden />
@@ -156,20 +156,14 @@ export default function LoginPage() {
               <BasePrimaryLogo width={220} tone="dark" />
             </div>
           </div>
-          <p className="login-hero-tagline">
-            Counter, bookings, and WhatsApp — one workspace for every vendor.
-          </p>
+          <p className="login-hero-tagline">{t("login.heroTagline")}</p>
         </aside>
 
         <form className="login-card form" onSubmit={onSubmit}>
           <div className="login-brand">
-            <p className="login-kicker">Base Kiosk OS</p>
-            <h1>{mode === "signup" ? "Create your shop" : "Sign in"}</h1>
-            <p>
-              {mode === "signup"
-                ? "Merchants can sign up with Google. Master Admin still manages the platform."
-                : "Owners sign in to their shop. Master Admin manages vendors."}
-            </p>
+            <p className="login-kicker">{t("login.kicker")}</p>
+            <h1>{mode === "signup" ? t("login.createTitle") : t("login.signInTitle")}</h1>
+            <p>{mode === "signup" ? t("login.createHint") : t("login.signInHint")}</p>
           </div>
 
           <div className="login-mode-tabs" role="tablist">
@@ -183,7 +177,7 @@ export default function LoginPage() {
                 setError("");
               }}
             >
-              Sign in
+              {t("login.signIn")}
             </button>
             <button
               type="button"
@@ -195,27 +189,27 @@ export default function LoginPage() {
                 setError("");
               }}
             >
-              Create shop
+              {t("login.createShop")}
             </button>
           </div>
 
           {mode === "signup" ? (
             <>
               <label>
-                Shop name
+                {t("login.shopName")}
                 <input
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
-                  placeholder="e.g. Demo Kitchen"
+                  placeholder={t("login.shopPlaceholder")}
                   required
                 />
               </label>
               <label>
-                Industry
+                {t("login.industry")}
                 <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-                  {INDUSTRIES.map((i) => (
-                    <option key={i.value} value={i.value}>
-                      {i.label}
+                  {INDUSTRIES.map((value) => (
+                    <option key={value} value={value}>
+                      {t(`industry.${value}`)}
                     </option>
                   ))}
                 </select>
@@ -224,7 +218,7 @@ export default function LoginPage() {
           ) : (
             <>
               <label>
-                Email
+                {t("login.email")}
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -235,7 +229,7 @@ export default function LoginPage() {
                 />
               </label>
               <label>
-                Password
+                {t("login.password")}
                 <input
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -249,7 +243,7 @@ export default function LoginPage() {
 
           {mode === "signin" ? (
             <button className="btn btn-signal" disabled={busy}>
-              {busy ? "Signing in…" : "Sign in"}
+              {busy ? t("login.working") : t("login.continue")}
             </button>
           ) : null}
 
@@ -257,7 +251,7 @@ export default function LoginPage() {
             {googleClientId ? (
               <>
                 <div className="login-divider">
-                  <span>{mode === "signup" ? "Continue with Google" : "Or continue with"}</span>
+                  <span>{mode === "signup" ? "Continue with Google" : t("login.orEmail")}</span>
                 </div>
                 {mode === "signup" && !shopName.trim() ? (
                   <p className="muted">Enter your shop name, then continue with Google.</p>
@@ -266,7 +260,7 @@ export default function LoginPage() {
                   ref={googleBtnRef}
                   className={`login-google-btn ${mode === "signup" && !shopName.trim() ? "dim" : ""}`}
                 />
-                {!googleReady ? <p className="muted">Loading Google…</p> : null}
+                {!googleReady ? <p className="muted">{t("common.loading")}</p> : null}
               </>
             ) : (
               <p className="muted login-social-hint">
