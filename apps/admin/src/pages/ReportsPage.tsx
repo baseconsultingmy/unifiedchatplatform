@@ -83,234 +83,239 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="grid page-scroll reports-page">
-      <div className="reports-head">
-        <div>
-          <h1>{t("reports.title")}</h1>
-          <p className="muted">
-            {profile.key === "fnb" ? t("reports.subtitle") : t("reports.subtitleWellness")}
-          </p>
+    <div className="reports-app page-fill">
+      <header className="reports-chrome">
+        <div className="reports-head">
+          <div>
+            <h1>{t("reports.title")}</h1>
+            <p className="muted reports-subtitle">
+              {profile.key === "fnb" ? t("reports.subtitle") : t("reports.subtitleWellness")}
+            </p>
+          </div>
+          {data ? (
+            <div className="reports-range muted">
+              {data.from_date === data.to_date
+                ? data.series?.[0]?.label || data.from_date
+                : `${data.from_date} → ${data.to_date}`}
+              <span>· {data.timezone}</span>
+            </div>
+          ) : null}
         </div>
-        {data ? (
-          <div className="reports-range muted">
-            {data.from_date === data.to_date
-              ? data.series?.[0]?.label || data.from_date
-              : `${data.from_date} → ${data.to_date}`}
-            <span>· {data.timezone}</span>
+
+        <div className="reports-toolbar">
+          <div className="reports-presets" role="tablist" aria-label="Report period">
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                role="tab"
+                aria-selected={period === p.key}
+                className={`reports-preset ${period === p.key ? "on" : ""}`}
+                onClick={() => setPeriod(p.key)}
+              >
+                {t(p.labelKey)}
+              </button>
+            ))}
+          </div>
+          <div className="reports-grain">
+            <label>
+              {t("reports.groupBy")}
+              <select
+                value={grain}
+                onChange={(e) => setGrain(e.target.value as "auto" | "day" | "month")}
+              >
+                <option value="auto">{t("reports.auto")}</option>
+                <option value="day">{t("reports.day")}</option>
+                <option value="month">{t("reports.month")}</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {period === "custom" ? (
+          <div className="reports-custom panel">
+            <label>
+              {t("reports.from")}
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+              />
+            </label>
+            <label>
+              {t("reports.to")}
+              <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+            </label>
           </div>
         ) : null}
-      </div>
 
-      <div className="reports-toolbar">
-        <div className="reports-presets" role="tablist" aria-label="Report period">
-          {PRESETS.map((p) => (
-            <button
-              key={p.key}
-              type="button"
-              role="tab"
-              aria-selected={period === p.key}
-              className={`reports-preset ${period === p.key ? "on" : ""}`}
-              onClick={() => setPeriod(p.key)}
-            >
-              {t(p.labelKey)}
-            </button>
-          ))}
-        </div>
-        <div className="reports-grain">
-          <label>
-            {t("reports.groupBy")}
-            <select
-              value={grain}
-              onChange={(e) => setGrain(e.target.value as "auto" | "day" | "month")}
-            >
-              <option value="auto">{t("reports.auto")}</option>
-              <option value="day">{t("reports.day")}</option>
-              <option value="month">{t("reports.month")}</option>
-            </select>
-          </label>
-        </div>
-      </div>
+        {error ? <div className="error">{error}</div> : null}
+      </header>
 
-      {period === "custom" ? (
-        <div className="reports-custom panel">
-          <label>
-            {t("reports.from")}
-            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-          </label>
-          <label>
-            {t("reports.to")}
-            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-          </label>
-        </div>
-      ) : null}
+      <div className="reports-body">
+        {busy && !data ? (
+          <div className="reports-empty muted">{t("reports.loading")}</div>
+        ) : null}
 
-      {error ? <div className="error">{error}</div> : null}
-      {busy && !data ? <div className="muted">{t("reports.loading")}</div> : null}
-
-      {data ? (
-        <>
-          <div className="grid stats reports-stats">
-            <div className="panel stat">
-              <span className="muted">{t("reports.collected")}</span>
-              <strong>{money(data.currency, data.collected)}</strong>
-              {deltaLabel(data.collected_delta_pct) ? (
-                <span
-                  className={`reports-delta ${
-                    (data.collected_delta_pct || 0) >= 0 ? "up" : "down"
-                  }`}
-                >
-                  {deltaLabel(data.collected_delta_pct)}
-                </span>
-              ) : (
-                <span className="muted reports-delta">{t("reports.noPrior")}</span>
-              )}
-            </div>
-            <div className="panel stat">
-              <span className="muted">{t("reports.transactions")}</span>
-              <strong>{data.transactions}</strong>
-              <span className="muted reports-delta">
-                {t("reports.avgTicket", { amount: money(data.currency, data.average_ticket) })}
-              </span>
-            </div>
-            <div className="panel stat">
-              <span className="muted">{t("reports.gross")}</span>
-              <strong>{money(data.currency, data.gross)}</strong>
-              <span className="muted reports-delta">
-                {t("reports.bookingOrderSplit", {
-                  bookings: data.booking_sales,
-                  orders: data.order_sales,
-                })}
-              </span>
-            </div>
-            <div className="panel stat">
-              <span className="muted">{t("reports.outstanding")}</span>
-              <strong>{money(data.currency, data.outstanding)}</strong>
-              <span className="muted reports-delta">
-                {data.outstanding_count === 1
-                  ? t("reports.openPayments", { count: data.outstanding_count })
-                  : t("reports.openPayments_other", { count: data.outstanding_count })}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid split-2 reports-split">
-            <section className="panel">
-              <h2>
-                {data.grain === "month" ? t("reports.monthlySales") : t("reports.dailySales")}
-              </h2>
-              <p className="muted" style={{ marginTop: 0 }}>
-                {t("reports.seriesHint", {
-                  grain: data.grain === "month" ? t("reports.month") : t("reports.day"),
-                })}
-              </p>
-              {data.series?.length ? (
-                <div className="reports-bars">
-                  {data.series.map((row: any) => (
-                    <div className="reports-bar-row" key={row.key}>
-                      <div className="reports-bar-meta">
-                        <span>{row.label}</span>
-                        <strong>{money(data.currency, row.collected)}</strong>
-                      </div>
-                      <div className="reports-bar-track" aria-hidden>
-                        <div
-                          className="reports-bar-fill"
-                          style={{
-                            width: `${Math.max(
-                              2,
-                              (Number(row.collected) / maxCollected) * 100,
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="muted reports-bar-count">
-                        {row.transactions} tx
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">{t("reports.noSales")}</p>
-              )}
-            </section>
-
-            <section className="panel">
-              <h2>{t("reports.byChannel")}</h2>
-              <p className="muted" style={{ marginTop: 0 }}>
-                {t("reports.byChannelHint")}
-              </p>
-              {data.channels?.length ? (
-                <div className="reports-bars">
-                  {data.channels.map((row: any) => (
-                    <div className="reports-bar-row" key={row.channel}>
-                      <div className="reports-bar-meta">
-                        <span>{row.label}</span>
-                        <strong>{money(data.currency, row.collected)}</strong>
-                      </div>
-                      <div className="reports-bar-track" aria-hidden>
-                        <div
-                          className="reports-bar-fill channel"
-                          style={{
-                            width: `${Math.max(
-                              2,
-                              (Number(row.collected) / channelMax) * 100,
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="muted reports-bar-count">
-                        {row.transactions} tx
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">{t("reports.noChannels")}</p>
-              )}
-            </section>
-          </div>
-
-          <section className="panel">
-            <h2>{t("reports.topItems")}</h2>
-            <p className="muted" style={{ marginTop: 0 }}>
-              {t("reports.topItemsHint")}
-            </p>
-            {data.top_items?.length ? (
-              <div className="table-wrap">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>{t("reports.item")}</th>
-                      <th>{t("reports.qty")}</th>
-                      <th>{t("reports.revenue")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.top_items.map((row: any) => (
-                      <tr key={row.name}>
-                        <td>{row.name}</td>
-                        <td>{row.quantity}</td>
-                        <td>{money(data.currency, row.revenue)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+        {data ? (
+          <>
+            <div className="reports-stats">
+              <div className="panel stat">
+                <span className="muted">{t("reports.collected")}</span>
+                <strong>{money(data.currency, data.collected)}</strong>
+                {deltaLabel(data.collected_delta_pct) ? (
+                  <span
+                    className={`reports-delta ${
+                      (data.collected_delta_pct || 0) >= 0 ? "up" : "down"
+                    }`}
+                  >
+                    {deltaLabel(data.collected_delta_pct)}
+                  </span>
+                ) : (
+                  <span className="muted reports-delta">{t("reports.noPrior")}</span>
+                )}
               </div>
-            ) : (
-              <p className="muted">{t("reports.noItems")}</p>
-            )}
-          </section>
+              <div className="panel stat">
+                <span className="muted">{t("reports.transactions")}</span>
+                <strong>{data.transactions}</strong>
+                <span className="muted reports-delta">
+                  {t("reports.avgTicket", { amount: money(data.currency, data.average_ticket) })}
+                </span>
+              </div>
+              <div className="panel stat">
+                <span className="muted">{t("reports.gross")}</span>
+                <strong>{money(data.currency, data.gross)}</strong>
+                <span className="muted reports-delta">
+                  {t("reports.bookingOrderSplit", {
+                    bookings: data.booking_sales,
+                    orders: data.order_sales,
+                  })}
+                </span>
+              </div>
+              <div className="panel stat">
+                <span className="muted">{t("reports.outstanding")}</span>
+                <strong>{money(data.currency, data.outstanding)}</strong>
+                <span className="muted reports-delta">
+                  {data.outstanding_count === 1
+                    ? t("reports.openPayments", { count: data.outstanding_count })
+                    : t("reports.openPayments_other", { count: data.outstanding_count })}
+                </span>
+              </div>
+            </div>
 
-          <p className="muted reports-footnote">
-            {t("reports.footnote")}
-            {data.previous_from
-              ? ` (${data.previous_from} → ${data.previous_to}, ${money(
-                  data.currency,
-                  data.previous_collected,
-                )})`
-              : ""}
-          </p>
-        </>
-      ) : null}
+            <div className="reports-panels">
+              <section className="panel reports-panel">
+                <div className="reports-panel-head">
+                  <h2>
+                    {data.grain === "month" ? t("reports.monthlySales") : t("reports.dailySales")}
+                  </h2>
+                  <p className="muted">
+                    {t("reports.seriesHint", {
+                      grain: data.grain === "month" ? t("reports.month") : t("reports.day"),
+                    })}
+                  </p>
+                </div>
+                <div className="reports-panel-body">
+                  {data.series?.length ? (
+                    <div className="reports-bars">
+                      {data.series.map((row: any) => (
+                        <div className="reports-bar-row" key={row.key}>
+                          <div className="reports-bar-meta">
+                            <span>{row.label}</span>
+                            <strong>{money(data.currency, row.collected)}</strong>
+                          </div>
+                          <div className="reports-bar-track" aria-hidden>
+                            <div
+                              className="reports-bar-fill"
+                              style={{
+                                width: `${Math.max(
+                                  2,
+                                  (Number(row.collected) / maxCollected) * 100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="muted reports-bar-count">{row.transactions} tx</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">{t("reports.noSales")}</p>
+                  )}
+                </div>
+              </section>
+
+              <section className="panel reports-panel">
+                <div className="reports-panel-head">
+                  <h2>{t("reports.byChannel")}</h2>
+                  <p className="muted">{t("reports.byChannelHint")}</p>
+                </div>
+                <div className="reports-panel-body">
+                  {data.channels?.length ? (
+                    <div className="reports-bars">
+                      {data.channels.map((row: any) => (
+                        <div className="reports-bar-row" key={row.channel}>
+                          <div className="reports-bar-meta">
+                            <span>{row.label}</span>
+                            <strong>{money(data.currency, row.collected)}</strong>
+                          </div>
+                          <div className="reports-bar-track" aria-hidden>
+                            <div
+                              className="reports-bar-fill channel"
+                              style={{
+                                width: `${Math.max(
+                                  2,
+                                  (Number(row.collected) / channelMax) * 100,
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="muted reports-bar-count">{row.transactions} tx</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">{t("reports.noChannels")}</p>
+                  )}
+                </div>
+              </section>
+
+              <section className="panel reports-panel reports-panel-items">
+                <div className="reports-panel-head">
+                  <h2>{t("reports.topItems")}</h2>
+                  <p className="muted">{t("reports.topItemsHint")}</p>
+                </div>
+                <div className="reports-panel-body">
+                  {data.top_items?.length ? (
+                    <div className="table-wrap reports-table-wrap">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>{t("reports.item")}</th>
+                            <th>{t("reports.qty")}</th>
+                            <th>{t("reports.revenue")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.top_items.map((row: any) => (
+                            <tr key={row.name}>
+                              <td>{row.name}</td>
+                              <td>{row.quantity}</td>
+                              <td>{money(data.currency, row.revenue)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="muted">{t("reports.noItems")}</p>
+                  )}
+                </div>
+              </section>
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }
