@@ -308,6 +308,14 @@ function PlatformOrVendorOverview() {
   return <DashboardPage />;
 }
 
+function FnbBookingsRedirect() {
+  const { user } = useAuth();
+  if (industryProfile(user?.tenant?.industry).key === "fnb") {
+    return <Navigate to="/orders" replace />;
+  }
+  return <BookingsPage />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -325,7 +333,7 @@ export default function App() {
             <Route path="edge" element={<EdgePage />} />
             <Route path="account" element={<AccountPage />} />
             <Route element={<VendorOnly />}>
-              <Route path="bookings" element={<BookingsPage />} />
+              <Route path="bookings" element={<FnbBookingsRedirect />} />
               <Route path="orders" element={<OrdersPage />} />
               <Route path="pos" element={<PosPage />} />
               <Route path="reports" element={<ReportsPage />} />
