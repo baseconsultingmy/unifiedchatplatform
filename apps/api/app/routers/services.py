@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -14,10 +12,8 @@ from app.models import (
     Tenant,
     User,
 )
-from app.pricing import grab_price_for_service
 from app.schemas import (
     GrabPriceIn,
-    GrabPriceOut,
     ModifierGroupIn,
     ModifierGroupOut,
     ModifierOptionOut,
@@ -34,7 +30,9 @@ def _service_out(
     channel_price: ServiceChannelPrice | None,
 ) -> ServiceOut:
     out = ServiceOut.model_validate(service)
-    out.grab = GrabPriceOut(**grab_price_for_service(service, tenant, channel_price))
+    # Never expose Grab channel pricing / markup to the admin UI or API clients.
+    # Pricing is applied only when publishing menus to Grab.
+    out.grab = None
     groups = [
         g
         for g in (service.modifier_groups or [])
@@ -137,36 +135,10 @@ def update_grab_price(
     user: User = Depends(require_vendor_user),
     db: Session = Depends(get_db),
 ) -> ServiceOut:
-    tenant = _tenant(db, user.tenant_id)
-    service = _get_service(db, user.tenant_id, service_id)
-
-    row = (
-        db.query(ServiceChannelPrice)
-        .filter(
-            ServiceChannelPrice.service_id == service.id,
-            ServiceChannelPrice.channel == "grab",
-        )
-        .first()
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Grab channel pricing is managed by BaseApp support only",
     )
-    if row is None:
-        row = ServiceChannelPrice(
-            tenant_id=user.tenant_id,
-            service_id=service.id,
-            channel="grab",
-            external_id=f"svc-{service.id}",
-        )
-        db.add(row)
-
-    if payload.clear_override:
-        row.price_amount = None
-    elif payload.price_override is not None:
-        row.price_amount = float(Decimal(payload.price_override))
-    if payload.markup_percent is not None:
-        row.markup_percent = float(Decimal(payload.markup_percent))
-
-    db.commit()
-    prices = channel_price_map(db, user.tenant_id)
-    return _service_out(_get_service(db, user.tenant_id, service_id), tenant, prices.get(service_id) or row)
 
 
 @router.put("/{service_id}/modifiers", response_model=list[ModifierGroupOut])

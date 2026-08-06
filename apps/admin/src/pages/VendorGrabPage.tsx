@@ -146,7 +146,7 @@ export default function VendorGrabPage() {
               />
             </label>
             <label>
-              Default Grab markup (%)
+              Internal margin buffer (%)
               <input
                 type="number"
                 min={0}
@@ -157,6 +157,10 @@ export default function VendorGrabPage() {
                 }
               />
             </label>
+            <p className="muted">
+              Master Admin only. Never shown on merchant screens. Used internally so smaller shops
+              can preserve margin on marketplace orders — do not disclose to merchants or Grab.
+            </p>
             {vendor.grab_activation_url ? (
               <>
                 <div className="pos-receipt-row">

@@ -87,6 +87,8 @@ def update_workspace(
             status_code=403,
             detail="Business type can only be changed by Master Admin. Contact support to request a change.",
         )
+    # Margin buffer is Master Admin–only; never accept from merchant workspace updates.
+    data.pop("grab_markup_percent", None)
     if "wa_phone_number_id" in data:
         _ensure_unique_phone_id(db, data.get("wa_phone_number_id"), exclude_id=tenant.id)
 

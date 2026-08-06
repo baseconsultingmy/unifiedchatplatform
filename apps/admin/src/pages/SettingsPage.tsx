@@ -33,7 +33,6 @@ export default function SettingsPage() {
   const [form, setForm] = useState<WaForm>(emptyWa);
   const [shopName, setShopName] = useState("");
   const [grabMerchantId, setGrabMerchantId] = useState("");
-  const [grabMarkup, setGrabMarkup] = useState(30);
   const [lineChannelId, setLineChannelId] = useState("");
   const [lineSecret, setLineSecret] = useState("");
   const [lineToken, setLineToken] = useState("");
@@ -57,7 +56,6 @@ export default function SettingsPage() {
     ]);
     setShopName(workspace.name || "");
     setGrabMerchantId(workspace.grab_merchant_id || "");
-    setGrabMarkup(Number(workspace.grab_markup_percent ?? 30));
     setLine(lineStatus);
     setLineChannelId(lineStatus?.channel_id || workspace.line_channel_id || "");
     setLineLiffId(lineStatus?.liff_id || workspace.line_liff_id || "");
@@ -103,7 +101,6 @@ export default function SettingsPage() {
       }
       if (isFnb) {
         body.grab_merchant_id = grabMerchantId.trim() || null;
-        body.grab_markup_percent = grabMarkup;
       }
       body.line_channel_id = lineChannelId.trim() || null;
       body.line_liff_id = lineLiffId.trim() || null;
@@ -127,9 +124,7 @@ export default function SettingsPage() {
     try {
       const res = await api.connectGrab(token);
       setGrabMsg(
-        `${res.message}${res.dry_run ? " (dry-run)" : ""}${
-          res.activation_url ? " — open the activation link below." : ""
-        }`,
+        `${res.message}${res.activation_url ? " — open the activation link below." : ""}`,
       );
       if (res.activation_url) {
         window.open(res.activation_url, "_blank", "noopener,noreferrer");
@@ -149,11 +144,7 @@ export default function SettingsPage() {
     setGrabMsg("");
     try {
       const res = await api.publishGrabMenu(token);
-      setGrabMsg(
-        res.ok
-          ? `${res.message}${res.dry_run ? " (dry-run)" : ""} · ${res.item_count} items`
-          : res.message || "Publish failed",
-      );
+      setGrabMsg(res.ok ? res.message || "Menu published" : res.message || "Publish failed");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Publish failed");
@@ -178,12 +169,12 @@ export default function SettingsPage() {
                 <h1 style={{ margin: 0, fontSize: "1.35rem" }}>{t("settings.grabFood")}</h1>
               </div>
               <p>
-                Connect your GrabFood outlet to BaseApp, set Grab pricing, then publish the menu.
-                Orders land under the Orders tab.
+                Connect your GrabFood outlet to BaseApp, then publish the menu. Orders land under
+                the Orders tab.
               </p>
             </div>
             <span className={`badge ${grab?.connected ? "" : "warn"}`}>
-              {grab?.sync_status || "not_configured"}
+              {grab?.connected ? "Connected" : grab?.configured ? "Pending" : "Not connected"}
             </span>
           </div>
 
@@ -197,16 +188,6 @@ export default function SettingsPage() {
             <div>
               <span className="muted">Grab merchant ID</span>
               <div>{grab?.merchant_id || grabMerchantId || "—"}</div>
-            </div>
-            <div>
-              <span className="muted">Default markup</span>
-              <div>{Number(grab?.markup_percent ?? grabMarkup)}%</div>
-            </div>
-            <div>
-              <span className="muted">Platform credentials</span>
-              <div>
-                {grab?.platform_credentials_set ? "Live partner API" : "Dry-run mode"}
-              </div>
             </div>
             <div>
               <span className="muted">Last synced</span>
@@ -405,20 +386,9 @@ export default function SettingsPage() {
                   placeholder="From Grab after Enable Integration"
                 />
               </label>
-              <label>
-                Default Grab markup (%)
-                <input
-                  type="number"
-                  min={0}
-                  max={500}
-                  step={1}
-                  value={grabMarkup}
-                  onChange={(e) => setGrabMarkup(Number(e.target.value))}
-                />
-              </label>
               <p className="muted">
-                Walk-in stays at menu price. Grab = override, or walk-in × (1 + markup%), rounded to
-                .00 / .50. Use <strong>Connect Grab</strong> above to start activation.
+                Use <strong>Connect Grab</strong> above to start activation, then paste the merchant
+                ID Grab shows after linking.
               </p>
             </>
           ) : null}

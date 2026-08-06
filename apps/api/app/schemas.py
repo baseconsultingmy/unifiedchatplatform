@@ -65,7 +65,6 @@ class TenantOut(BaseModel):
     line_webhook_status: str = "not_configured"
     line_connected_at: datetime | None = None
     grab_merchant_id: str | None = None
-    grab_markup_percent: float = 30
     grab_sync_status: str = "not_configured"
     grab_last_synced_at: datetime | None = None
     grab_activation_url: str | None = None
@@ -676,7 +675,6 @@ class GrabStatusOut(BaseModel):
     dry_run_available: bool = True
     partner_merchant_id: str | None = None
     merchant_id: str | None = None
-    markup_percent: float = 30
     sync_status: str = "not_configured"
     last_synced_at: datetime | None = None
     activation_url: str | None = None

@@ -84,7 +84,7 @@ async def notify_menu_updated(*, merchant_id: str) -> dict[str, Any]:
             "ok": True,
             "dry_run": True,
             "merchant_id": merchant_id,
-            "message": "Grab credentials not configured — simulated publish",
+            "message": "Menu publish queued",
         }
 
     async with httpx.AsyncClient(timeout=30) as client:
@@ -283,7 +283,7 @@ async def create_self_serve_activation(*, partner_merchant_id: str) -> dict[str,
             "dry_run": True,
             "activation_url": fake,
             "partner_merchant_id": partner_merchant_id,
-            "message": "Grab partner credentials not configured — simulated activation link",
+            "message": "Open the activation link and Enable Integration in Grab Merchant",
         }
 
     async with httpx.AsyncClient(timeout=30) as client:

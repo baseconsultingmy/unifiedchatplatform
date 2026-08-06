@@ -70,14 +70,10 @@ def _grab_status_for_tenant(tenant: Tenant) -> GrabStatusOut:
     )
     notes = [
         "1. Tap Connect Grab — open the activation link and Enable Integration in Grab Merchant.",
-        "2. Paste the Grab merchant ID Grab shows after linking (or keep partner ID for dry-run).",
-        "3. Set markup / overrides on Menu, then Publish to Grab.",
+        "2. Paste the Grab merchant ID Grab shows after linking.",
+        "3. Publish the menu to Grab.",
         "4. New Grab orders appear under Orders.",
     ]
-    if not grab_client.grab_configured():
-        notes.append(
-            "Platform Grab partner credentials are not set yet — Connect / Publish run in dry-run."
-        )
     if status == "activation_pending":
         notes.insert(0, "Activation started — finish Enable Integration in Grab Merchant.")
     return GrabStatusOut(
@@ -86,7 +82,6 @@ def _grab_status_for_tenant(tenant: Tenant) -> GrabStatusOut:
         dry_run_available=True,
         partner_merchant_id=tenant.slug,
         merchant_id=tenant.grab_merchant_id,
-        markup_percent=float(tenant.grab_markup_percent or 30),
         sync_status=status,
         last_synced_at=tenant.grab_last_synced_at,
         activation_url=tenant.grab_activation_url,

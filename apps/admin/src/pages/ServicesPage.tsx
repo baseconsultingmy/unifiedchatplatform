@@ -17,9 +17,7 @@ export default function ServicesPage() {
   const [price, setPrice] = useState(100);
   const [deposit, setDeposit] = useState(0);
   const [error, setError] = useState("");
-  const [grabStatus, setGrabStatus] = useState<any | null>(null);
   const [grabMsg, setGrabMsg] = useState("");
-  const [overrideDraft, setOverrideDraft] = useState<Record<number, string>>({});
   const [busyPublish, setBusyPublish] = useState(false);
   const [modItem, setModItem] = useState<any | null>(null);
   const [modGroups, setModGroups] = useState<any[]>([]);
@@ -99,20 +97,6 @@ export default function ServicesPage() {
     const [s, workspace] = await Promise.all([api.services(token), api.workspace(token)]);
     setServices(s);
     setIndustry(workspace.industry || user?.tenant?.industry || "general");
-    const drafts: Record<number, string> = {};
-    for (const item of s) {
-      if (item.grab?.price_override != null) {
-        drafts[item.id] = String(item.grab.price_override);
-      }
-    }
-    setOverrideDraft(drafts);
-    if ((workspace.industry || user?.tenant?.industry) === "fnb" || workspace.industry === "food") {
-      try {
-        setGrabStatus(await api.grabStatus(token));
-      } catch {
-        setGrabStatus(null);
-      }
-    }
   }
 
   useEffect(() => {
@@ -155,25 +139,6 @@ export default function ServicesPage() {
     }
   }
 
-  async function saveGrabOverride(serviceId: number) {
-    if (!token) return;
-    setError("");
-    setGrabMsg("");
-    const raw = (overrideDraft[serviceId] || "").trim();
-    try {
-      if (!raw) {
-        await api.updateGrabPrice(token, serviceId, { clear_override: true });
-        setGrabMsg("Cleared Grab override — using markup");
-      } else {
-        await api.updateGrabPrice(token, serviceId, { price_override: Number(raw) });
-        setGrabMsg("Grab price saved");
-      }
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save Grab price");
-    }
-  }
-
   async function publishGrab() {
     if (!token) return;
     setBusyPublish(true);
@@ -181,12 +146,7 @@ export default function ServicesPage() {
     setGrabMsg("");
     try {
       const res = await api.publishGrabMenu(token);
-      setGrabMsg(
-        res.ok
-          ? `${res.message}${res.dry_run ? " (dry-run)" : ""} · ${res.item_count} items`
-          : res.message || "Publish failed",
-      );
-      setGrabStatus(await api.grabStatus(token));
+      setGrabMsg(res.ok ? res.message || "Menu published to Grab" : res.message || "Publish failed");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Publish failed");
@@ -210,23 +170,7 @@ export default function ServicesPage() {
           ) : null}
         </div>
 
-        {isFnb && grabStatus ? (
-          <p className="muted" style={{ marginBottom: "0.75rem" }}>
-            Grab merchant: {grabStatus.merchant_id || "—"} · markup{" "}
-            {Number(grabStatus.markup_percent || 30).toFixed(0)}% · sync {grabStatus.sync_status}
-            {grabStatus.last_synced_at
-              ? ` · last ${new Date(grabStatus.last_synced_at).toLocaleString()}`
-              : ""}
-            {!grabStatus.platform_credentials_set ? " · dry-run mode" : ""}
-          </p>
-        ) : null}
         {grabMsg ? <p className="muted">{grabMsg}</p> : null}
-
-        <p className="muted" style={{ marginBottom: "1rem" }}>
-          {t("services.businessType")}: <strong>{t(`industry.${profile.key}`)}</strong>
-          {" — "}
-          {t("services.businessTypeLocked")}
-        </p>
 
         <table className="table">
           <thead>
@@ -235,9 +179,7 @@ export default function ServicesPage() {
               <th>{t("services.category")}</th>
               {profile.showDuration ? <th>{t("services.duration")}</th> : null}
               <th>{isFnb ? t("services.walkInPrice") : t("services.price")}</th>
-              {isFnb ? <th>{t("services.grab")}</th> : null}
               {profile.showDeposit ? <th>{t("services.deposit")}</th> : null}
-              {isFnb ? <th>{t("services.grabOverride")}</th> : null}
               {isFnb ? <th>{t("services.customise")}</th> : null}
             </tr>
           </thead>
@@ -258,43 +200,9 @@ export default function ServicesPage() {
                 <td>
                   {s.currency} {Number(s.price_amount).toFixed(2)}
                 </td>
-                {isFnb ? (
-                  <td>
-                    {s.currency} {Number(s.grab?.grab_price ?? s.price_amount).toFixed(2)}
-                    <div className="muted" style={{ fontSize: "0.8rem" }}>
-                      {s.grab?.pricing_mode === "override"
-                        ? "override"
-                        : `+${Number(s.grab?.markup_percent ?? 30).toFixed(0)}%`}
-                    </div>
-                  </td>
-                ) : null}
                 {profile.showDeposit ? (
                   <td>
                     {s.currency} {s.deposit_amount}
-                  </td>
-                ) : null}
-                {isFnb ? (
-                  <td>
-                    <div className="btn-row" style={{ alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        style={{ width: "5.5rem" }}
-                        placeholder="auto"
-                        value={overrideDraft[s.id] ?? ""}
-                        onChange={(e) =>
-                          setOverrideDraft((d) => ({ ...d, [s.id]: e.target.value }))
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        onClick={() => saveGrabOverride(s.id)}
-                      >
-                        {t("common.save")}
-                      </button>
-                    </div>
                   </td>
                 ) : null}
                 {isFnb ? (
@@ -526,12 +434,6 @@ export default function ServicesPage() {
             min={0}
           />
         </label>
-        {isFnb ? (
-          <p className="muted">
-            Grab price defaults to walk-in + shop markup ({Number(grabStatus?.markup_percent || 30)}%).
-            Set an override per item after saving.
-          </p>
-        ) : null}
         {profile.showDeposit ? (
           <label>
             {t("services.deposit")}
