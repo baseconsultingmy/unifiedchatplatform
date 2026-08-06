@@ -4,6 +4,7 @@ import SaleReceipt from "../components/SaleReceipt";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
+import { useT } from "../i18n";
 
 type ViewMode = "agenda" | "board";
 type BoardMode = "person" | "room";
@@ -226,6 +227,7 @@ function nowBoardPercent(anchor: Date, startHour: number, totalMinutes: number) 
 }
 
 export default function BookingsPage() {
+  const t = useT();
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
   const [view, setView] = useState<ViewMode>("agenda");
@@ -746,6 +748,7 @@ export default function BookingsPage() {
 
   return (
     <div className={`bookings-app ${view === "agenda" ? "is-agenda" : "is-board"}`}>
+      <h1 style={{ margin: "0 0 0.35rem", fontSize: "1.35rem" }}>{t("bookings.title")}</h1>
       <header className="bookings-top">
         <div className="bookings-date-nav">
           <button
@@ -757,7 +760,7 @@ export default function BookingsPage() {
             ‹
           </button>
           <div className="bookings-date-label">
-            <strong>{isToday ? "Today" : formatDayShort(dayAnchor)}</strong>
+            <strong>{isToday ? t("bookings.today") : formatDayShort(dayAnchor)}</strong>
             <span>{formatDayLong(dayAnchor)}</span>
           </div>
           <button
@@ -774,7 +777,7 @@ export default function BookingsPage() {
               className="btn secondary bookings-today-btn"
               onClick={() => setDayAnchor(startOfDay(new Date()))}
             >
-              Today
+              {t("bookings.today")}
             </button>
           ) : null}
         </div>
@@ -786,32 +789,33 @@ export default function BookingsPage() {
               className={view === "agenda" ? "active" : ""}
               onClick={() => setView("agenda")}
             >
-              Agenda
+              {t("bookings.agenda")}
             </button>
             <button
               type="button"
               className={view === "board" ? "active" : ""}
               onClick={() => setView("board")}
             >
-              Board
+              {t("bookings.board")}
             </button>
           </div>
           <button type="button" className="btn" onClick={openCreateBlank}>
-            New
+            {t("bookings.new")}
           </button>
         </div>
       </header>
 
       <div className="bookings-summary">
         <span>
-          <strong>{dayBookings.length}</strong> booking{dayBookings.length === 1 ? "" : "s"}
+          <strong>{dayBookings.length}</strong>{" "}
+          {dayBookings.length === 1 ? t("bookings.booking") : t("bookings.bookings")}
         </span>
         {dueCount > 0 ? (
           <span className="bookings-summary-due">
-            <strong>{dueCount}</strong> need payment
+            <strong>{dueCount}</strong> {t("bookings.needPayment")}
           </span>
         ) : (
-          <span className="muted">All clear on payments</span>
+          <span className="muted">{t("bookings.allClear")}</span>
         )}
       </div>
 

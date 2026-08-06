@@ -3,7 +3,8 @@ import QrPayPanel from "../components/QrPayPanel";
 import SaleReceipt from "../components/SaleReceipt";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { industryProfile } from "../industry";
+import { industryProfile, type IndustryKey } from "../industry";
+import { useT } from "../i18n";
 
 type CartLine = {
   key: string;
@@ -59,7 +60,15 @@ function printKitchenSlip(slipText: string, title = "Kitchen") {
   }, 250);
 }
 
+const POS_TITLE_KEYS: Record<IndustryKey, string> = {
+  health_beauty: "pos.titleCounter",
+  fnb: "pos.titleKitchen",
+  retail: "pos.titleRetail",
+  general: "pos.title",
+};
+
 export default function PosPage() {
+  const t = useT();
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
   const fast = profile.posFastCheckout;
@@ -690,8 +699,8 @@ export default function PosPage() {
       <section className="panel pos-catalog page-panel">
         <div className="pos-catalog-head">
           <div>
-            <h1>{profile.posTitle}</h1>
-            <p>{fast ? "Tap items into the order, then confirm." : profile.posHint}</p>
+            <h1>{t(POS_TITLE_KEYS[profile.key])}</h1>
+            <p>{fast ? t("pos.fastHint") : profile.posHint}</p>
           </div>
           <div className="pos-catalog-tools">
             {fast ? (
@@ -701,12 +710,13 @@ export default function PosPage() {
                 onClick={openFindTable}
                 disabled={busy}
               >
-                Pay table{openTicketCount ? ` (${openTicketCount})` : ""}
+                {t("pos.payTable")}
+                {openTicketCount ? ` (${openTicketCount})` : ""}
               </button>
             ) : null}
             {fast ? (
               <label className="pos-menu-search">
-                <span className="muted">Search</span>
+                <span className="muted">{t("pos.search")}</span>
                 <input
                   value={menuQuery}
                   onChange={(e) => setMenuQuery(e.target.value)}
@@ -796,7 +806,7 @@ export default function PosPage() {
               onClick={resetSale}
               disabled={!cart.length && !result && step !== "done"}
             >
-              Clear
+              {t("pos.clear")}
             </button>
           </div>
         </div>
@@ -875,7 +885,7 @@ export default function PosPage() {
           ) : null}
 
           <div className="pos-register-total">
-            <span>Total</span>
+            <span>{t("pos.total")}</span>
             <strong>
               {currency} {formatMoney(amountDue)}
             </strong>
@@ -888,7 +898,7 @@ export default function PosPage() {
               disabled={cartDetails.length === 0 || amountDue <= 0 || busy}
               onClick={startConfirmOrder}
             >
-              {activeTicketId ? "Proceed to payment" : "Confirm order"}
+              {activeTicketId ? t("pos.proceedToPayment") : t("pos.confirmOrder")}
               {amountDue > 0 ? ` · ${currency} ${formatMoney(amountDue)}` : ""}
             </button>
           ) : null}

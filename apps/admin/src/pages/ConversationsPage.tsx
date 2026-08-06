@@ -8,6 +8,7 @@ import {
 } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 
 function initials(name: string | undefined | null, fallback = "?") {
   const raw = (name || fallback).trim();
@@ -118,6 +119,7 @@ function buildThread(messages: any[]): ThreadItem[] {
 }
 
 export default function ConversationsPage() {
+  const t = useT();
   const { token } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -259,11 +261,13 @@ export default function ConversationsPage() {
       <aside className="chat-sidebar">
         <div className="chat-sidebar-head">
           <div>
-            <h1>Chat</h1>
+            <h1>{t("chat.title")}</h1>
             <p>
               {items.length
-                ? `${items.length} conversation${items.length === 1 ? "" : "s"}`
-                : "Inbox across WhatsApp, LINE & Messenger"}
+                ? `${items.length} ${
+                    items.length === 1 ? t("chat.conversation") : t("chat.conversations")
+                  }`
+                : t("chat.inbox")}
             </p>
             {items.length ? (
               <div className="chat-channel-legend" aria-label="Channels">
@@ -298,19 +302,15 @@ export default function ConversationsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, number, message"
+            placeholder={t("chat.searchPlaceholder")}
           />
         </label>
 
         <div className="chat-list">
           {filtered.length === 0 ? (
             <div className="chat-empty-list">
-              <strong>{query ? "No matches" : "No chats yet"}</strong>
-              <p>
-                {query
-                  ? "Try another name or number."
-                  : "When a customer messages your WhatsApp number, the chat appears here."}
-              </p>
+              <strong>{query ? t("chat.noMatches") : t("chat.noChats")}</strong>
+              <p>{query ? t("chat.noMatchesHint") : t("chat.noChatsHint")}</p>
             </div>
           ) : (
             filtered.map((c) => {
@@ -363,8 +363,8 @@ export default function ConversationsPage() {
                 <span className="chat-brand-dot channel-line">LN</span>
                 <span className="chat-brand-dot channel-messenger">MS</span>
               </div>
-              <h2>Pick a conversation</h2>
-              <p>Select a chat to reply — threads keep each channel’s look and feel.</p>
+              <h2>{t("chat.pickConversation")}</h2>
+              <p>{t("chat.pickConversationHint")}</p>
             </div>
           </div>
         ) : (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 
 const STATUS_ACTIONS: Record<string, { label: string; next: string; className?: string }[]> = {
   new: [
@@ -34,6 +35,7 @@ function channelLabel(raw?: string | null) {
 }
 
 export default function OrdersPage() {
+  const t = useT();
   const { token } = useAuth();
   const [orders, setOrders] = useState<any[]>([]);
   const [filter, setFilter] = useState("open");
@@ -124,18 +126,18 @@ export default function OrdersPage() {
       <section className="panel">
         <div className="bookings-toolbar">
           <div>
-            <h1>Orders</h1>
-            <p>Marketplace tickets — Grab now; foodpanda colors ready when connected.</p>
+            <h1>{t("orders.title")}</h1>
+            <p>{t("orders.subtitle")}</p>
           </div>
           <div className="btn-row">
             <button type="button" className="btn secondary" onClick={() => refresh()}>
-              Refresh
+              {t("orders.refresh")}
             </button>
             <button type="button" className="btn secondary" onClick={fetchFromGrab}>
-              Fetch from Grab
+              {t("orders.fetchFromGrab")}
             </button>
             <button type="button" className="btn" onClick={simulate}>
-              Simulate Grab order
+              {t("orders.simulateGrab")}
             </button>
           </div>
         </div>
@@ -150,7 +152,7 @@ export default function OrdersPage() {
 
         <div className="btn-row" style={{ marginBottom: "0.65rem", flexWrap: "wrap" }}>
           {[
-            ["all", "All channels"],
+            ["all", t("orders.allChannels")],
             ["grab", "Grab"],
             ...(channelsPresent.includes("foodpanda") || channelFilter === "foodpanda"
               ? [["foodpanda", "foodpanda"] as const]
@@ -169,11 +171,11 @@ export default function OrdersPage() {
 
         <div className="btn-row" style={{ marginBottom: "1rem", flexWrap: "wrap" }}>
           {[
-            ["open", "Open"],
-            ["new", "New"],
-            ["accepted", "Accepted"],
-            ["ready", "Ready"],
-            ["all", "All"],
+            ["open", t("orders.open")],
+            ["new", t("orders.new")],
+            ["accepted", t("orders.accepted")],
+            ["ready", t("orders.ready")],
+            ["all", t("orders.all")],
           ].map(([value, label]) => (
             <button
               key={value}

@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
+import { useT } from "../i18n";
 
 type WaForm = {
   wa_display_phone: string;
@@ -24,6 +25,7 @@ const emptyWa: WaForm = {
 };
 
 export default function SettingsPage() {
+  const t = useT();
   const { token, user } = useAuth();
   const [setup, setSetup] = useState<any | null>(null);
   const [grab, setGrab] = useState<any | null>(null);
@@ -166,13 +168,14 @@ export default function SettingsPage() {
 
   return (
     <div className="grid page-scroll" style={{ gap: "1rem" }}>
+      <h1 style={{ margin: 0 }}>{t("settings.title")}</h1>
       {isFnb ? (
         <section className="panel order-card channel-grab" style={{ padding: "1rem 1.1rem" }}>
           <div className="bookings-toolbar">
             <div>
               <div className="order-card-title">
                 <span className="order-channel-pill channel-grab">Grab</span>
-                <h1 style={{ margin: 0, fontSize: "1.35rem" }}>Grab Food</h1>
+                <h1 style={{ margin: 0, fontSize: "1.35rem" }}>{t("settings.grabFood")}</h1>
               </div>
               <p>
                 Connect your GrabFood outlet to BaseApp, set Grab pricing, then publish the menu.
@@ -284,7 +287,7 @@ export default function SettingsPage() {
         <section className="panel">
           <div className="bookings-toolbar">
             <div>
-              <h1>WhatsApp / Meta</h1>
+              <h1>{t("settings.whatsappMeta")}</h1>
               <p>
                 Connect your shop’s WhatsApp Business number so customers can book and receive
                 receipts on WhatsApp.
@@ -380,20 +383,20 @@ export default function SettingsPage() {
         </section>
 
         <form className="panel form" onSubmit={onSave}>
-          <h2>Shop credentials</h2>
+          <h2>{t("settings.shopCredentials")}</h2>
           <p className="muted">
             Owners can self-serve WhatsApp, LINE
             {isFnb ? ", and Grab Food" : ""} without waiting on Master Admin.
           </p>
 
           <label>
-            Shop name
+            {t("settings.shopName")}
             <input value={shopName} onChange={(e) => setShopName(e.target.value)} />
           </label>
 
           {isFnb ? (
             <>
-              <h3 style={{ marginTop: "0.5rem" }}>Grab Food</h3>
+              <h3 style={{ marginTop: "0.5rem" }}>{t("settings.grabFood")}</h3>
               <label>
                 Grab merchant ID
                 <input
@@ -589,7 +592,7 @@ export default function SettingsPage() {
           {error ? <div className="error">{error}</div> : null}
           {saved ? <div className="pos-receipt ok">{saved}</div> : null}
           <button className="btn" disabled={busy}>
-            {busy ? "Saving…" : "Save settings"}
+            {busy ? t("common.saving") : t("settings.save")}
           </button>
         </form>
       </div>

@@ -1,8 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 
 export default function AccountPage() {
+  const t = useT();
   const { token, user, refreshUser } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -64,17 +66,17 @@ export default function AccountPage() {
       <section className="panel" style={{ padding: "1.1rem 1.2rem" }}>
         <div className="bookings-toolbar">
           <div>
-            <h1 style={{ margin: 0 }}>Account</h1>
+            <h1 style={{ margin: 0 }}>{t("account.title")}</h1>
             <p>
-              Set the email and password you use to sign in.
-              {provider.includes("google") ? " Signed in with Google." : ""}
+              {t("account.subtitle")}
+              {provider.includes("google") ? t("account.signedInWithGoogle") : ""}
             </p>
           </div>
         </div>
 
         <form className="form" onSubmit={onSubmit} style={{ display: "grid", gap: "0.75rem" }}>
           <label>
-            Display name
+            {t("account.displayName")}
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
@@ -83,7 +85,7 @@ export default function AccountPage() {
             />
           </label>
           <label>
-            Login email
+            {t("account.loginEmail")}
             <input
               type="email"
               value={email}
@@ -94,40 +96,40 @@ export default function AccountPage() {
           </label>
           {hasPassword ? (
             <label>
-              Current password
+              {t("account.currentPassword")}
               <input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 autoComplete="current-password"
                 required
-                placeholder="Required to save changes"
+                placeholder={t("account.currentPasswordPlaceholder")}
               />
             </label>
           ) : (
-            <p className="muted">
-              This account uses Google. You can optionally set a password for email sign-in.
-            </p>
+            <p className="muted">{t("account.googleAccountHint")}</p>
           )}
           <label>
-            {hasPassword ? "New password" : "Set password"}
+            {hasPassword ? t("account.newPassword") : t("account.setPassword")}
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               autoComplete="new-password"
-              placeholder={hasPassword ? "Leave blank to keep current password" : "Optional"}
+              placeholder={
+                hasPassword ? t("account.keepPasswordPlaceholder") : t("common.optional")
+              }
               minLength={8}
             />
           </label>
           <label>
-            Confirm new password
+            {t("account.confirmNewPassword")}
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
-              placeholder="Only if changing password"
+              placeholder={t("account.confirmPasswordPlaceholder")}
             />
           </label>
 
@@ -135,7 +137,7 @@ export default function AccountPage() {
           {saved ? <p className="pos-status-msg">{saved}</p> : null}
 
           <button className="btn" disabled={busy}>
-            {busy ? "Saving…" : "Save account"}
+            {busy ? t("common.saving") : t("account.save")}
           </button>
         </form>
       </section>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { useT } from "../i18n";
 
 type Customer = {
   id: number;
@@ -19,6 +20,7 @@ const emptyForm = {
 };
 
 export default function CustomersPage() {
+  const t = useT();
   const { token } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [query, setQuery] = useState("");
@@ -105,20 +107,20 @@ export default function CustomersPage() {
       <section className="panel">
         <div className="bookings-toolbar">
           <div>
-            <h1>Customers</h1>
-            <p>Manage guest details for bookings, POS, and WhatsApp receipts.</p>
+            <h1>{t("customers.title")}</h1>
+            <p>{t("customers.subtitle")}</p>
           </div>
           <button type="button" className="btn secondary" onClick={startCreate}>
-            New customer
+            {t("customers.newCustomer")}
           </button>
         </div>
 
         <label className="pos-field" style={{ marginBottom: "0.85rem" }}>
-          Search
+          {t("customers.search")}
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Name, phone, or email"
+            placeholder={t("customers.searchPlaceholder")}
           />
         </label>
 
