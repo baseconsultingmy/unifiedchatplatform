@@ -150,15 +150,16 @@ function ProfileMenu({
               <NavLink to="/customers" role="menuitem">
                 {t("nav.customers")}
               </NavLink>
-              {industryProfile(user?.tenant?.industry).key === "fnb" ? (
+              {industryProfile(user?.tenant?.industry).opsMode === "orders" ? (
                 <NavLink to="/orders" role="menuitem">
                   {t("nav.orders")}
                 </NavLink>
-              ) : (
+              ) : null}
+              {industryProfile(user?.tenant?.industry).opsMode === "bookings" ? (
                 <NavLink to="/bookings" role="menuitem">
                   {t("nav.bookings")}
                 </NavLink>
-              )}
+              ) : null}
               <NavLink to="/services" role="menuitem">
                 {catalogLabel}
               </NavLink>
@@ -199,7 +200,7 @@ function Shell() {
   const catalogLabel = t(`industry.catalog_${profile.key}`);
   const resourcesLabel = t(`industry.resources_${profile.key}`);
   const supportsResources = profile.supportsResources;
-  const isFnb = profile.key === "fnb";
+  const opsMode = profile.opsMode;
 
   function onExitViewAs() {
     exitViewAs();
@@ -248,15 +249,21 @@ function Shell() {
             <NavLink to="/reports" className="app-tab">
               {t("nav.reports")}
             </NavLink>
-            {isFnb ? (
+            {opsMode === "orders" ? (
               <NavLink to="/orders" className="app-tab">
                 {t("nav.orders")}
               </NavLink>
-            ) : (
+            ) : null}
+            {opsMode === "bookings" ? (
               <NavLink to="/bookings" className="app-tab">
                 {t("nav.bookings")}
               </NavLink>
-            )}
+            ) : null}
+            {opsMode === "retail" ? (
+              <NavLink to="/customers" className="app-tab">
+                {t("nav.customers")}
+              </NavLink>
+            ) : null}
           </nav>
         )}
 
@@ -308,12 +315,20 @@ function PlatformOrVendorOverview() {
   return <DashboardPage />;
 }
 
-function FnbBookingsRedirect() {
+function OpsAwareBookings() {
   const { user } = useAuth();
-  if (industryProfile(user?.tenant?.industry).key === "fnb") {
-    return <Navigate to="/orders" replace />;
-  }
+  const ops = industryProfile(user?.tenant?.industry).opsMode;
+  if (ops === "orders") return <Navigate to="/orders" replace />;
+  if (ops === "retail") return <Navigate to="/pos" replace />;
   return <BookingsPage />;
+}
+
+function OpsAwareOrders() {
+  const { user } = useAuth();
+  const ops = industryProfile(user?.tenant?.industry).opsMode;
+  if (ops === "orders") return <OrdersPage />;
+  if (ops === "bookings") return <Navigate to="/bookings" replace />;
+  return <Navigate to="/pos" replace />;
 }
 
 export default function App() {
@@ -333,8 +348,8 @@ export default function App() {
             <Route path="edge" element={<EdgePage />} />
             <Route path="account" element={<AccountPage />} />
             <Route element={<VendorOnly />}>
-              <Route path="bookings" element={<FnbBookingsRedirect />} />
-              <Route path="orders" element={<OrdersPage />} />
+              <Route path="bookings" element={<OpsAwareBookings />} />
+              <Route path="orders" element={<OpsAwareOrders />} />
               <Route path="pos" element={<PosPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="conversations" element={<ConversationsPage />} />

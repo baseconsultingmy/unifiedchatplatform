@@ -1,5 +1,8 @@
 export type IndustryKey = "health_beauty" | "fnb" | "retail" | "general";
 
+/** Primary ops surface in top nav / overview (not catalog). */
+export type OpsMode = "bookings" | "orders" | "retail";
+
 export type IndustryProfile = {
   key: IndustryKey;
   label: string;
@@ -23,6 +26,8 @@ export type IndustryProfile = {
   posFastCheckout: boolean;
   /** Optional table / seat / order note on ticket */
   posShowOrderNote: boolean;
+  /** Top-nav + overview primary ops mode */
+  opsMode: OpsMode;
 };
 
 const PROFILES: Record<IndustryKey, IndustryProfile> = {
@@ -45,6 +50,7 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     posChargeLabel: "Confirm order",
     posFastCheckout: false,
     posShowOrderNote: false,
+    opsMode: "bookings",
   },
   fnb: {
     key: "fnb",
@@ -65,6 +71,7 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     posChargeLabel: "Charge",
     posFastCheckout: true,
     posShowOrderNote: true,
+    opsMode: "orders",
   },
   retail: {
     key: "retail",
@@ -85,6 +92,7 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     posChargeLabel: "Charge",
     posFastCheckout: true,
     posShowOrderNote: false,
+    opsMode: "retail",
   },
   general: {
     key: "general",
@@ -105,6 +113,7 @@ const PROFILES: Record<IndustryKey, IndustryProfile> = {
     posChargeLabel: "Confirm order",
     posFastCheckout: false,
     posShowOrderNote: false,
+    opsMode: "bookings",
   },
 };
 
