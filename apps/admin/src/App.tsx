@@ -26,6 +26,7 @@ import AccountPage from "./pages/AccountPage";
 import SettingsPage from "./pages/SettingsPage";
 import VendorsPage from "./pages/VendorsPage";
 import VendorCreatePage from "./pages/VendorCreatePage";
+import VendorEditPage from "./pages/VendorEditPage";
 import VendorMetaPage from "./pages/VendorMetaPage";
 import VendorGrabPage from "./pages/VendorGrabPage";
 import PlatformMetaPage from "./pages/PlatformMetaPage";
@@ -343,6 +344,7 @@ export default function App() {
             <Route path="vendors" element={<VendorsPage />} />
             <Route path="vendors/new" element={<VendorCreatePage />} />
             <Route path="vendors/platform" element={<PlatformMetaPage />} />
+            <Route path="vendors/:id/edit" element={<VendorEditPage />} />
             <Route path="vendors/:id/meta" element={<VendorMetaPage />} />
             <Route path="vendors/:id/grab" element={<VendorGrabPage />} />
             <Route path="edge" element={<EdgePage />} />

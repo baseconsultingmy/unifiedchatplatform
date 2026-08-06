@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { INDUSTRY_OPTIONS, industryProfile } from "../industry";
+import { industryProfile } from "../industry";
 
 const WEBHOOK_URL = "https://api.baseapp.asia/v1/webhooks/whatsapp";
 const FLOWS_URL = "https://api.baseapp.asia/v1/webhooks/whatsapp/flows";
@@ -23,7 +23,6 @@ export default function VendorMetaPage() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const [busy, setBusy] = useState(false);
-  const [industry, setIndustry] = useState("general");
   const [form, setForm] = useState({
     wa_phone_number_id: "",
     wa_access_token: "",
@@ -44,7 +43,6 @@ export default function VendorMetaPage() {
           return;
         }
         setVendor(v);
-        setIndustry(v.industry || "general");
         setMeta(platform);
         setForm({
           wa_phone_number_id: v.wa_phone_number_id || "",
@@ -68,23 +66,6 @@ export default function VendorMetaPage() {
 
   const effectiveVerify =
     (form.wa_verify_token || meta?.platform_verify_token || "").trim() || "baseapp-wa-verify";
-
-  async function onSaveIndustry() {
-    if (!token || !vendor) return;
-    setError("");
-    setSaved("");
-    setBusy(true);
-    try {
-      const updated = await api.updateVendor(token, vendor.id, { industry });
-      setVendor(updated);
-      setIndustry(updated.industry || industry);
-      setSaved(`Business type set to ${industryProfile(updated.industry).label}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not update business type");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function onSave(e: FormEvent) {
     e.preventDefault();
@@ -169,35 +150,28 @@ export default function VendorMetaPage() {
               className="form"
               style={{
                 display: "grid",
-                gap: "0.75rem",
+                gap: "0.5rem",
                 marginBottom: "1.25rem",
                 paddingBottom: "1.25rem",
                 borderBottom: "1px solid var(--line, rgba(15,39,68,.12))",
               }}
             >
-              <h2 style={{ margin: 0 }}>Business type</h2>
-              <p className="muted" style={{ margin: 0 }}>
-                Merchants cannot change this themselves. Update only when the shop requests it —
-                POS labels, Grab, and fees may depend on type.
+              <p style={{ margin: 0 }}>
+                <strong>{vendor.name}</strong>
+                <span className="muted">
+                  {" "}
+                  · {industryProfile(vendor.industry).label} · {vendor.country}
+                  {vendor.currency ? ` / ${vendor.currency}` : ""}
+                </span>
               </p>
-              <label>
-                Type
-                <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-                  {INDUSTRY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="button"
-                className="btn secondary"
-                disabled={busy || industry === (vendor.industry || "general")}
-                onClick={onSaveIndustry}
-              >
-                Save business type
-              </button>
+              <p className="muted" style={{ margin: 0 }}>
+                To change shop name, category, country, or currency, use Edit vendor.
+              </p>
+              <div className="vendor-toolbar-actions">
+                <Link to={`/vendors/${vendor.id}/edit`} className="btn secondary">
+                  Edit vendor
+                </Link>
+              </div>
             </div>
 
           <form className="form" onSubmit={onSave} style={{ display: "grid", gap: "0.75rem" }}>

@@ -100,7 +100,9 @@ export default function VendorsPage() {
                 return (
                   <tr key={v.id}>
                     <td>
-                      <strong>{v.name}</strong>
+                      <strong>
+                        <Link to={`/vendors/${v.id}/edit`}>{v.name}</Link>
+                      </strong>
                       <div className="muted">
                         {v.slug} · {v.industry} · {v.country}
                         {v.currency ? ` · ${v.currency}` : ""}
@@ -142,6 +144,9 @@ export default function VendorsPage() {
                     </td>
                     <td>
                       <div className="vendor-row-actions">
+                        <Link to={`/vendors/${v.id}/edit`} className="btn">
+                          Edit
+                        </Link>
                         <Link to={`/vendors/${v.id}/meta`} className="btn secondary">
                           Meta
                         </Link>

@@ -2,7 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import { currencyForCountry } from "../currency";
+import { COUNTRY_OPTIONS, currencyForCountry } from "../currency";
+import { INDUSTRY_OPTIONS } from "../industry";
 
 export default function VendorCreatePage() {
   const { token, user } = useAuth();
@@ -69,19 +70,21 @@ export default function VendorCreatePage() {
           <label>
             Industry
             <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-              <option value="health_beauty">Health & Beauty</option>
-              <option value="fnb">Food & Beverage</option>
-              <option value="retail">Retail</option>
-              <option value="general">General</option>
+              {INDUSTRY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </label>
           <label>
             Country
             <select value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="MY">Malaysia (MYR)</option>
-              <option value="TH">Thailand (THB)</option>
-              <option value="SG">Singapore (SGD)</option>
-              <option value="ID">Indonesia (IDR)</option>
+              {COUNTRY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
             <span className="muted" style={{ display: "block", marginTop: "0.35rem" }}>
               Menu, POS, and reports will use {shopCurrencyCode}.
