@@ -21,6 +21,8 @@ def ensure_schema() -> None:
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS line_channel_access_token TEXT",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS line_webhook_status VARCHAR(32) DEFAULT 'not_configured'",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS line_connected_at TIMESTAMPTZ",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS line_liff_id VARCHAR(64)",
+        "ALTER TABLE customers ALTER COLUMN phone TYPE VARCHAR(64)",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS deposit_amount NUMERIC(12,2) DEFAULT 0",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_token VARCHAR(64)",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_url VARCHAR(500)",
@@ -185,7 +187,7 @@ def ensure_schema() -> None:
         """,
         "CREATE INDEX IF NOT EXISTS ix_kitchen_print_jobs_tenant_id ON kitchen_print_jobs (tenant_id)",
         "CREATE INDEX IF NOT EXISTS ix_kitchen_print_jobs_ticket_id ON kitchen_print_jobs (ticket_id)",
-        # Best-effort add marketplace channels to legacy Postgres enum.
+        # Best-effort add marketplace / messaging channels to legacy Postgres enum.
         """
         DO $$ BEGIN
           ALTER TYPE channel ADD VALUE IF NOT EXISTS 'grab';
@@ -195,6 +197,12 @@ def ensure_schema() -> None:
         """
         DO $$ BEGIN
           ALTER TYPE channel ADD VALUE IF NOT EXISTS 'foodpanda';
+        EXCEPTION WHEN others THEN NULL;
+        END $$
+        """,
+        """
+        DO $$ BEGIN
+          ALTER TYPE channel ADD VALUE IF NOT EXISTS 'line';
         EXCEPTION WHEN others THEN NULL;
         END $$
         """,

@@ -54,4 +54,10 @@ def apply_line_fields(tenant: Tenant, data: dict) -> None:
     elif isinstance(token, str) and token.strip():
         tenant.line_channel_access_token = token.strip()
 
+    if "line_liff_id" in data:
+        liff = data.pop("line_liff_id")
+        if isinstance(liff, str):
+            liff = liff.strip() or None
+        tenant.line_liff_id = liff
+
     refresh_line_status(tenant)

@@ -27,19 +27,31 @@ class ReserveError(Exception):
         self.status_code = status_code
 
 
-def reserve_whatsapp_booking(
+def reserve_channel_booking(
     db: Session,
     *,
     tenant: Tenant,
-    phone: str,
+    external_id: str,
+    channel: str = "whatsapp",
     service_id: int,
     starts_at: datetime,
     customer_name: str | None = None,
     external_ref_prefix: str = "wa",
 ) -> tuple[Booking, Service]:
-    phone_digits = "".join(ch for ch in phone if ch.isdigit())
-    if len(phone_digits) < 8:
-        raise ReserveError("Invalid phone", 400)
+    """Reserve a booking for WhatsApp (phone) or LINE (user id)."""
+    channel_key = (channel or "whatsapp").lower()
+    if channel_key == "line":
+        identity = (external_id or "").strip()
+        if len(identity) < 8:
+            raise ReserveError("Invalid LINE user", 400)
+        channel_enum = Channel.line
+        guest_label = "LINE guest"
+    else:
+        identity = "".join(ch for ch in external_id if ch.isdigit())
+        if len(identity) < 8:
+            raise ReserveError("Invalid phone", 400)
+        channel_enum = Channel.whatsapp
+        guest_label = "WhatsApp guest"
 
     service = (
         db.query(Service)
@@ -82,14 +94,14 @@ def reserve_whatsapp_booking(
 
     customer = (
         db.query(Customer)
-        .filter(Customer.tenant_id == tenant.id, Customer.phone == phone_digits)
+        .filter(Customer.tenant_id == tenant.id, Customer.phone == identity)
         .first()
     )
     if customer is None:
         customer = Customer(
             tenant_id=tenant.id,
-            phone=phone_digits,
-            name=(customer_name or "").strip() or "WhatsApp guest",
+            phone=identity,
+            name=(customer_name or "").strip() or guest_label,
         )
         db.add(customer)
         db.flush()
@@ -100,8 +112,8 @@ def reserve_whatsapp_booking(
         db.query(Conversation)
         .filter(
             Conversation.tenant_id == tenant.id,
-            Conversation.channel == Channel.whatsapp,
-            Conversation.external_thread_id == phone_digits,
+            Conversation.channel == channel_enum,
+            Conversation.external_thread_id == identity,
         )
         .first()
     )
@@ -109,8 +121,8 @@ def reserve_whatsapp_booking(
         conversation = Conversation(
             tenant_id=tenant.id,
             customer_id=customer.id,
-            channel=Channel.whatsapp,
-            external_thread_id=phone_digits,
+            channel=channel_enum,
+            external_thread_id=identity,
             status="open",
             flow_state="idle",
         )
@@ -126,7 +138,7 @@ def reserve_whatsapp_booking(
         tenant_id=tenant.id,
         customer_id=customer.id,
         service_id=service.id,
-        channel=Channel.whatsapp,
+        channel=channel_enum,
         status=BookingStatus.held,
         payment_status=PaymentStatus.deposit_due if deposit > 0 else PaymentStatus.unpaid,
         starts_at=starts_at,
@@ -135,7 +147,7 @@ def reserve_whatsapp_booking(
         deposit_amount=deposit,
         currency=service.currency or "MYR",
         notes=starts_at.astimezone(tenant_tz(tenant)).strftime("%a %d %b · %I:%M %p").replace(" 0", " "),
-        external_ref=f"{external_ref_prefix}-{phone_digits}-{int(datetime.now(timezone.utc).timestamp())}",
+        external_ref=f"{external_ref_prefix}-{identity[:24]}-{int(datetime.now(timezone.utc).timestamp())}",
     )
     db.add(booking)
     db.flush()
@@ -143,6 +155,28 @@ def reserve_whatsapp_booking(
     db.commit()
     db.refresh(booking)
     return booking, service
+
+
+def reserve_whatsapp_booking(
+    db: Session,
+    *,
+    tenant: Tenant,
+    phone: str,
+    service_id: int,
+    starts_at: datetime,
+    customer_name: str | None = None,
+    external_ref_prefix: str = "wa",
+) -> tuple[Booking, Service]:
+    return reserve_channel_booking(
+        db,
+        tenant=tenant,
+        external_id=phone,
+        channel="whatsapp",
+        service_id=service_id,
+        starts_at=starts_at,
+        customer_name=customer_name,
+        external_ref_prefix=external_ref_prefix,
+    )
 
 
 def reserve_summary(booking: Booking, service: Service) -> dict:

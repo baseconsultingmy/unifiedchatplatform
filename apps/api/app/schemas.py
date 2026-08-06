@@ -61,6 +61,7 @@ class TenantOut(BaseModel):
     line_channel_id: str | None = None
     line_channel_secret_set: bool = False
     line_channel_access_token_set: bool = False
+    line_liff_id: str | None = None
     line_webhook_status: str = "not_configured"
     line_connected_at: datetime | None = None
     grab_merchant_id: str | None = None
@@ -285,6 +286,7 @@ class WorkspaceUpdateIn(WhatsAppFieldsIn):
     clear_line_channel_secret: bool = False
     line_channel_access_token: str | None = None
     clear_line_channel_access_token: bool = False
+    line_liff_id: str | None = None
     grab_merchant_id: str | None = None
     grab_markup_percent: Decimal | None = None
     grab_partner_token: str | None = None
@@ -297,6 +299,8 @@ class LineStatusOut(BaseModel):
     channel_id: str | None = None
     channel_secret_set: bool = False
     access_token_set: bool = False
+    liff_id: str | None = None
+    liff_endpoint_url: str | None = None
     webhook_status: str = "not_configured"
     connected_at: datetime | None = None
     webhook_url: str | None = None
@@ -309,6 +313,7 @@ class LineUpdateIn(BaseModel):
     clear_line_channel_secret: bool = False
     line_channel_access_token: str | None = None
     clear_line_channel_access_token: bool = False
+    line_liff_id: str | None = None
 
 
 class WhatsAppSetupOut(BaseModel):

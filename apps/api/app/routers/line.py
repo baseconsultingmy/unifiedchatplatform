@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_db
 from app.deps import require_vendor_user
+from app.line_booking_flow import handle_line_inbound
 from app.line_client import get_profile
 from app.line_creds import apply_line_fields, refresh_line_status, resolve_line_credentials
 from app.models import Channel, Conversation, Customer, Message, MessageDirection, Tenant, User
@@ -63,6 +64,30 @@ def _message_preview(msg: dict) -> str:
     return f"[{msg_type or 'unknown'} message]"
 
 
+def _line_status_payload(tenant: Tenant) -> LineStatusOut:
+    refresh_line_status(tenant)
+    base = settings.public_api_base.rstrip("/")
+    liff_id = (getattr(tenant, "line_liff_id", None) or settings.line_liff_id or "").strip() or None
+    return LineStatusOut(
+        configured=bool(tenant.line_channel_id and tenant.line_channel_access_token),
+        channel_id=tenant.line_channel_id,
+        channel_secret_set=bool(tenant.line_channel_secret),
+        access_token_set=bool(tenant.line_channel_access_token),
+        liff_id=liff_id,
+        liff_endpoint_url=f"{base}/liff/{tenant.slug}",
+        webhook_status=tenant.line_webhook_status or "not_configured",
+        connected_at=tenant.line_connected_at,
+        webhook_url=f"{base}/v1/webhooks/line",
+        notes=[
+            "1. Create a Messaging API channel in LINE Developers.",
+            "2. Paste Channel ID, Channel secret, and Channel access token here.",
+            f"3. Set webhook URL to {base}/v1/webhooks/line and enable Use webhook.",
+            "4. Chat booking: customers type menu / book for numbered packages.",
+            f"5. Optional LIFF: create a LIFF app with endpoint {base}/liff/{tenant.slug}, paste LIFF ID here.",
+        ],
+    )
+
+
 @router.get("/line/status", response_model=LineStatusOut)
 def line_status(
     user: User = Depends(require_vendor_user),
@@ -71,24 +96,9 @@ def line_status(
     tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     if tenant is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    refresh_line_status(tenant)
+    out = _line_status_payload(tenant)
     db.commit()
-    base = settings.public_api_base.rstrip("/")
-    return LineStatusOut(
-        configured=bool(tenant.line_channel_id and tenant.line_channel_access_token),
-        channel_id=tenant.line_channel_id,
-        channel_secret_set=bool(tenant.line_channel_secret),
-        access_token_set=bool(tenant.line_channel_access_token),
-        webhook_status=tenant.line_webhook_status or "not_configured",
-        connected_at=tenant.line_connected_at,
-        webhook_url=f"{base}/v1/webhooks/line",
-        notes=[
-            "1. Create a Messaging API channel in LINE Developers.",
-            "2. Paste Channel ID, Channel secret, and Channel access token here.",
-            f"3. Set webhook URL to {base}/v1/webhooks/line and enable Use webhook.",
-            "4. Chat appears under Chat with channel = LINE.",
-        ],
-    )
+    return out
 
 
 @router.patch("/line/settings", response_model=LineStatusOut)
@@ -102,7 +112,7 @@ def update_line_settings(
         raise HTTPException(status_code=404, detail="Workspace not found")
     apply_line_fields(tenant, payload.model_dump(exclude_unset=True))
     db.commit()
-    return line_status(user=user, db=db)
+    return _line_status_payload(tenant)
 
 
 @router.post("/webhooks/line")
@@ -177,13 +187,13 @@ async def line_webhook(
         if customer is None:
             customer = Customer(
                 tenant_id=tenant.id,
-                full_name=display_name or "LINE User",
+                name=display_name or "LINE User",
                 phone=user_id,
             )
             db.add(customer)
             db.flush()
-        elif display_name and (not customer.full_name or customer.full_name == "LINE User"):
-            customer.full_name = display_name
+        elif display_name and (not customer.name or customer.name == "LINE User"):
+            customer.name = display_name
 
         conversation = (
             db.query(Conversation)
@@ -203,6 +213,7 @@ async def line_webhook(
                 external_thread_id=user_id,
                 status="open",
                 last_message_at=now,
+                flow_state="idle",
             )
             db.add(conversation)
             db.flush()
@@ -212,13 +223,22 @@ async def line_webhook(
             conversation.last_message_at = now
 
         preview = ""
+        reply_token = event.get("replyToken")
+        text_body = ""
         if event_type == "message":
-            preview = _message_preview(event.get("message") or {})
+            msg = event.get("message") or {}
+            preview = _message_preview(msg)
+            if msg.get("type") == "text":
+                text_body = (msg.get("text") or "").strip()
         elif event_type == "follow":
             preview = "[followed LINE Official Account]"
         elif event_type == "unfollow":
             preview = "[unfollowed]"
             conversation.status = "closed"
+        elif event_type == "postback":
+            data = ((event.get("postback") or {}).get("data") or "").strip()
+            preview = f"[postback] {data}"[:4000]
+            text_body = data
         else:
             preview = f"[{event_type}]"
 
@@ -233,6 +253,32 @@ async def line_webhook(
                     or event.get("webhookEventId"),
                 )
             )
+
+        # Text booking bot / LIFF entry
+        if event_type == "follow":
+            try:
+                handle_line_inbound(
+                    db,
+                    tenant=tenant,
+                    conversation=conversation,
+                    text="menu",
+                    reply_token=reply_token,
+                    is_follow=True,
+                )
+            except Exception:
+                logger.exception("LINE follow booking handler failed")
+        elif event_type in ("message", "postback") and text_body:
+            try:
+                handle_line_inbound(
+                    db,
+                    tenant=tenant,
+                    conversation=conversation,
+                    text=text_body,
+                    reply_token=reply_token,
+                    is_follow=False,
+                )
+            except Exception:
+                logger.exception("LINE inbound booking handler failed")
 
     db.commit()
     return Response(status_code=200, content="OK")

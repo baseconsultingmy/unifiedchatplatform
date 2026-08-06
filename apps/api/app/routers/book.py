@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 
 from app.availability import (
@@ -13,9 +13,16 @@ from app.availability import (
     dates_with_availability,
     tenant_tz,
 )
-from app.book_links import verify_book_sig
-from app.booking_reserve import ReserveError, reserve_summary, reserve_whatsapp_booking
+from app.book_links import book_sig, verify_book_sig
+from app.booking_reserve import (
+    ReserveError,
+    reserve_channel_booking,
+    reserve_summary,
+    reserve_whatsapp_booking,
+)
+from app.config import settings
 from app.db import get_db
+from app.line_client import get_profile_with_user_token
 from app.models import Service, Tenant
 
 router = APIRouter(tags=["book"])
@@ -36,8 +43,19 @@ class BookReserveIn(BaseModel):
     service_id: int
     starts_at: str  # ISO datetime with offset
     customer_name: str | None = Field(default=None, max_length=120)
-    wa: str = Field(min_length=8, max_length=32)
+    wa: str | None = Field(default=None, max_length=32)
+    line: str | None = Field(default=None, max_length=64)
     sig: str = Field(min_length=8, max_length=64)
+
+    @model_validator(mode="after")
+    def _require_identity(self) -> "BookReserveIn":
+        if not (self.wa or "").strip() and not (self.line or "").strip():
+            raise ValueError("wa or line identity is required")
+        return self
+
+
+class LiffSessionIn(BaseModel):
+    access_token: str = Field(min_length=8, max_length=2048)
 
 
 @router.get("/book/{slug}/catalog")
@@ -146,9 +164,8 @@ def book_slots(
 @router.post("/book/{slug}/reserve")
 def book_reserve(slug: str, payload: BookReserveIn, db: Session = Depends(get_db)) -> dict:
     tenant = _tenant(db, slug)
-    phone = "".join(ch for ch in payload.wa if ch.isdigit())
-    if not verify_book_sig(slug, phone, payload.sig):
-        raise HTTPException(status_code=403, detail="Invalid booking link")
+    line_id = (payload.line or "").strip()
+    phone = "".join(ch for ch in (payload.wa or "") if ch.isdigit())
 
     try:
         starts_at = datetime.fromisoformat(payload.starts_at)
@@ -156,22 +173,55 @@ def book_reserve(slug: str, payload: BookReserveIn, db: Session = Depends(get_db
         raise HTTPException(status_code=400, detail="Invalid starts_at") from exc
 
     try:
-        booking, service = reserve_whatsapp_booking(
-            db,
-            tenant=tenant,
-            phone=phone,
-            service_id=payload.service_id,
-            starts_at=starts_at,
-            customer_name=payload.customer_name,
-            external_ref_prefix="web",
-        )
+        if line_id:
+            if not verify_book_sig(slug, line_id, payload.sig):
+                raise HTTPException(status_code=403, detail="Invalid booking link")
+            booking, service = reserve_channel_booking(
+                db,
+                tenant=tenant,
+                external_id=line_id,
+                channel="line",
+                service_id=payload.service_id,
+                starts_at=starts_at,
+                customer_name=payload.customer_name,
+                external_ref_prefix="liff",
+            )
+        else:
+            if not verify_book_sig(slug, phone, payload.sig):
+                raise HTTPException(status_code=403, detail="Invalid booking link")
+            booking, service = reserve_whatsapp_booking(
+                db,
+                tenant=tenant,
+                phone=phone,
+                service_id=payload.service_id,
+                starts_at=starts_at,
+                customer_name=payload.customer_name,
+                external_ref_prefix="web",
+            )
     except ReserveError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     return reserve_summary(booking, service)
 
 
-def _page(shop_name: str, slug: str, wa: str, sig: str) -> str:
+@router.post("/liff/{slug}/session")
+def liff_session(slug: str, payload: LiffSessionIn, db: Session = Depends(get_db)) -> dict:
+    """Exchange a LIFF user access token for a signed booking identity."""
+    tenant = _tenant(db, slug)
+    profile = get_profile_with_user_token(user_access_token=payload.access_token.strip())
+    user_id = (profile.get("userId") or "").strip()
+    if len(user_id) < 8:
+        raise HTTPException(status_code=401, detail="Could not resolve LINE user from LIFF token")
+    return {
+        "line": user_id,
+        "sig": book_sig(tenant.slug, user_id),
+        "display_name": profile.get("displayName"),
+        "shop": tenant.name,
+        "slug": tenant.slug,
+    }
+
+
+def _page(shop_name: str, slug: str, identity: str, sig: str, *, channel: str = "wa") -> str:
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -280,7 +330,8 @@ def _page(shop_name: str, slug: str, wa: str, sig: str) -> str:
   </div>
   <script>
     const SLUG = {slug!r};
-    const WA = {wa!r};
+    const CHANNEL = {channel!r};
+    const IDENTITY = {identity!r};
     const SIG = {sig!r};
     const state = {{ package:null, date:null, slot:null }};
     const els = {{
@@ -430,16 +481,18 @@ def _page(shop_name: str, slug: str, wa: str, sig: str) -> str:
       els.payBtn.disabled = true;
       els.payBtn.textContent = 'Holding slot…';
       try {{
+        const body = {{
+          service_id: state.package.id,
+          starts_at: state.slot.id,
+          customer_name: els.name.value.trim() || null,
+          sig: SIG,
+        }};
+        if (CHANNEL === 'line') body.line = IDENTITY;
+        else body.wa = IDENTITY;
         const res = await fetch(`/book/${{SLUG}}/reserve`, {{
           method: 'POST',
           headers: {{ 'Content-Type': 'application/json' }},
-          body: JSON.stringify({{
-            service_id: state.package.id,
-            starts_at: state.slot.id,
-            customer_name: els.name.value.trim() || null,
-            wa: WA,
-            sig: SIG,
-          }}),
+          body: JSON.stringify(body),
         }});
         const data = await res.json().catch(() => ({{}}));
         if (!res.ok) throw new Error(data.detail || 'Could not reserve slot');
@@ -453,11 +506,318 @@ def _page(shop_name: str, slug: str, wa: str, sig: str) -> str:
       }}
     }});
 
-    if (!WA || !SIG) {{
-      showError('Open this booking page from your WhatsApp chat link so we can match your number.');
+    if (!IDENTITY || !SIG) {{
+      showError(
+        CHANNEL === 'line'
+          ? 'Open this page from LINE (chat link or LIFF) so we can match your account.'
+          : 'Open this booking page from your WhatsApp chat link so we can match your number.'
+      );
     }} else {{
       loadPackages().catch((e) => showError(e.message));
     }}
+  </script>
+</body>
+</html>"""
+
+
+def _liff_page(shop_name: str, slug: str, liff_id: str, line: str, sig: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Book · {shop_name}</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    :root {{
+      --ink:#14201c; --muted:#5b6b64; --line:rgba(20,32,28,.12);
+      --bg:#eef5f1; --card:#fff; --accent:#06c755; --accent-ink:#fff;
+      --ok:#15803d;
+    }}
+    * {{ box-sizing:border-box; }}
+    body {{
+      margin:0; font-family:"Segoe UI", system-ui, sans-serif; color:var(--ink);
+      background:
+        radial-gradient(900px 420px at 10% -10%, rgba(6,199,85,.18), transparent 55%),
+        radial-gradient(700px 380px at 100% 0%, rgba(15,118,110,.10), transparent 50%),
+        var(--bg);
+      min-height:100dvh; padding:16px;
+    }}
+    .sheet {{
+      width:min(520px, 100%); margin:0 auto; background:var(--card);
+      border:1px solid var(--line); border-radius:22px; box-shadow:0 18px 50px rgba(20,32,28,.08);
+      overflow:hidden;
+    }}
+    .head {{ padding:1.1rem 1.15rem .85rem; border-bottom:1px solid var(--line); }}
+    .head .muted {{ color:var(--muted); font-size:.92rem; margin:.15rem 0 0; }}
+    h1 {{ margin:0; font-size:1.35rem; letter-spacing:-.02em; }}
+    .steps {{
+      display:grid; grid-template-columns:repeat(4,1fr); gap:.35rem; padding:.75rem 1rem 0;
+    }}
+    .step {{
+      text-align:center; font-size:.72rem; color:var(--muted); padding:.35rem .2rem;
+      border-bottom:2px solid var(--line);
+    }}
+    .step.on {{ color:var(--accent); border-color:var(--accent); font-weight:600; }}
+    .step.done {{ color:var(--ok); border-color:var(--ok); }}
+    .body {{ padding:1rem 1.1rem 1.25rem; display:grid; gap:.85rem; }}
+    .panel {{ display:none; gap:.65rem; }}
+    .panel.on {{ display:grid; }}
+    .choice {{
+      display:grid; gap:.15rem; text-align:left; width:100%;
+      border:1px solid var(--line); border-radius:14px; padding:.85rem .95rem;
+      background:#fbfcfb; color:var(--ink); cursor:pointer;
+    }}
+    .choice:hover {{ border-color:rgba(6,199,85,.45); }}
+    .choice.selected {{ border-color:var(--accent); background:rgba(6,199,85,.08); }}
+    .choice strong {{ font-size:1rem; }}
+    .choice span {{ color:var(--muted); font-size:.88rem; }}
+    .grid-times {{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.45rem; }}
+    .grid-times .choice {{ padding:.7rem .4rem; text-align:center; }}
+    .summary {{
+      border:1px solid var(--line); border-radius:14px; padding:.9rem 1rem; background:#f7faf8;
+      display:grid; gap:.35rem;
+    }}
+    label {{ display:grid; gap:.35rem; font-size:.9rem; color:var(--muted); }}
+    input {{
+      border:1px solid var(--line); border-radius:12px; padding:.7rem .8rem; font:inherit; color:var(--ink);
+    }}
+    .actions {{ display:grid; gap:.5rem; margin-top:.25rem; }}
+    .btn {{
+      border:0; border-radius:12px; padding:.85rem 1rem; font:inherit; font-weight:600;
+      background:var(--accent); color:var(--accent-ink); cursor:pointer;
+    }}
+    .btn.secondary {{ background:#fff; color:var(--ink); border:1px solid var(--line); }}
+    .btn:disabled {{ opacity:.5; cursor:not-allowed; }}
+    .error {{ color:#b91c1c; background:#fef2f2; border:1px solid #fecaca; border-radius:12px; padding:.7rem .8rem; }}
+    .empty {{ color:var(--muted); padding:.5rem 0; }}
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="head">
+      <h1 id="shopName">{shop_name}</h1>
+      <p class="muted" id="subtitle">LINE booking — package, date, time, then pay.</p>
+    </div>
+    <div class="steps">
+      <div class="step on" data-step="1">Package</div>
+      <div class="step" data-step="2">Date</div>
+      <div class="step" data-step="3">Time</div>
+      <div class="step" data-step="4">Confirm</div>
+    </div>
+    <div class="body">
+      <div id="error" class="error" hidden></div>
+      <section class="panel on" id="panel-package"><p class="empty">Starting LINE…</p></section>
+      <section class="panel" id="panel-date"></section>
+      <section class="panel" id="panel-slot"></section>
+      <section class="panel" id="panel-confirm">
+        <div class="summary" id="summary"></div>
+        <label>Your name (optional)
+          <input id="customerName" placeholder="Name for the booking" />
+        </label>
+        <div class="actions">
+          <button class="btn" id="payBtn" type="button">Confirm &amp; pay</button>
+          <button class="btn secondary" id="backBtn" type="button">Back</button>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script>
+    const SLUG = {slug!r};
+    const LIFF_ID = {liff_id!r};
+    let LINE = {line!r};
+    let SIG = {sig!r};
+    const state = {{ package:null, date:null, slot:null }};
+    const els = {{
+      error: document.getElementById('error'),
+      package: document.getElementById('panel-package'),
+      date: document.getElementById('panel-date'),
+      slot: document.getElementById('panel-slot'),
+      confirm: document.getElementById('panel-confirm'),
+      summary: document.getElementById('summary'),
+      payBtn: document.getElementById('payBtn'),
+      backBtn: document.getElementById('backBtn'),
+      name: document.getElementById('customerName'),
+      steps: [...document.querySelectorAll('.step')],
+    }};
+
+    function showError(msg) {{
+      els.error.hidden = !msg;
+      els.error.textContent = msg || '';
+    }}
+
+    function setStep(n) {{
+      ['package','date','slot','confirm'].forEach((k, i) => {{
+        els[k].classList.toggle('on', i+1 === n);
+      }});
+      els.steps.forEach((s) => {{
+        const sn = Number(s.dataset.step);
+        s.classList.toggle('on', sn === n);
+        s.classList.toggle('done', sn < n);
+      }});
+      showError('');
+    }}
+
+    async function api(path, opts) {{
+      const res = await fetch(path, opts);
+      const data = await res.json().catch(() => ({{}}));
+      if (!res.ok) throw new Error(data.detail || 'Request failed');
+      return data;
+    }}
+
+    function choiceButton({{ title, subtitle, onClick, selected=false }}) {{
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice' + (selected ? ' selected' : '');
+      btn.innerHTML = `<strong>${{title}}</strong>` + (subtitle ? `<span>${{subtitle}}</span>` : '');
+      btn.addEventListener('click', onClick);
+      return btn;
+    }}
+
+    async function loadPackages() {{
+      const data = await api(`/book/${{SLUG}}/catalog`);
+      document.getElementById('shopName').textContent = data.shop;
+      els.package.innerHTML = '';
+      if (!data.packages.length) {{
+        els.package.innerHTML = '<p class="empty">No packages available right now.</p>';
+        return;
+      }}
+      data.packages.forEach((p) => {{
+        const deposit = p.deposit_amount > 0 ? ` · deposit ${{p.currency}} ${{p.deposit_amount.toFixed(2)}}` : '';
+        els.package.appendChild(choiceButton({{
+          title: p.name,
+          subtitle: `${{p.duration_minutes}} min · ${{p.currency}} ${{p.price_amount.toFixed(2)}}${{deposit}}`,
+          selected: state.package?.id === p.id,
+          onClick: async () => {{
+            state.package = p; state.date = null; state.slot = null;
+            setStep(2); await loadDates();
+          }},
+        }}));
+      }});
+    }}
+
+    async function loadDates() {{
+      els.date.innerHTML = '<p class="empty">Loading dates…</p>';
+      const data = await api(`/book/${{SLUG}}/dates?service_id=${{state.package.id}}`);
+      els.date.innerHTML = '';
+      const back = document.createElement('button');
+      back.type = 'button'; back.className = 'btn secondary'; back.textContent = 'Back to packages';
+      back.onclick = () => setStep(1);
+      if (!data.dates.length) {{
+        els.date.innerHTML = '<p class="empty">No dates with open slots for this package.</p>';
+        els.date.appendChild(back); return;
+      }}
+      data.dates.forEach((d) => {{
+        els.date.appendChild(choiceButton({{
+          title: d.label, subtitle: d.description, selected: state.date?.id === d.id,
+          onClick: async () => {{ state.date = d; state.slot = null; setStep(3); await loadSlots(); }},
+        }}));
+      }});
+      els.date.appendChild(back);
+    }}
+
+    async function loadSlots() {{
+      els.slot.innerHTML = '<p class="empty">Loading times…</p>';
+      const data = await api(`/book/${{SLUG}}/slots?service_id=${{state.package.id}}&day=${{state.date.id}}`);
+      els.slot.innerHTML = '';
+      const back = document.createElement('button');
+      back.type = 'button'; back.className = 'btn secondary'; back.textContent = 'Back to dates';
+      back.onclick = () => setStep(2);
+      if (!data.slots.length) {{
+        els.slot.innerHTML = '<p class="empty">No open times on this date. Pick another date.</p>';
+        els.slot.appendChild(back); return;
+      }}
+      const grid = document.createElement('div'); grid.className = 'grid-times';
+      data.slots.forEach((s) => {{
+        grid.appendChild(choiceButton({{
+          title: s.label, selected: state.slot?.id === s.id,
+          onClick: () => {{ state.slot = s; renderSummary(); setStep(4); }},
+        }}));
+      }});
+      els.slot.appendChild(grid); els.slot.appendChild(back);
+    }}
+
+    function renderSummary() {{
+      const p = state.package;
+      const deposit = p.deposit_amount > 0
+        ? `<div>Deposit due now: <strong>${{p.currency}} ${{p.deposit_amount.toFixed(2)}}</strong></div>`
+        : `<div>Total: <strong>${{p.currency}} ${{p.price_amount.toFixed(2)}}</strong></div>`;
+      els.summary.innerHTML = `
+        <div><span class="muted">Package</span><br/><strong>${{p.name}}</strong></div>
+        <div><span class="muted">When</span><br/><strong>${{state.date.label}} · ${{state.slot.label}}</strong></div>
+        <div><span class="muted">Duration</span><br/><strong>${{p.duration_minutes}} min</strong></div>
+        ${{deposit}}`;
+    }}
+
+    els.backBtn.addEventListener('click', () => setStep(3));
+    els.payBtn.addEventListener('click', async () => {{
+      showError('');
+      els.payBtn.disabled = true;
+      els.payBtn.textContent = 'Holding slot…';
+      try {{
+        const data = await api(`/book/${{SLUG}}/reserve`, {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }},
+          body: JSON.stringify({{
+            service_id: state.package.id,
+            starts_at: state.slot.id,
+            customer_name: els.name.value.trim() || null,
+            line: LINE,
+            sig: SIG,
+          }}),
+        }});
+        if (data.payment_url && window.liff && !liff.isInClient()) {{
+          window.location.href = data.payment_url;
+        }} else if (data.payment_url && window.liff) {{
+          liff.openWindow({{ url: data.payment_url, external: true }});
+        }} else if (data.payment_url) {{
+          window.location.href = data.payment_url;
+        }} else {{
+          throw new Error('Payment link missing');
+        }}
+      }} catch (err) {{
+        showError(err.message || 'Could not reserve slot');
+        els.payBtn.disabled = false;
+        els.payBtn.textContent = 'Confirm & pay';
+        if (state.date) loadSlots().catch(() => {{}});
+      }}
+    }});
+
+    async function ensureIdentity() {{
+      if (LINE && SIG) return;
+      if (!LIFF_ID) throw new Error('LIFF ID is not configured for this shop yet.');
+      await liff.init({{ liffId: LIFF_ID }});
+      if (!liff.isLoggedIn()) {{
+        liff.login();
+        return false;
+      }}
+      const token = liff.getAccessToken();
+      if (!token) throw new Error('LINE login did not return an access token');
+      const session = await api(`/liff/${{SLUG}}/session`, {{
+        method: 'POST',
+        headers: {{ 'Content-Type': 'application/json' }},
+        body: JSON.stringify({{ access_token: token }}),
+      }});
+      LINE = session.line;
+      SIG = session.sig;
+      if (session.display_name) {{
+        document.getElementById('subtitle').textContent =
+          `Hi ${{session.display_name}} — pick a package to continue.`;
+        if (!els.name.value) els.name.value = session.display_name;
+      }}
+      return true;
+    }}
+
+    (async () => {{
+      try {{
+        const ok = await ensureIdentity();
+        if (ok === false) return; // redirecting to login
+        await loadPackages();
+      }} catch (e) {{
+        showError(e.message || 'Could not start LINE booking');
+        els.package.innerHTML = '';
+      }}
+    }})();
   </script>
 </body>
 </html>"""
@@ -467,17 +827,53 @@ def _page(shop_name: str, slug: str, wa: str, sig: str) -> str:
 def book_page(
     slug: str,
     wa: str | None = None,
+    line: str | None = None,
     sig: str | None = None,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
     tenant = _tenant(db, slug)
+    line_id = (line or "").strip()
+    if line_id:
+        valid = verify_book_sig(slug, line_id, sig)
+        return HTMLResponse(
+            _page(
+                shop_name=tenant.name,
+                slug=tenant.slug,
+                identity=line_id if valid else "",
+                sig=sig if valid else "",
+                channel="line",
+            )
+        )
     phone = "".join(ch for ch in (wa or "") if ch.isdigit())
     valid = verify_book_sig(slug, phone, sig)
     return HTMLResponse(
         _page(
             shop_name=tenant.name,
             slug=tenant.slug,
-            wa=phone if valid else "",
+            identity=phone if valid else "",
+            sig=sig if valid else "",
+            channel="wa",
+        )
+    )
+
+
+@router.get("/liff/{slug}", response_class=HTMLResponse)
+def liff_page(
+    slug: str,
+    line: str | None = None,
+    sig: str | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    tenant = _tenant(db, slug)
+    liff_id = (getattr(tenant, "line_liff_id", None) or settings.line_liff_id or "").strip()
+    line_id = (line or "").strip()
+    valid = bool(line_id and verify_book_sig(slug, line_id, sig))
+    return HTMLResponse(
+        _liff_page(
+            shop_name=tenant.name,
+            slug=tenant.slug,
+            liff_id=liff_id,
+            line=line_id if valid else "",
             sig=sig if valid else "",
         )
     )

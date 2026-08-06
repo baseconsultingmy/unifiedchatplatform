@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     # Google Identity Services (merchant social login / signup)
     google_client_id: str = ""
     public_admin_base: str = "https://admin.baseapp.asia"
+    # Default LIFF app id (optional; tenants may override with line_liff_id)
+    line_liff_id: str = ""
     # Cloudflare edge control (Master Admin → Edge)
     cf_api_token: str = ""
     cf_zone: str = "baseapp.asia"

@@ -35,6 +35,7 @@ export default function SettingsPage() {
   const [lineChannelId, setLineChannelId] = useState("");
   const [lineSecret, setLineSecret] = useState("");
   const [lineToken, setLineToken] = useState("");
+  const [lineLiffId, setLineLiffId] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
   const [grabMsg, setGrabMsg] = useState("");
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     setGrabMarkup(Number(workspace.grab_markup_percent ?? 30));
     setLine(lineStatus);
     setLineChannelId(lineStatus?.channel_id || workspace.line_channel_id || "");
+    setLineLiffId(lineStatus?.liff_id || workspace.line_liff_id || "");
     setLineSecret("");
     setLineToken("");
     setSetup(wa);
@@ -102,6 +104,7 @@ export default function SettingsPage() {
         body.grab_markup_percent = grabMarkup;
       }
       body.line_channel_id = lineChannelId.trim() || null;
+      body.line_liff_id = lineLiffId.trim() || null;
       if (lineSecret.trim()) body.line_channel_secret = lineSecret.trim();
       if (lineToken.trim()) body.line_channel_access_token = lineToken.trim();
       await api.updateWorkspace(token, body);
@@ -451,6 +454,18 @@ export default function SettingsPage() {
               }
             />
           </label>
+          <label>
+            LIFF ID (optional mini-app)
+            <input
+              value={lineLiffId}
+              onChange={(e) => setLineLiffId(e.target.value)}
+              placeholder="From LINE Developers → LIFF"
+            />
+          </label>
+          <p className="muted">
+            Chat booking works without LIFF (type <strong>menu</strong> / <strong>book</strong>). LIFF adds a
+            tap-through mini-app. Endpoint URL:
+          </p>
           <div className="pos-receipt-row">
             <span className="muted">Webhook URL</span>
             <button
@@ -464,6 +479,21 @@ export default function SettingsPage() {
           <code className="settings-code">
             {line?.webhook_url || "https://api.baseapp.asia/v1/webhooks/line"}
           </code>
+          <div className="pos-receipt-row">
+            <span className="muted">LIFF endpoint</span>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() =>
+                copyText(line?.liff_endpoint_url || "https://api.baseapp.asia/liff/your-slug")
+              }
+            >
+              Copy
+            </button>
+          </div>
+          <code className="settings-code">
+            {line?.liff_endpoint_url || "https://api.baseapp.asia/liff/your-slug"}
+          </code>
           {lineMsg ? <p className="muted">{lineMsg}</p> : null}
           <button
             type="button"
@@ -476,6 +506,7 @@ export default function SettingsPage() {
               try {
                 const body: Record<string, unknown> = {
                   line_channel_id: lineChannelId.trim() || null,
+                  line_liff_id: lineLiffId.trim() || null,
                 };
                 if (lineSecret.trim()) body.line_channel_secret = lineSecret.trim();
                 if (lineToken.trim()) body.line_channel_access_token = lineToken.trim();

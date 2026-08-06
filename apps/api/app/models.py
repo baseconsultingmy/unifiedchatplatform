@@ -90,6 +90,7 @@ class Tenant(Base):
     line_channel_id: Mapped[str | None] = mapped_column(String(64))
     line_channel_secret: Mapped[str | None] = mapped_column(Text)
     line_channel_access_token: Mapped[str | None] = mapped_column(Text)
+    line_liff_id: Mapped[str | None] = mapped_column(String(64))
     line_webhook_status: Mapped[str] = mapped_column(String(32), default="not_configured")
     line_connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -152,7 +153,7 @@ class Customer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False, index=True)
     name: Mapped[str | None] = mapped_column(String(120))
-    phone: Mapped[str] = mapped_column(String(32), nullable=False)
+    phone: Mapped[str] = mapped_column(String(64), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255))
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
