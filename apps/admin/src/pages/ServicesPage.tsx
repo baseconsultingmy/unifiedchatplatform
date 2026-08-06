@@ -6,7 +6,9 @@ import { INDUSTRY_OPTIONS, industryProfile } from "../industry";
 export default function ServicesPage() {
   const { token, user } = useAuth();
   const [services, setServices] = useState<any[]>([]);
-  const [industry, setIndustry] = useState("health_beauty");
+  const [industry, setIndustry] = useState(
+    () => user?.tenant?.industry || "general",
+  );
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [duration, setDuration] = useState(60);
@@ -25,6 +27,16 @@ export default function ServicesPage() {
 
   const profile = industryProfile(industry);
   const isFnb = profile.key === "fnb";
+  const existingCategories = Array.from(
+    new Set(
+      services
+        .map((s) => (s.category || "").trim())
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+  const categorySuggestions = Array.from(
+    new Set([...profile.categoryHints, ...existingCategories]),
+  );
 
   function openModifiers(item: any) {
     setModItem(item);
@@ -107,13 +119,20 @@ export default function ServicesPage() {
   }, [token]);
 
   useEffect(() => {
-    if (!category && profile.categoryHints[0]) {
-      setCategory(profile.categoryHints[0]);
+    const hints = profile.categoryHints;
+    const allHints = new Set(
+      INDUSTRY_OPTIONS.flatMap((opt) => industryProfile(opt.value).categoryHints),
+    );
+    // Prefill / fix stale cross-industry defaults (e.g. Treatments on an F&B shop).
+    if (!category || allHints.has(category)) {
+      if (hints[0] && category !== hints[0]) {
+        setCategory(hints[0]);
+      }
     }
     if (!profile.showDeposit) setDeposit(0);
     if (!profile.showDuration) setDuration(0);
     else if (duration <= 0) setDuration(30);
-  }, [industry]);
+  }, [industry, profile.key]);
 
   async function saveIndustry() {
     if (!token) return;
@@ -503,13 +522,16 @@ export default function ServicesPage() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             list="category-hints"
-            placeholder={profile.categoryHints[0]}
+            placeholder={profile.categoryHints[0] || "e.g. Food"}
           />
           <datalist id="category-hints">
-            {profile.categoryHints.map((hint) => (
+            {categorySuggestions.map((hint) => (
               <option key={hint} value={hint} />
             ))}
           </datalist>
+          <span className="muted" style={{ display: "block", marginTop: "0.35rem", fontSize: "0.85rem" }}>
+            Type any name to create a category (e.g. Food, Drinks). Suggestions appear as you type.
+          </span>
         </label>
         {profile.showDuration ? (
           <label>
