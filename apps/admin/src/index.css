@@ -482,6 +482,86 @@ p {
   min-height: 0;
 }
 
+.ptr-root {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+}
+
+.ptr-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  height: 0;
+  transition: height 0.15s ease;
+  pointer-events: none;
+}
+
+.ptr-indicator.visible {
+  transition: none;
+}
+
+.ptr-indicator-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding-bottom: 0.55rem;
+  color: var(--muted, #66788f);
+}
+
+.ptr-spinner {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 50%;
+  border: 2px solid rgba(15, 39, 68, 0.15);
+  border-top-color: var(--ink, #0f2744);
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.ptr-spinner.spin {
+  animation: ptr-spin 0.7s linear infinite;
+}
+
+.ptr-indicator.pulling .ptr-spinner {
+  transform: rotate(calc(var(--ptr-deg, 0) * 1deg));
+}
+
+.ptr-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ptr-content {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.ptr-content > * {
+  min-height: 0;
+  flex: 1;
+}
+
+@keyframes ptr-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .page-fill {
   flex: 1;
   min-height: 0;

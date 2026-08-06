@@ -27,6 +27,11 @@ export const ms: Dict = {
     inactive: "Tidak aktif",
     all: "Semua",
   },
+  ptr: {
+    pull: "Tarik untuk muat semula",
+    release: "Lepas untuk muat semula",
+    refreshing: "Memuat semula…",
+  },
   lang: {
     label: "Bahasa",
     title: "Pilih bahasa",

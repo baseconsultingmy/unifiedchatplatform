@@ -28,6 +28,11 @@ export const en: Dict = {
     inactive: "Inactive",
     all: "All",
   },
+  ptr: {
+    pull: "Pull to refresh",
+    release: "Release to refresh",
+    refreshing: "Refreshing…",
+  },
   lang: {
     label: "Language",
     title: "Choose language",

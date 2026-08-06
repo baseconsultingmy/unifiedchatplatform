@@ -30,6 +30,7 @@ import VendorMetaPage from "./pages/VendorMetaPage";
 import VendorGrabPage from "./pages/VendorGrabPage";
 import PlatformMetaPage from "./pages/PlatformMetaPage";
 import EdgePage from "./pages/EdgePage";
+import PullToRefresh from "./components/PullToRefresh";
 
 function Protected() {
   const { token, loading } = useAuth();
@@ -285,7 +286,9 @@ function Shell() {
           </div>
         ) : null}
         <div className="page-frame">
-          <Outlet />
+          <PullToRefresh>
+            <Outlet />
+          </PullToRefresh>
         </div>
       </main>
     </div>

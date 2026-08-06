@@ -27,6 +27,11 @@ export const zh: Dict = {
     inactive: "停用",
     all: "全部",
   },
+  ptr: {
+    pull: "下拉刷新",
+    release: "松开刷新",
+    refreshing: "正在刷新…",
+  },
   lang: {
     label: "语言",
     title: "选择语言",

@@ -27,6 +27,11 @@ export const th: Dict = {
     inactive: "ไม่ใช้งาน",
     all: "ทั้งหมด",
   },
+  ptr: {
+    pull: "ดึงลงเพื่อรีเฟรช",
+    release: "ปล่อยเพื่อรีเฟรช",
+    refreshing: "กำลังรีเฟรช…",
+  },
   lang: {
     label: "ภาษา",
     title: "เลือกภาษา",

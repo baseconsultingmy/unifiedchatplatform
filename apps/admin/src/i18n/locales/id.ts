@@ -27,6 +27,11 @@ export const id: Dict = {
     inactive: "Nonaktif",
     all: "Semua",
   },
+  ptr: {
+    pull: "Tarik untuk segarkan",
+    release: "Lepas untuk segarkan",
+    refreshing: "Menyegarkan…",
+  },
   lang: {
     label: "Bahasa",
     title: "Pilih bahasa",
