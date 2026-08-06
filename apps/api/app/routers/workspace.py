@@ -82,8 +82,11 @@ def update_workspace(
     if tenant is None:
         raise HTTPException(status_code=404, detail="Workspace not found")
     data = payload.model_dump(exclude_unset=True)
-    if "industry" in data and data["industry"] is not None:
-        data["industry"] = normalize_industry(data["industry"])
+    if "industry" in data:
+        raise HTTPException(
+            status_code=403,
+            detail="Business type can only be changed by Master Admin. Contact support to request a change.",
+        )
     if "wa_phone_number_id" in data:
         _ensure_unique_phone_id(db, data.get("wa_phone_number_id"), exclude_id=tenant.id)
 

@@ -278,6 +278,7 @@ class GrabPriceIn(BaseModel):
 
 
 class WorkspaceUpdateIn(WhatsAppFieldsIn):
+    # Accepted on the wire only so we can return 403 — merchants cannot change business type.
     industry: str | None = Field(default=None, max_length=80)
     name: str | None = Field(default=None, min_length=2, max_length=120)
     timezone: str | None = None

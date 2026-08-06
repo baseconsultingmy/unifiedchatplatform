@@ -15,7 +15,6 @@ export default function ServicesPage() {
   const [price, setPrice] = useState(100);
   const [deposit, setDeposit] = useState(0);
   const [error, setError] = useState("");
-  const [savedIndustry, setSavedIndustry] = useState("");
   const [grabStatus, setGrabStatus] = useState<any | null>(null);
   const [grabMsg, setGrabMsg] = useState("");
   const [overrideDraft, setOverrideDraft] = useState<Record<number, string>>({});
@@ -134,19 +133,6 @@ export default function ServicesPage() {
     else if (duration <= 0) setDuration(30);
   }, [industry, profile.key]);
 
-  async function saveIndustry() {
-    if (!token) return;
-    setError("");
-    try {
-      const ws = await api.updateWorkspace(token, { industry });
-      setIndustry(ws.industry);
-      setSavedIndustry("Industry saved — refresh POS to see labels.");
-      window.location.reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save industry");
-    }
-  }
-
   async function onCreate(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -238,22 +224,11 @@ export default function ServicesPage() {
         ) : null}
         {grabMsg ? <p className="muted">{grabMsg}</p> : null}
 
-        <div className="industry-picker" style={{ marginBottom: "1rem" }}>
-          <label>
-            Business type
-            <select value={industry} onChange={(e) => setIndustry(e.target.value)}>
-              {INDUSTRY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className="btn secondary" onClick={saveIndustry}>
-            Save type
-          </button>
-        </div>
-        {savedIndustry ? <p className="muted">{savedIndustry}</p> : null}
+        <p className="muted" style={{ marginBottom: "1rem" }}>
+          Business type: <strong>{profile.label}</strong>
+          {" — "}
+          set by Master Admin (contact support to request a change).
+        </p>
 
         <table className="table">
           <thead>
