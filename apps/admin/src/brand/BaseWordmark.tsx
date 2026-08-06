@@ -76,22 +76,23 @@ export function BaseWordmark({
   );
 }
 
-/** Official primary mark: family silhouettes + amber arc (transparent SVG). */
+/** Official primary mark PNG: family silhouettes + amber arc (transparent). */
 export function BaseMark({ className = "", size = 36 }: { className?: string; size?: number }) {
   return (
     <img
       className={`base-mark ${className}`.trim()}
-      src="/brand/base-mark.svg"
+      src="/brand/base-mark.png"
       width={size}
+      height={size}
       alt=""
       aria-hidden
       draggable={false}
-      style={{ width: size, height: "auto" }}
+      style={{ width: size, height: size, objectFit: "contain" }}
     />
   );
 }
 
-/** Official primary BASE logo (transparent; light artwork on dark via tone). */
+/** Official primary BASE logo PNG (family + arc + BASE wordmark). */
 export function BasePrimaryLogo({
   className = "",
   width = 220,
@@ -101,7 +102,7 @@ export function BasePrimaryLogo({
   width?: number;
   tone?: Tone;
 }) {
-  const src = tone === "dark" ? "/brand/base-primary-on-dark.svg" : "/brand/base-primary.svg";
+  const src = tone === "dark" ? "/brand/base-primary-on-dark.png" : "/brand/base-primary.png";
   return (
     <img
       className={`base-primary-logo ${className}`.trim()}
