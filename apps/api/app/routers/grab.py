@@ -17,6 +17,7 @@ from app.db import get_db
 from app.deps import require_vendor_user
 from app.grab_menu import build_grab_menu, channel_price_map
 from app.grab_order_sync import upsert_grab_order
+from app.currency import tenant_currency
 from app.models import Order, OrderLine, OrderStatus, Service, Tenant, User
 from app.pricing import compute_channel_price
 from app.schemas import (
@@ -301,7 +302,7 @@ def simulate_grab_order(
         short_order_number=f"G-{secrets.randbelow(900) + 100}",
         customer_name=payload.customer_name,
         customer_phone=payload.customer_phone,
-        currency="MYR",
+        currency=tenant_currency(tenant),
         notes=payload.notes or "Simulated Grab order (dry-run)",
         raw_payload=json.dumps({"simulate": True}),
     )

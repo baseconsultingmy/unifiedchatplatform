@@ -8,6 +8,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.availability import available_slots, busy_bookings, slot_conflicts, tenant_tz
+from app.currency import tenant_currency
 from app.models import (
     Booking,
     BookingStatus,
@@ -145,7 +146,7 @@ def reserve_channel_booking(
         ends_at=ends_at,
         amount=Decimal(str(service.price_amount or 0)),
         deposit_amount=deposit,
-        currency=service.currency or "MYR",
+        currency=tenant_currency(tenant),
         notes=starts_at.astimezone(tenant_tz(tenant)).strftime("%a %d %b · %I:%M %p").replace(" 0", " "),
         external_ref=f"{external_ref_prefix}-{identity[:24]}-{int(datetime.now(timezone.utc).timestamp())}",
     )

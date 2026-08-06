@@ -103,6 +103,7 @@ export default function VendorsPage() {
                       <strong>{v.name}</strong>
                       <div className="muted">
                         {v.slug} · {v.industry} · {v.country}
+                        {v.currency ? ` · ${v.currency}` : ""}
                       </div>
                       <div className="muted">{v.owner_email || "—"}</div>
                     </td>

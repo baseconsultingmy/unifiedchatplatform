@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { shopCurrency } from "../currency";
 import { useT } from "../i18n";
 
 const STATUS_ACTIONS: Record<string, { label: string; next: string; className?: string }[]> = {
@@ -22,7 +23,7 @@ const CHANNEL_LABELS: Record<string, string> = {
 };
 
 function money(currency: string, amount: number) {
-  return `${currency || "MYR"} ${Number(amount || 0).toFixed(2)}`;
+  return `${currency} ${Number(amount || 0).toFixed(2)}`;
 }
 
 function channelKey(raw?: string | null) {
@@ -36,7 +37,8 @@ function channelLabel(raw?: string | null) {
 
 export default function OrdersPage() {
   const t = useT();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const fallbackCurrency = shopCurrency(user?.tenant);
   const [orders, setOrders] = useState<any[]>([]);
   const [filter, setFilter] = useState("open");
   const [channelFilter, setChannelFilter] = useState("all");
@@ -216,12 +218,13 @@ export default function OrdersPage() {
                         {order.external_order_id ? ` · ${order.external_order_id}` : ""}
                       </div>
                     </div>
-                    <strong>{money(order.currency, order.total_amount)}</strong>
+                    <strong>{money(order.currency || fallbackCurrency, order.total_amount)}</strong>
                   </div>
                   <ul style={{ margin: "0 0 0.75rem", paddingLeft: "1.1rem" }}>
                     {(order.lines || []).map((line: any) => (
                       <li key={line.id}>
-                        {line.quantity}× {line.name} — {money(order.currency, line.line_total)}
+                        {line.quantity}× {line.name} —{" "}
+                        {money(order.currency || fallbackCurrency, line.line_total)}
                       </li>
                     ))}
                   </ul>

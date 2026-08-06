@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { shopCurrency } from "../currency";
 import { industryProfile } from "../industry";
 import { useT } from "../i18n";
 
@@ -46,6 +47,8 @@ export default function SettingsPage() {
   const [lineBusy, setLineBusy] = useState(false);
 
   const isFnb = industryProfile(user?.tenant?.industry).key === "fnb";
+  const currency = shopCurrency(user?.tenant);
+  const country = (user?.tenant?.country || "MY").toUpperCase();
 
   async function refresh() {
     if (!token) return;
@@ -374,6 +377,10 @@ export default function SettingsPage() {
             {t("settings.shopName")}
             <input value={shopName} onChange={(e) => setShopName(e.target.value)} />
           </label>
+          <p className="muted">
+            Country {country} · prices and reports use {currency}. Contact Master Admin to change
+            country.
+          </p>
 
           {isFnb ? (
             <>

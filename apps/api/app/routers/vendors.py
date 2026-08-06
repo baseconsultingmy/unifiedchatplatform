@@ -208,6 +208,11 @@ def update_vendor(
     data = payload.model_dump(exclude_unset=True)
     if "country" in data and data["country"]:
         data["country"] = data["country"].upper()
+        # Keep timezone aligned with market unless caller also patches timezone.
+        if "timezone" not in data:
+            from app.currency import timezone_for_country
+
+            data["timezone"] = timezone_for_country(data["country"])
     if "industry" in data and data["industry"]:
         data["industry"] = normalize_industry(data["industry"])
     if "wa_phone_number_id" in data:
@@ -218,6 +223,19 @@ def update_vendor(
     apply_line_fields(tenant, data)
     for key, value in data.items():
         setattr(tenant, key, value)
+
+    # Align catalog currency with shop country when country changes.
+    if "country" in payload.model_dump(exclude_unset=True):
+        from app.currency import tenant_currency
+        from app.models import Service
+
+        code = tenant_currency(tenant)
+        (
+            db.query(Service)
+            .filter(Service.tenant_id == tenant.id)
+            .update({Service.currency: code}, synchronize_session=False)
+        )
+
     db.commit()
     db.refresh(tenant)
     return _vendor_out(db, tenant)

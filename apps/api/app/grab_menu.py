@@ -9,9 +9,17 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models import ModifierGroup, Service, ServiceChannelPrice, Tenant
 from app.pricing import compute_channel_price
+from app.currency import tenant_currency
 
 
 SELLING_TIME_ID = "all-day"
+
+CURRENCY_META = {
+    "MYR": {"symbol": "RM", "exponent": 2},
+    "THB": {"symbol": "฿", "exponent": 2},
+    "SGD": {"symbol": "S$", "exponent": 2},
+    "IDR": {"symbol": "Rp", "exponent": 0},
+}
 
 
 def _minor(amount: Decimal | float | int) -> int:
@@ -121,13 +129,15 @@ def build_grab_menu(db: Session, tenant: Tenant) -> dict:
         )
 
     db.flush()
+    code = tenant_currency(tenant)
+    meta = CURRENCY_META.get(code, {"symbol": code, "exponent": 2})
     return {
         "merchantID": tenant.grab_merchant_id or tenant.slug,
         "partnerMerchantID": tenant.slug,
         "currency": {
-            "code": "MYR",
-            "symbol": "RM",
-            "exponent": 2,
+            "code": code,
+            "symbol": meta["symbol"],
+            "exponent": meta["exponent"],
         },
         "sellingTimes": [
             {

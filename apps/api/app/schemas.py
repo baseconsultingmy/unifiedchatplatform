@@ -1,8 +1,9 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
+from app.currency import currency_for_country
 from app.models import BookingStatus, Channel, PaymentStatus
 
 
@@ -48,6 +49,12 @@ class TenantOut(BaseModel):
     industry: str
     timezone: str
     country: str
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def currency(self) -> str:
+        return currency_for_country(self.country)
+
     is_platform: bool = False
     is_active: bool = True
     wa_phone_number_id: str | None = None
@@ -143,6 +150,12 @@ class VendorOut(BaseModel):
     industry: str
     timezone: str
     country: str
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def currency(self) -> str:
+        return currency_for_country(self.country)
+
     is_active: bool
     wa_phone_number_id: str | None = None
     wa_business_account_id: str | None = None

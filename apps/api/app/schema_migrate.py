@@ -210,6 +210,24 @@ def ensure_schema() -> None:
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(128)",
         "ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL",
         "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_google_sub ON users (google_sub)",
+        # Align catalog currency with shop country (MY→MYR, TH→THB, SG→SGD, ID→IDR).
+        """
+        UPDATE services AS s
+        SET currency = CASE UPPER(COALESCE(t.country, 'MY'))
+            WHEN 'TH' THEN 'THB'
+            WHEN 'SG' THEN 'SGD'
+            WHEN 'ID' THEN 'IDR'
+            ELSE 'MYR'
+        END
+        FROM tenants AS t
+        WHERE s.tenant_id = t.id
+          AND s.currency IS DISTINCT FROM CASE UPPER(COALESCE(t.country, 'MY'))
+            WHEN 'TH' THEN 'THB'
+            WHEN 'SG' THEN 'SGD'
+            WHEN 'ID' THEN 'IDR'
+            ELSE 'MYR'
+          END
+        """,
     ]
     with engine.begin() as conn:
         for stmt in statements:

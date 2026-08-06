@@ -3,10 +3,12 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../i18n";
 import { INDUSTRY_OPTIONS, industryProfile } from "../industry";
+import { shopCurrency } from "../currency";
 
 export default function ServicesPage() {
   const t = useT();
   const { token, user } = useAuth();
+  const currency = shopCurrency(user?.tenant);
   const [services, setServices] = useState<any[]>([]);
   const [industry, setIndustry] = useState(
     () => user?.tenant?.industry || "general",
@@ -129,7 +131,7 @@ export default function ServicesPage() {
         duration_minutes: profile.showDuration ? duration : 0,
         price_amount: price,
         deposit_amount: profile.showDeposit ? deposit : 0,
-        currency: "MYR",
+        currency,
         is_active: true,
       });
       setName("");
@@ -178,8 +180,8 @@ export default function ServicesPage() {
               <th>{t("services.name")}</th>
               <th>{t("services.category")}</th>
               {profile.showDuration ? <th>{t("services.duration")}</th> : null}
-              <th>{isFnb ? t("services.walkInPrice") : t("services.price")}</th>
-              {profile.showDeposit ? <th>{t("services.deposit")}</th> : null}
+              <th>{isFnb ? t("services.walkInPrice", { currency }) : t("services.price", { currency })}</th>
+              {profile.showDeposit ? <th>{t("services.deposit", { currency })}</th> : null}
               {isFnb ? <th>{t("services.customise")}</th> : null}
             </tr>
           </thead>
@@ -426,7 +428,7 @@ export default function ServicesPage() {
           </label>
         ) : null}
         <label>
-          {isFnb ? t("services.walkInPrice") : t("services.price")}
+          {isFnb ? t("services.walkInPrice", { currency }) : t("services.price", { currency })}
           <input
             type="number"
             value={price}
@@ -436,7 +438,7 @@ export default function ServicesPage() {
         </label>
         {profile.showDeposit ? (
           <label>
-            {t("services.deposit")}
+            {t("services.deposit", { currency })}
             <input
               type="number"
               value={deposit}

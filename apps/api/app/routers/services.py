@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.db import get_db
 from app.deps import require_vendor_user
+from app.currency import tenant_currency
 from app.grab_menu import channel_price_map
 from app.models import (
     ModifierGroup,
@@ -20,7 +21,6 @@ from app.schemas import (
     ServiceIn,
     ServiceOut,
 )
-
 router = APIRouter(prefix="/services", tags=["services"])
 
 
@@ -106,7 +106,9 @@ def create_service(
     db: Session = Depends(get_db),
 ) -> ServiceOut:
     tenant = _tenant(db, user.tenant_id)
-    service = Service(tenant_id=user.tenant_id, **payload.model_dump())
+    data = payload.model_dump()
+    data["currency"] = tenant_currency(tenant)
+    service = Service(tenant_id=user.tenant_id, **data)
     db.add(service)
     db.commit()
     return _service_out(_get_service(db, user.tenant_id, service.id), tenant, None)

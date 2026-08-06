@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.db import get_db
 from app.deps import require_vendor_user
+from app.currency import tenant_currency
 from app.kitchen_slip import format_kitchen_slip
 from app.models import (
     KitchenPrintJob,
@@ -206,7 +207,7 @@ def create_ticket(
         table_label=label,
         status=PosTicketStatus.open.value,
         notes=payload.notes,
-        currency="MYR",
+        currency=tenant_currency(db.query(Tenant).filter(Tenant.id == user.tenant_id).first()),
     )
     db.add(ticket)
     db.flush()

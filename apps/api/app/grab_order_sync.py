@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.currency import tenant_currency
 from app.grab_menu import channel_price_map
 from app.models import Order, OrderLine, OrderStatus, Service, Tenant
 from app.pricing import compute_channel_price
@@ -66,7 +67,7 @@ def upsert_grab_order(db: Session, tenant: Tenant, body: dict) -> tuple[Order, b
         by_external.setdefault(f"svc-{sid}", sid)
 
     price_block = body.get("price") or {}
-    currency = (body.get("currency") or {}).get("code") or "MYR"
+    currency = (body.get("currency") or {}).get("code") or tenant_currency(tenant)
     items = body.get("items") or []
     receiver = body.get("receiver") or {}
     phones_raw = receiver.get("phones")

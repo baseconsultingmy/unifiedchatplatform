@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.db import get_db
 from app.deps import require_vendor_user
+from app.currency import tenant_currency
 from app.models import (
     Booking,
     BookingStatus,
@@ -23,6 +24,7 @@ from app.models import (
     PosTicketLine,
     PosTicketStatus,
     Service,
+    Tenant,
     User,
 )
 from app.payments import amount_due, attach_payment_link
@@ -129,7 +131,8 @@ def create_walkin_sale(
     line_labels: list[str] = []
     amount = Decimal("0")
     duration_total = 0
-    currency = "MYR"
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    currency = tenant_currency(tenant)
     primary: Service | None = None
     for item in raw_items:
         service = by_id[item.service_id]

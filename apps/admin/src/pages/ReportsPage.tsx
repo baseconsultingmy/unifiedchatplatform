@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../i18n";
+import { shopCurrency } from "../currency";
 import { industryProfile } from "../industry";
 
 type PeriodKey =
@@ -26,14 +27,15 @@ const PRESETS: { key: PeriodKey; labelKey: string }[] = [
 ];
 
 function money(currency: string, value: number) {
+  const code = currency || "MYR";
   try {
-    return new Intl.NumberFormat("en-MY", {
+    return new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: currency || "MYR",
+      currency: code,
       maximumFractionDigits: 2,
     }).format(value || 0);
   } catch {
-    return `${currency || "MYR"} ${(value || 0).toFixed(2)}`;
+    return `${code} ${(value || 0).toFixed(2)}`;
   }
 }
 
@@ -41,6 +43,7 @@ export default function ReportsPage() {
   const t = useT();
   const { token, user } = useAuth();
   const profile = industryProfile(user?.tenant?.industry);
+  const fallbackCurrency = shopCurrency(user?.tenant);
   const [period, setPeriod] = useState<PeriodKey>("today");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -75,6 +78,8 @@ export default function ReportsPage() {
     if (!data?.channels?.length) return 1;
     return Math.max(1, ...data.channels.map((r: any) => Number(r.collected) || 0));
   }, [data]);
+
+  const ccy = data?.currency || fallbackCurrency;
 
   function deltaLabel(pct: number | null | undefined) {
     if (pct == null || Number.isNaN(pct)) return null;
@@ -162,7 +167,7 @@ export default function ReportsPage() {
             <div className="reports-stats">
               <div className="panel stat">
                 <span className="muted">{t("reports.collected")}</span>
-                <strong>{money(data.currency, data.collected)}</strong>
+                <strong>{money(ccy, data.collected)}</strong>
                 {deltaLabel(data.collected_delta_pct) ? (
                   <span
                     className={`reports-delta ${
@@ -179,12 +184,12 @@ export default function ReportsPage() {
                 <span className="muted">{t("reports.transactions")}</span>
                 <strong>{data.transactions}</strong>
                 <span className="muted reports-delta">
-                  {t("reports.avgTicket", { amount: money(data.currency, data.average_ticket) })}
+                  {t("reports.avgTicket", { amount: money(ccy, data.average_ticket) })}
                 </span>
               </div>
               <div className="panel stat">
                 <span className="muted">{t("reports.gross")}</span>
-                <strong>{money(data.currency, data.gross)}</strong>
+                <strong>{money(ccy, data.gross)}</strong>
                 <span className="muted reports-delta">
                   {t("reports.bookingOrderSplit", {
                     bookings: data.booking_sales,
@@ -194,7 +199,7 @@ export default function ReportsPage() {
               </div>
               <div className="panel stat">
                 <span className="muted">{t("reports.outstanding")}</span>
-                <strong>{money(data.currency, data.outstanding)}</strong>
+                <strong>{money(ccy, data.outstanding)}</strong>
                 <span className="muted reports-delta">
                   {data.outstanding_count === 1
                     ? t("reports.openPayments", { count: data.outstanding_count })
@@ -222,7 +227,7 @@ export default function ReportsPage() {
                         <div className="reports-bar-row" key={row.key}>
                           <div className="reports-bar-meta">
                             <span>{row.label}</span>
-                            <strong>{money(data.currency, row.collected)}</strong>
+                            <strong>{money(ccy, row.collected)}</strong>
                           </div>
                           <div className="reports-bar-track" aria-hidden>
                             <div
@@ -257,7 +262,7 @@ export default function ReportsPage() {
                         <div className="reports-bar-row" key={row.channel}>
                           <div className="reports-bar-meta">
                             <span>{row.label}</span>
-                            <strong>{money(data.currency, row.collected)}</strong>
+                            <strong>{money(ccy, row.collected)}</strong>
                           </div>
                           <div className="reports-bar-track" aria-hidden>
                             <div
@@ -301,7 +306,7 @@ export default function ReportsPage() {
                             <tr key={row.name}>
                               <td>{row.name}</td>
                               <td>{row.quantity}</td>
-                              <td>{money(data.currency, row.revenue)}</td>
+                              <td>{money(ccy, row.revenue)}</td>
                             </tr>
                           ))}
                         </tbody>

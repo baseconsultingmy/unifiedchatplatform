@@ -4,6 +4,7 @@ import SaleReceipt from "../components/SaleReceipt";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile } from "../industry";
+import { shopCurrency } from "../currency";
 import { useT } from "../i18n";
 
 type ViewMode = "agenda" | "board";
@@ -545,7 +546,7 @@ export default function BookingsPage() {
         starts_at: startsAt ? new Date(startsAt).toISOString() : null,
         amount: service?.price_amount || 0,
         deposit_amount: service?.deposit_amount || 0,
-        currency: service?.currency || "MYR",
+        currency: service?.currency || shopCurrency(user?.tenant),
       });
       setCustomerName("");
       setCustomerPhone("");
@@ -1418,7 +1419,7 @@ export default function BookingsPage() {
               customerName={selected.customer?.name || selected.customer?.phone || "Customer"}
               customerPhone={selected.customer?.phone || ""}
               lineItems={[selected.service?.name || "Booking"]}
-              currency={selected.currency || "MYR"}
+              currency={selected.currency || shopCurrency(user?.tenant)}
               amountDue={Number(selected.amount || dueAmount || 0)}
               paymentLabel={receiptPayLabel}
               cash={lastCash}

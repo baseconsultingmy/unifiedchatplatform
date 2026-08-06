@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.availability import tenant_tz
+from app.currency import tenant_currency
 from app.db import get_db
 from app.deps import require_vendor_user
 from app.models import (
@@ -226,7 +227,7 @@ def sales_report(
     top_map: dict[str, dict[str, Decimal | int]] = defaultdict(
         lambda: {"revenue": Decimal("0"), "qty": 0}
     )
-    currency = "MYR"
+    currency = tenant_currency(tenant) if tenant else "MYR"
 
     for b in bookings:
         c = _booking_collected(b)

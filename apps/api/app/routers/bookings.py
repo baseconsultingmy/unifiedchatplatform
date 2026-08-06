@@ -6,9 +6,10 @@ from sqlalchemy.orm import Session, joinedload
 from app.availability import resource_conflicts
 from app.db import get_db
 from app.deps import require_vendor_user
-from app.models import Booking, Customer, Resource, Service, User
+from app.models import Booking, Customer, Resource, Service, Tenant, User
 from app.payments import attach_payment_link
 from app.schemas import BookingIn, BookingOut, BookingUpdate
+from app.currency import tenant_currency
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -173,6 +174,9 @@ def create_booking(
             starts = starts.replace(tzinfo=timezone.utc)
             data["starts_at"] = starts
         data["ends_at"] = starts + timedelta(minutes=int(service.duration_minutes or 60))
+
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+    data["currency"] = tenant_currency(tenant)
 
     _assert_no_resource_clash(
         db,

@@ -21,6 +21,7 @@ from app.booking_reserve import (
     reserve_whatsapp_booking,
 )
 from app.config import settings
+from app.currency import tenant_currency
 from app.db import get_db
 from app.line_client import get_profile_with_user_token
 from app.models import Service, Tenant
@@ -78,7 +79,7 @@ def book_catalog(slug: str, db: Session = Depends(get_db)) -> dict:
                 "duration_minutes": s.duration_minutes,
                 "price_amount": float(s.price_amount or 0),
                 "deposit_amount": float(s.deposit_amount or 0),
-                "currency": s.currency or "MYR",
+                "currency": s.currency or tenant_currency(tenant),
                 "category": s.category,
             }
             for s in services

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.currency import normalize_country, timezone_for_country
 from app.models import Tenant, User, UserRole
 from app.routers.workspace import normalize_industry
 from app.security import hash_password
@@ -31,7 +32,7 @@ def provision_vendor(
     owner_password: str | None = None,
     auth_provider: str = "password",
     google_sub: str | None = None,
-    timezone: str = "Asia/Kuala_Lumpur",
+    timezone: str | None = None,
     country: str = "MY",
     slug: str | None = None,
 ) -> tuple[Tenant, User]:
@@ -46,12 +47,14 @@ def provision_vendor(
     if google_sub and db.query(User).filter(User.google_sub == google_sub).first():
         raise ValueError("This Google account is already linked")
 
+    country_code = normalize_country(country)
+    tz = (timezone or "").strip() or timezone_for_country(country_code)
     tenant = Tenant(
         name=shop,
         slug=unique_slug(db, slug or shop),
         industry=normalize_industry(industry),
-        timezone=timezone or "Asia/Kuala_Lumpur",
-        country=(country or "MY").upper(),
+        timezone=tz,
+        country=country_code,
         is_platform=False,
         is_active=True,
     )

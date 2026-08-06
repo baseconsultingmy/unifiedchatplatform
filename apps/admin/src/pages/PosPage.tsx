@@ -4,6 +4,7 @@ import SaleReceipt from "../components/SaleReceipt";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { industryProfile, type IndustryKey } from "../industry";
+import { shopCurrency } from "../currency";
 import { useT } from "../i18n";
 
 type CartLine = {
@@ -203,7 +204,8 @@ export default function PosPage() {
     return cartDetails.reduce((sum, line) => sum + line.lineTotal, 0);
   }, [cartDetails, chargeMode, profile.showDeposit]);
 
-  const currency = cartDetails[0]?.service?.currency || result?.currency || "MYR";
+  const currency =
+    cartDetails[0]?.service?.currency || result?.currency || shopCurrency(user?.tenant);
   const tendered = parseMoney(tenderInput);
   const changeDue = Math.max(0, tendered - amountDue);
   const balanceDue = Math.max(0, amountDue - tendered);

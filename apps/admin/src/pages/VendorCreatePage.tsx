@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { currencyForCountry } from "../currency";
 
 export default function VendorCreatePage() {
   const { token, user } = useAuth();
@@ -17,6 +18,7 @@ export default function VendorCreatePage() {
   const [waPhoneId, setWaPhoneId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const shopCurrencyCode = currencyForCountry(country);
 
   if (!isPlatformAdmin) return <Navigate to="/" replace />;
 
@@ -76,11 +78,14 @@ export default function VendorCreatePage() {
           <label>
             Country
             <select value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="MY">Malaysia</option>
-              <option value="TH">Thailand</option>
-              <option value="SG">Singapore</option>
-              <option value="ID">Indonesia</option>
+              <option value="MY">Malaysia (MYR)</option>
+              <option value="TH">Thailand (THB)</option>
+              <option value="SG">Singapore (SGD)</option>
+              <option value="ID">Indonesia (IDR)</option>
             </select>
+            <span className="muted" style={{ display: "block", marginTop: "0.35rem" }}>
+              Menu, POS, and reports will use {shopCurrencyCode}.
+            </span>
           </label>
           <label>
             Owner full name
