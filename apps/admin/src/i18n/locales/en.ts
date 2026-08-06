@@ -181,13 +181,9 @@ export const en: Dict = {
     deposit: "Deposit (MYR)",
     saveItem: "Save item",
     saveService: "Save service",
-    businessType: "Business type",
-    businessTypeLocked: "set by Master Admin (contact support to request a change).",
     publishGrab: "Publish to Grab",
-    grabOverride: "Grab override",
     customise: "Customise",
     name: "Name",
-    grab: "Grab",
   },
   settings: {
     title: "Settings",

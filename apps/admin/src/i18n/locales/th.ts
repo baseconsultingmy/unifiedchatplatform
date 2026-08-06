@@ -178,13 +178,9 @@ export const th: Dict = {
     deposit: "มัดจำ (MYR)",
     saveItem: "บันทึกรายการ",
     saveService: "บันทึกบริการ",
-    businessType: "ประเภทธุรกิจ",
-    businessTypeLocked: "กำหนดโดย Master Admin (ติดต่อฝ่ายสนับสนุนเพื่อขอเปลี่ยน)",
     publishGrab: "เผยแพร่ไป Grab",
-    grabOverride: "Override Grab",
     customise: "ปรับแต่ง",
     name: "ชื่อ",
-    grab: "Grab",
   },
   settings: {
     title: "การตั้งค่า",

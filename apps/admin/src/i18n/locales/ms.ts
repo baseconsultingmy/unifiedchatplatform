@@ -180,13 +180,9 @@ export const ms: Dict = {
     deposit: "Deposit (MYR)",
     saveItem: "Simpan item",
     saveService: "Simpan perkhidmatan",
-    businessType: "Jenis perniagaan",
-    businessTypeLocked: "ditetapkan oleh Master Admin (hubungi sokongan untuk meminta perubahan).",
     publishGrab: "Terbit ke Grab",
-    grabOverride: "Override Grab",
     customise: "Sesuaikan",
     name: "Nama",
-    grab: "Grab",
   },
   settings: {
     title: "Tetapan",

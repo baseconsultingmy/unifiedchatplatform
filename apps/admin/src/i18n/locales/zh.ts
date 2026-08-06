@@ -178,13 +178,9 @@ export const zh: Dict = {
     deposit: "订金 (MYR)",
     saveItem: "保存项目",
     saveService: "保存服务",
-    businessType: "业务类型",
-    businessTypeLocked: "由主管理员设置（如需更改请联系支持）。",
     publishGrab: "发布到 Grab",
-    grabOverride: "Grab 覆盖价",
     customise: "自定义",
     name: "名称",
-    grab: "Grab",
   },
   settings: {
     title: "设置",
