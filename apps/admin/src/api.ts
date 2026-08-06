@@ -204,6 +204,18 @@ export const api = {
   lineStatus: (token: string) => request<any>("/v1/line/status", {}, token),
   updateLineSettings: (token: string, body: unknown) =>
     request<any>("/v1/line/settings", { method: "PATCH", body: JSON.stringify(body) }, token),
+  salesReport: (
+    token: string,
+    params?: { period?: string; from?: string; to?: string; grain?: string },
+  ) => {
+    const q = new URLSearchParams();
+    if (params?.period) q.set("period", params.period);
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    if (params?.grain) q.set("grain", params.grain);
+    const suffix = q.toString() ? `?${q}` : "";
+    return request<any>(`/v1/reports/sales${suffix}`, {}, token);
+  },
   edgeStatus: (token: string) => request<any>("/v1/edge/status", {}, token),
   edgeCloudflareBootstrap: (token: string) =>
     request<any>("/v1/edge/cloudflare/bootstrap", { method: "POST" }, token),

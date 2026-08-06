@@ -18,6 +18,7 @@ import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import OrdersPage from "./pages/OrdersPage";
 import PosPage from "./pages/PosPage";
+import ReportsPage from "./pages/ReportsPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import ServicesPage from "./pages/ServicesPage";
 import AccountPage from "./pages/AccountPage";
@@ -139,6 +140,9 @@ function ProfileMenu({
               <NavLink to="/overview" role="menuitem">
                 Overview
               </NavLink>
+              <NavLink to="/reports" role="menuitem">
+                Reports
+              </NavLink>
               <NavLink to="/customers" role="menuitem">
                 Customers
               </NavLink>
@@ -233,6 +237,9 @@ function Shell() {
             <NavLink to="/conversations" className="app-tab">
               Chat
             </NavLink>
+            <NavLink to="/reports" className="app-tab">
+              Reports
+            </NavLink>
             {isFnb ? (
               <NavLink to="/orders" className="app-tab">
                 Orders
@@ -310,6 +317,7 @@ export default function App() {
               <Route path="bookings" element={<BookingsPage />} />
               <Route path="orders" element={<OrdersPage />} />
               <Route path="pos" element={<PosPage />} />
+              <Route path="reports" element={<ReportsPage />} />
               <Route path="conversations" element={<ConversationsPage />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="services" element={<ServicesPage />} />

@@ -19,6 +19,7 @@ from app.routers import (
     orders,
     payments,
     pos,
+    reports,
     resources,
     services,
     tickets,
@@ -54,6 +55,7 @@ app.add_middleware(
 
 app.include_router(auth.router, prefix="/v1")
 app.include_router(dashboard.router, prefix="/v1")
+app.include_router(reports.router, prefix="/v1")
 app.include_router(vendors.router, prefix="/v1")
 app.include_router(edge.router, prefix="/v1")
 app.include_router(services.router, prefix="/v1")

@@ -458,6 +458,53 @@ class DashboardOut(BaseModel):
     is_platform_admin: bool = False
 
 
+class SalesPeriodRow(BaseModel):
+    key: str
+    label: str
+    collected: float
+    gross: float
+    transactions: int
+
+
+class SalesChannelRow(BaseModel):
+    channel: str
+    label: str
+    collected: float
+    gross: float
+    transactions: int
+
+
+class SalesTopItemRow(BaseModel):
+    name: str
+    quantity: int
+    revenue: float
+
+
+class SalesReportOut(BaseModel):
+    period: str
+    grain: str
+    timezone: str
+    currency: str = "MYR"
+    from_date: str
+    to_date: str
+    collected: float
+    gross: float
+    transactions: int
+    average_ticket: float
+    outstanding: float = 0
+    outstanding_count: int = 0
+    previous_collected: float = 0
+    previous_transactions: int = 0
+    previous_from: str | None = None
+    previous_to: str | None = None
+    collected_delta_pct: float | None = None
+    series: list[SalesPeriodRow] = Field(default_factory=list)
+    channels: list[SalesChannelRow] = Field(default_factory=list)
+    top_items: list[SalesTopItemRow] = Field(default_factory=list)
+    booking_sales: int = 0
+    order_sales: int = 0
+
+
 class PosSaleItemIn(BaseModel):
     service_id: int
     quantity: int = Field(default=1, ge=1, le=99)

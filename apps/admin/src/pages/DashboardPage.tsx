@@ -97,6 +97,15 @@ export default function DashboardPage() {
             Open POS
           </Link>
         </div>
+        <div className="panel">
+          <h2>Sales reports</h2>
+          <p className="muted" style={{ marginBottom: "0.8rem" }}>
+            Daily and monthly collected sales, by channel, with top items.
+          </p>
+          <Link className="btn" to="/reports">
+            Open reports
+          </Link>
+        </div>
       </div>
     </div>
   );
