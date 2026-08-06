@@ -154,10 +154,11 @@ function ProfileMenu({
                 <NavLink to="/orders" role="menuitem">
                   {t("nav.orders")}
                 </NavLink>
-              ) : null}
-              <NavLink to="/bookings" role="menuitem">
-                {t("nav.bookings")}
-              </NavLink>
+              ) : (
+                <NavLink to="/bookings" role="menuitem">
+                  {t("nav.bookings")}
+                </NavLink>
+              )}
               <NavLink to="/services" role="menuitem">
                 {catalogLabel}
               </NavLink>

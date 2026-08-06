@@ -448,14 +448,18 @@ class SendMessageIn(BaseModel):
 
 
 class DashboardOut(BaseModel):
-    bookings_total: int
-    bookings_confirmed: int
-    bookings_today: int
-    open_conversations: int
-    services_active: int
-    customers_total: int
+    bookings_total: int = 0
+    bookings_confirmed: int = 0
+    bookings_today: int = 0
+    orders_total: int = 0
+    orders_open: int = 0
+    orders_today: int = 0
+    open_conversations: int = 0
+    services_active: int = 0
+    customers_total: int = 0
     role: str
     is_platform_admin: bool = False
+    industry: str | None = None
 
 
 class SalesPeriodRow(BaseModel):

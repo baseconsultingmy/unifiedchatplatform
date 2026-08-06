@@ -6,10 +6,28 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import Booking, BookingStatus, Conversation, Customer, Service, Tenant, User, UserRole
+from app.models import (
+    Booking,
+    BookingStatus,
+    Conversation,
+    Customer,
+    Order,
+    OrderStatus,
+    Service,
+    Tenant,
+    User,
+    UserRole,
+)
 from app.schemas import DashboardOut, PlatformDashboardOut
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+OPEN_ORDER_STATUSES = (
+    OrderStatus.new.value,
+    OrderStatus.accepted.value,
+    OrderStatus.preparing.value,
+    OrderStatus.ready.value,
+)
 
 
 @router.get("", response_model=DashboardOut | PlatformDashboardOut)
@@ -37,6 +55,7 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
             customers_total=db.query(func.count(Customer.id)).scalar() or 0,
         )
 
+    tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
     tenant_id = user.tenant_id
     today = datetime.now(timezone.utc).date()
     return DashboardOut(
@@ -53,6 +72,20 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         bookings_today=(
             db.query(func.count(Booking.id))
             .filter(Booking.tenant_id == tenant_id, func.date(Booking.starts_at) == today)
+            .scalar()
+            or 0
+        ),
+        orders_total=db.query(func.count(Order.id)).filter(Order.tenant_id == tenant_id).scalar()
+        or 0,
+        orders_open=(
+            db.query(func.count(Order.id))
+            .filter(Order.tenant_id == tenant_id, Order.status.in_(OPEN_ORDER_STATUSES))
+            .scalar()
+            or 0
+        ),
+        orders_today=(
+            db.query(func.count(Order.id))
+            .filter(Order.tenant_id == tenant_id, func.date(Order.created_at) == today)
             .scalar()
             or 0
         ),
@@ -73,4 +106,5 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         ),
         role=user.role,
         is_platform_admin=False,
+        industry=tenant.industry if tenant else None,
     )

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { useT } from "../i18n";
+import { industryProfile } from "../industry";
 
 export default function DashboardPage() {
   const t = useT();
@@ -10,6 +11,9 @@ export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
   const isPlatformAdmin = user?.role === "platform_admin" && !user?.impersonating;
+  const profile = industryProfile(user?.tenant?.industry || data?.industry);
+  const isFnb = profile.key === "fnb";
+  const usesBookings = profile.key === "health_beauty" || profile.key === "general";
 
   useEffect(() => {
     if (!token) return;
@@ -57,20 +61,36 @@ export default function DashboardPage() {
     );
   }
 
-  const cards = [
-    [t("overview.bookings"), data.bookings_total],
-    [t("overview.confirmed"), data.bookings_confirmed],
-    [t("overview.today"), data.bookings_today],
-    [t("overview.openChats"), data.open_conversations],
-    [t("overview.services"), data.services_active],
-    [t("overview.customers"), data.customers_total],
-  ];
+  const cards = isFnb
+    ? [
+        [t("overview.orders"), data.orders_total],
+        [t("overview.openOrders"), data.orders_open],
+        [t("overview.today"), data.orders_today],
+        [t("overview.openChats"), data.open_conversations],
+        [t("overview.menuItems"), data.services_active],
+        [t("overview.customers"), data.customers_total],
+      ]
+    : usesBookings
+      ? [
+          [t("overview.bookings"), data.bookings_total],
+          [t("overview.confirmed"), data.bookings_confirmed],
+          [t("overview.today"), data.bookings_today],
+          [t("overview.openChats"), data.open_conversations],
+          [t("overview.services"), data.services_active],
+          [t("overview.customers"), data.customers_total],
+        ]
+      : [
+          [t("overview.openChats"), data.open_conversations],
+          [t("overview.products"), data.services_active],
+          [t("overview.customers"), data.customers_total],
+          [t("overview.today"), data.orders_today],
+        ];
 
   return (
     <div className="grid page-scroll">
       <div>
         <h1>{t("overview.vendorTitle")}</h1>
-        <p>{t("overview.vendorHint")}</p>
+        <p>{isFnb ? t("overview.vendorHintFnb") : t("overview.vendorHint")}</p>
       </div>
       <div className="grid stats">
         {cards.map(([label, value]) => (
@@ -81,19 +101,31 @@ export default function DashboardPage() {
         ))}
       </div>
       <div className="grid split-2">
-        <div className="panel">
-          <h2>{t("overview.bookingsCalendar")}</h2>
-          <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            {t("overview.bookingsCalendarHint")}
-          </p>
-          <Link className="btn" to="/bookings">
-            {t("overview.openBookings")}
-          </Link>
-        </div>
+        {isFnb ? (
+          <div className="panel">
+            <h2>{t("overview.ordersQueue")}</h2>
+            <p className="muted" style={{ marginBottom: "0.8rem" }}>
+              {t("overview.ordersQueueHint")}
+            </p>
+            <Link className="btn" to="/orders">
+              {t("overview.openOrders")}
+            </Link>
+          </div>
+        ) : usesBookings ? (
+          <div className="panel">
+            <h2>{t("overview.bookingsCalendar")}</h2>
+            <p className="muted" style={{ marginBottom: "0.8rem" }}>
+              {t("overview.bookingsCalendarHint")}
+            </p>
+            <Link className="btn" to="/bookings">
+              {t("overview.openBookings")}
+            </Link>
+          </div>
+        ) : null}
         <div className="panel">
           <h2>{t("overview.walkInPos")}</h2>
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            {t("overview.walkInPosHint")}
+            {isFnb ? t("overview.walkInPosHintFnb") : t("overview.walkInPosHint")}
           </p>
           <Link className="btn btn-signal" to="/pos">
             {t("overview.openPos")}
@@ -102,7 +134,7 @@ export default function DashboardPage() {
         <div className="panel">
           <h2>{t("overview.salesReports")}</h2>
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
-            {t("overview.salesReportsHint")}
+            {isFnb ? t("overview.salesReportsHintFnb") : t("overview.salesReportsHint")}
           </p>
           <Link className="btn" to="/reports">
             {t("overview.openReports")}
