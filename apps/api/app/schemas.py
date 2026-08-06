@@ -334,7 +334,7 @@ class WhatsAppSetupOut(BaseModel):
 
 class CustomerIn(BaseModel):
     name: str | None = None
-    phone: str = Field(min_length=6, max_length=32)
+    phone: str = Field(min_length=6, max_length=64)
     email: str | None = None
     notes: str | None = None
 
@@ -348,7 +348,7 @@ class CustomerOut(CustomerIn):
 
 class CustomerUpdateIn(BaseModel):
     name: str | None = None
-    phone: str | None = Field(default=None, min_length=6, max_length=32)
+    phone: str | None = Field(default=None, min_length=6, max_length=64)
     email: str | None = None
     notes: str | None = None
 
