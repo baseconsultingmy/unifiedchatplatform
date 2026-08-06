@@ -228,6 +228,22 @@ def ensure_schema() -> None:
             ELSE 'MYR'
           END
         """,
+        # Fix country/timezone mismatches left over from MY-default provisioning.
+        """
+        UPDATE tenants SET timezone = 'Asia/Bangkok'
+        WHERE UPPER(COALESCE(country, 'MY')) = 'TH'
+          AND timezone = 'Asia/Kuala_Lumpur'
+        """,
+        """
+        UPDATE tenants SET timezone = 'Asia/Singapore'
+        WHERE UPPER(COALESCE(country, 'MY')) = 'SG'
+          AND timezone = 'Asia/Kuala_Lumpur'
+        """,
+        """
+        UPDATE tenants SET timezone = 'Asia/Jakarta'
+        WHERE UPPER(COALESCE(country, 'MY')) = 'ID'
+          AND timezone IN ('Asia/Kuala_Lumpur', 'Asia/Singapore')
+        """,
     ]
     with engine.begin() as conn:
         for stmt in statements:
