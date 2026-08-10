@@ -4445,7 +4445,49 @@ a.btn {
   }
 }
 
+.getting-started-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.getting-started-step {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line, rgba(15, 39, 68, 0.12));
+}
+
+.getting-started-step:first-child {
+  border-top: 0;
+  padding-top: 0.25rem;
+}
+
+.getting-started-step h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.getting-started-step p {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.getting-started-step .btn {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 @media (max-width: 720px) {
+  .getting-started-step {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .reports-subtitle {
     -webkit-line-clamp: 2;
   }

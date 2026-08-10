@@ -49,4 +49,5 @@ On the droplet (`/opt/baseapp/deploy`):
 docker compose --env-file .env up -d --build
 ```
 
-See `docs/SERVER.md` and `docs/WHATSAPP.md`.
+See `docs/SERVER.md`, `docs/WHATSAPP.md`, and beta shop setup in `docs/BETA_ONBOARDING.md`
+(also in-app at **Getting started** → `/getting-started`).

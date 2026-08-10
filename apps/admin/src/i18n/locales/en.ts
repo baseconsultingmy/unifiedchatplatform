@@ -48,6 +48,7 @@ export const en: Dict = {
     edge: "Edge / DNS",
     customers: "Customers",
     settings: "Settings",
+    gettingStarted: "Getting started",
     account: "Account",
     menu: "Menu",
     services: "Services",

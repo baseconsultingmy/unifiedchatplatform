@@ -47,6 +47,7 @@ export const zh: Dict = {
     edge: "Edge / DNS",
     customers: "客户",
     settings: "设置",
+    gettingStarted: "快速入门",
     account: "账户",
     menu: "菜单",
     services: "服务",

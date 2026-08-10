@@ -47,6 +47,7 @@ export const id: Dict = {
     edge: "Edge / DNS",
     customers: "Pelanggan",
     settings: "Pengaturan",
+    gettingStarted: "Mulai di sini",
     account: "Akun",
     menu: "Menu",
     services: "Layanan",
