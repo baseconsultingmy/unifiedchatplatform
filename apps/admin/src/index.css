@@ -95,10 +95,6 @@ p {
   max-width: 100%;
 }
 
-.app-topbar-brand .base-amber-pill {
-  max-width: min(28vw, 12rem);
-}
-
 .app-topbar-brand .brand-meta {
   display: grid;
   gap: 0.1rem;
@@ -929,10 +925,6 @@ p {
 .login-primary-logo .base-app-brand {
   /* Optical balance: mark height ≈ wordmark+pill stack */
   transform: translateY(0.1rem);
-}
-
-.login-primary-logo .base-app-brand-copy {
-  align-items: center;
 }
 
 .login-primary-logo .base-amber-pill {

@@ -40,19 +40,25 @@
   grid-column: 2;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: center;
   gap: 0.35rem;
+  width: max-content;
   min-width: 0;
+}
+
+.base-app-brand-copy .base-wordmark {
+  width: max-content;
 }
 
 .base-amber-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  max-width: 100%;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 1.25rem;
-  padding: 0.22rem 0.55rem;
+  padding: 0.22rem 0.35rem;
   border-radius: 0.4rem;
   background: var(--base-amber);
   font-family: var(--font-brand);
@@ -79,9 +85,10 @@
 }
 
 .base-app-brand-sm .base-amber-pill {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   min-height: 1.15rem;
-  padding: 0.18rem 0.45rem;
+  padding: 0.18rem 0.28rem;
+  letter-spacing: 0.04em;
 }
 
 .base-app-brand-sm .base-app-brand-copy {
@@ -97,9 +104,9 @@
 }
 
 .base-app-brand-md .base-amber-pill {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   min-height: 1.35rem;
-  padding: 0.25rem 0.6rem;
+  padding: 0.25rem 0.35rem;
 }
 
 .base-app-brand-lg {
@@ -116,10 +123,10 @@
 }
 
 .base-app-brand-lg .base-amber-pill {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   min-height: 1.45rem;
-  padding: 0.3rem 0.7rem;
-  letter-spacing: 0.08em;
+  padding: 0.3rem 0.4rem;
+  letter-spacing: 0.06em;
 }
 
 .base-app-brand-lg .base-app-brand-copy {
