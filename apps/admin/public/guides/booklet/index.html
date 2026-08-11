@@ -2,427 +2,466 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>BaseApp Shop Onboarding Booklet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BaseApp · Quick setup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --navy: #0f2744;
+      --navy-deep: #0a1a2e;
       --grey: #475569;
       --amber: #e5a100;
-      --line: #d7dee8;
-      --paper: #f7f9fc;
+      --paper: #eef2f7;
+      --panel: #ffffff;
+      --line: rgba(15, 39, 68, 0.12);
+      --shadow: 0 18px 40px rgba(15, 39, 68, 0.1);
+      --font-brand: "Sora", sans-serif;
+      --font-ui: "Manrope", sans-serif;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
-    @page { size: A4; margin: 14mm 12mm; }
     * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       margin: 0;
+      font-family: var(--font-ui);
       color: var(--navy);
-      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
-      font-size: 11pt;
-      line-height: 1.45;
-      background: #fff;
+      background:
+        radial-gradient(900px 420px at 10% -10%, rgba(229, 161, 0, 0.12), transparent 50%),
+        linear-gradient(180deg, #f5f7fb 0%, var(--paper) 100%);
+      line-height: 1.4;
     }
-    h1, h2, h3 { font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: -0.02em; }
-    h1 { font-size: 26pt; margin: 0 0 0.35em; }
-    h2 { font-size: 16pt; margin: 0 0 0.45em; color: var(--navy); }
-    h3 { font-size: 12.5pt; margin: 1em 0 0.35em; }
-    p { margin: 0.4em 0; color: var(--navy); }
-    .muted { color: var(--grey); }
-    a { color: var(--navy); }
-    table { width: 100%; border-collapse: collapse; margin: 0.7em 0 1em; font-size: 10pt; }
-    th, td { border: 1px solid var(--line); padding: 0.45em 0.55em; text-align: left; vertical-align: top; }
-    th { background: var(--paper); font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif; }
-    ol, ul { margin: 0.4em 0 0.8em; padding-left: 1.25em; }
-    li { margin: 0.25em 0; }
-    code, .mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 0.88em;
-      background: var(--paper);
-      padding: 0.08em 0.28em;
+    a { color: inherit; }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
     }
-    .page { page-break-after: always; padding: 0; }
-    .page:last-child { page-break-after: auto; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .brand {
+      font-family: var(--font-brand);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      font-size: 1.05rem;
+    }
+    .brand span { color: var(--amber); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.7rem 1.05rem;
+      font-family: var(--font-ui);
+      font-weight: 700;
+      font-size: 0.92rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s var(--ease), background 0.2s var(--ease);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-amber {
+      background: var(--amber);
+      color: var(--navy-deep);
+    }
+    .btn-ghost {
+      background: rgba(15, 39, 68, 0.08);
+      color: var(--navy);
+    }
+
     .hero {
-      min-height: 250mm;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 0;
+      overflow: hidden;
+      border-radius: 22px;
+      background: linear-gradient(145deg, var(--navy-deep), var(--navy) 55%, #1a3d63);
+      color: #fff;
+      box-shadow: var(--shadow);
+      min-height: 280px;
+      margin-bottom: 1.25rem;
+      animation: rise 0.55s var(--ease) both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: none; }
+    }
+    .hero-copy {
+      padding: 1.75rem 1.5rem;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
-      background: linear-gradient(165deg, #0f2744 0%, #1a3a5c 55%, #243f5f 100%);
-      color: #fff;
-      margin: -14mm -12mm;
-      padding: 18mm 14mm 12mm;
+      justify-content: center;
+      gap: 0.65rem;
     }
-    .hero .eyebrow {
-      font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+    .eyebrow {
+      margin: 0;
       text-transform: uppercase;
       letter-spacing: 0.14em;
-      font-size: 9pt;
-      color: #d7dee8;
+      font-size: 0.72rem;
+      color: rgba(241, 244, 248, 0.7);
     }
-    .hero h1 { color: #fff; font-size: 34pt; max-width: 12em; }
-    .hero .amber { color: var(--amber); }
-    .hero .lede { font-size: 13pt; max-width: 28em; color: #e8eef5; }
-    .hero-visual {
-      width: 100%;
-      height: 118mm;
-      object-fit: cover;
-      border-radius: 0;
-      margin-top: 1.2em;
+    .hero h1 {
+      margin: 0;
+      font-family: var(--font-brand);
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
     }
-    .hero-foot {
-      display: flex;
-      justify-content: space-between;
-      gap: 1em;
-      font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
-      font-size: 9.5pt;
-      color: #c9d3e0;
-      margin-top: 1em;
-    }
-    .chapter-kicker {
-      font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
-      font-size: 9pt;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
+    .hero h1 em {
+      font-style: normal;
       color: var(--amber);
-      margin: 0 0 0.35em;
     }
-    .shot {
+    .hero p {
+      margin: 0;
+      color: rgba(241, 244, 248, 0.86);
+      max-width: 22rem;
+      font-size: 1rem;
+    }
+    .hero-visual {
+      position: relative;
+      min-height: 240px;
+    }
+    .hero-visual img {
       width: 100%;
-      max-height: 92mm;
+      height: 100%;
       object-fit: cover;
-      margin: 0.7em 0 0.9em;
+      display: block;
+      opacity: 0.95;
+      mask-image: linear-gradient(90deg, transparent, #000 20%);
+    }
+
+    .rail {
+      display: flex;
+      gap: 0.45rem;
+      overflow-x: auto;
+      padding-bottom: 0.35rem;
+      margin-bottom: 1rem;
+      scrollbar-width: thin;
+    }
+    .rail a {
+      flex: 0 0 auto;
+      text-decoration: none;
+      border-radius: 999px;
+      padding: 0.55rem 0.85rem;
+      background: rgba(255, 255, 255, 0.8);
       border: 1px solid var(--line);
-      background: var(--paper);
+      font-weight: 700;
+      font-size: 0.84rem;
+      color: var(--navy);
     }
-    .callout {
-      border-left: 3px solid var(--amber);
-      background: var(--paper);
-      padding: 0.65em 0.85em;
-      margin: 0.8em 0 1em;
+    .rail a:hover,
+    .rail a.is-active {
+      background: rgba(229, 161, 0, 0.16);
+      border-color: rgba(229, 161, 0, 0.5);
     }
-    .steps-grid {
+
+    .lesson {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+      scroll-margin-top: 1rem;
+      animation: rise 0.5s var(--ease) both;
+    }
+    .lesson:nth-child(2) { animation-delay: 0.05s; }
+    .lesson:nth-child(3) { animation-delay: 0.1s; }
+    .lesson:nth-child(4) { animation-delay: 0.15s; }
+    .lesson:nth-child(5) { animation-delay: 0.2s; }
+
+    .lesson-media {
+      position: relative;
+      background: var(--navy);
+      min-height: 260px;
+    }
+    .lesson-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .lesson-num {
+      position: absolute;
+      top: 0.85rem;
+      left: 0.85rem;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--amber);
+      color: var(--navy-deep);
+      font-family: var(--font-brand);
+      font-weight: 800;
+      font-size: 1rem;
+    }
+
+    .lesson-body {
+      padding: 1.25rem 1.2rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .lesson-body h2 {
+      margin: 0;
+      font-family: var(--font-brand);
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+    }
+    .lesson-body .one-liner {
+      margin: 0;
+      color: var(--grey);
+      font-size: 0.95rem;
+    }
+    .beats {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.45rem;
+    }
+    .beats li {
+      display: grid;
+      grid-template-columns: 1.6rem 1fr;
+      gap: 0.55rem;
+      align-items: start;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .beats b {
+      width: 1.6rem;
+      height: 1.6rem;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: rgba(15, 39, 68, 0.08);
+      color: var(--navy);
+      font-size: 0.78rem;
+    }
+    .code-chip {
+      display: inline-block;
+      margin-top: 0.15rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.78rem;
+      background: rgba(15, 39, 68, 0.06);
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      word-break: break-all;
+    }
+    .lesson-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: auto;
+      padding-top: 0.35rem;
+    }
+
+    .done {
+      margin-top: 1.25rem;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: var(--shadow);
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.65em;
-      margin: 0.8em 0 1em;
     }
-    .step-card {
-      border: 1px solid var(--line);
-      padding: 0.65em 0.75em;
-      background: #fff;
-    }
-    .step-card strong {
+    .done img {
+      width: 100%;
+      height: 100%;
+      min-height: 220px;
+      object-fit: cover;
       display: block;
-      font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
-      margin-bottom: 0.2em;
     }
-    .checklist li { margin: 0.4em 0; }
-    .footer-note {
-      margin-top: 1.4em;
-      padding-top: 0.6em;
-      border-top: 1px solid var(--line);
-      font-size: 9.5pt;
+    .done-copy {
+      padding: 1.35rem 1.25rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.65rem;
+    }
+    .done-copy h2 {
+      margin: 0;
+      font-family: var(--font-brand);
+      font-size: 1.4rem;
+    }
+    .done-copy p {
+      margin: 0;
       color: var(--grey);
-      font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .foot {
+      margin-top: 1.25rem;
+      text-align: center;
+      color: var(--grey);
+      font-size: 0.85rem;
+    }
+
+    @media (max-width: 820px) {
+      .hero,
+      .lesson,
+      .done {
+        grid-template-columns: 1fr;
+      }
+      .hero-visual {
+        min-height: 160px;
+        max-height: 180px;
+      }
+      .hero-visual img {
+        mask-image: linear-gradient(#000 60%, transparent);
+      }
+      .lesson-media {
+        min-height: 200px;
+        max-height: 230px;
+      }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .topbar, .rail, .lesson-actions, .btn { display: none !important; }
+      .lesson, .hero, .done { break-inside: avoid; box-shadow: none; }
     }
   </style>
 </head>
 <body>
-
-  <!-- COVER -->
-  <section class="page">
-    <div class="hero">
-      <div>
-        <div class="eyebrow">Base Consulting · BaseApp</div>
-        <h1>Shop Onboarding <span class="amber">Booklet</span></h1>
-        <p class="lede">
-          A complete setup guide for beta merchants — from first login to catalog,
-          LINE, WhatsApp, Grab, and your first sale.
-        </p>
-        <img class="hero-visual" src="booklet-cover.png" alt="BaseApp onboarding cover" />
-      </div>
-      <div class="hero-foot">
-        <span>admin.baseapp.asia</span>
-        <span>Beta · 2026</span>
-        <span>Keep this with your tablet</span>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="brand">BaseApp <span>Quick setup</span></div>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+        <a class="btn btn-ghost" href="/guides">Back to Resources</a>
+        <a class="btn btn-amber" href="/guides/BaseApp-Shop-Onboarding-Booklet.pdf" download>PDF</a>
       </div>
     </div>
-  </section>
 
-  <!-- HOW TO USE -->
-  <section class="page">
-    <div class="chapter-kicker">Start here</div>
-    <h2>How to use this booklet</h2>
-    <p>
-      Work through the chapters in order on a tablet or laptop in landscape.
-      Open the admin at <strong>https://admin.baseapp.asia</strong>. You can also open
-      <strong>Resources</strong> in the admin to download this PDF and follow the same steps on screen.
-    </p>
-    <img class="shot" src="booklet-checklist.png" alt="Setup journey checklist" />
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">4 steps · ~15 minutes</p>
+        <h1>Set up your shop <em>visually</em></h1>
+        <p>Short steps. Big pictures. Open the real screen when you’re ready.</p>
+        <div class="lesson-actions">
+          <a class="btn btn-amber" href="#catalog">Start with catalog</a>
+          <a class="btn btn-ghost" href="#pos" style="background:rgba(255,255,255,0.12);color:#fff">Jump to POS</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <img src="guide-visual-hero.png" alt="BaseApp guided setup" />
+      </div>
+    </header>
 
-    <h3>What you need from BaseApp first</h3>
-    <ol>
-      <li>Login <strong>email</strong> and temporary <strong>password</strong></li>
-      <li>Shop type: Health &amp; Beauty, Food &amp; Beverage, Retail, or General</li>
-      <li>Country (sets currency: MY→MYR · TH→THB · SG→SGD · ID→IDR)</li>
-    </ol>
+    <nav class="rail" aria-label="Steps">
+      <a href="#catalog">1 · Catalog</a>
+      <a href="#line">2 · LINE</a>
+      <a href="#pos">3 · First sale</a>
+      <a href="#done">4 · Go live</a>
+    </nav>
 
-    <div class="callout">
-      <strong>Wrong country or category?</strong>
-      <span class="muted"> Ask BaseApp Master Admin to open Vendors → Edit before you add prices.</span>
-    </div>
+    <section class="lesson" id="catalog">
+      <div class="lesson-media">
+        <span class="lesson-num">1</span>
+        <img src="booklet-diagram-catalog.png" alt="Add name, category, price, then Save" />
+      </div>
+      <div class="lesson-body">
+        <h2>Add 5–15 items</h2>
+        <p class="one-liner">Profile → Services / Menu / Products</p>
+        <ul class="beats">
+          <li><b>1</b><span>Name</span></li>
+          <li><b>2</b><span>Category</span></li>
+          <li><b>3</b><span>Price (your currency)</span></li>
+          <li><b>4</b><span>Save — repeat</span></li>
+        </ul>
+        <div class="lesson-actions">
+          <a class="btn btn-amber" href="/services">Open catalog</a>
+        </div>
+      </div>
+    </section>
 
-    <h3>Setup map</h3>
-    <table>
-      <thead>
-        <tr><th>#</th><th>Step</th><th>Where in admin</th><th>Who</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>1</td><td>Sign in</td><td>Login</td><td>Shop owner</td></tr>
-        <tr><td>2</td><td>Confirm shop name / currency</td><td>Settings</td><td>Shop owner</td></tr>
-        <tr><td>3</td><td>Add catalog</td><td>Services / Menu / Products</td><td>Shop owner</td></tr>
-        <tr><td>4</td><td>Rooms &amp; staff (H&amp;B)</td><td>Rooms &amp; staff</td><td>Shop owner</td></tr>
-        <tr><td>5</td><td>Connect LINE</td><td>Settings → LINE</td><td>Shop owner</td></tr>
-        <tr><td>6</td><td>Connect WhatsApp (optional)</td><td>Settings → WhatsApp</td><td>Shop + BaseApp Flow publish</td></tr>
-        <tr><td>7</td><td>Grab Food (F&amp;B only)</td><td>Settings → Grab</td><td>Shop owner</td></tr>
-        <tr><td>8</td><td>Practice POS + booking</td><td>POS / Bookings / Orders</td><td>Shop owner</td></tr>
-      </tbody>
-    </table>
-    <p class="footer-note">Language switcher is top-right (EN / MS / ID / TH / ZH).</p>
-  </section>
+    <section class="lesson" id="line">
+      <div class="lesson-media">
+        <span class="lesson-num">2</span>
+        <img src="booklet-diagram-line.png" alt="Connect LINE channel to BaseApp webhook" />
+      </div>
+      <div class="lesson-body">
+        <h2>Connect LINE</h2>
+        <p class="one-liner">Settings → LINE Messaging</p>
+        <ul class="beats">
+          <li><b>1</b><span>Copy Channel ID · secret · token</span></li>
+          <li><b>2</b><span>Paste webhook, enable it</span></li>
+          <li><b>3</b><span>Save in BaseApp</span></li>
+          <li><b>4</b><span>Message OA: <strong>menu</strong> or <strong>book</strong></span></li>
+        </ul>
+        <div class="code-chip">https://api.baseapp.asia/v1/webhooks/line</div>
+        <div class="lesson-actions">
+          <a class="btn btn-amber" href="/settings">Open Settings</a>
+        </div>
+      </div>
+    </section>
 
-  <!-- CHAPTER 1 LOGIN -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 1</div>
-    <h2>Sign in to your shop</h2>
-    <img class="shot" src="booklet-step-login.png" alt="Sign in screen" />
-    <ol>
-      <li>Open <span class="mono">https://admin.baseapp.asia/login</span></li>
-      <li>Enter the email BaseApp sent you</li>
-      <li>Enter your temporary password</li>
-      <li>Tap <strong>Sign in</strong></li>
-      <li>You land on <strong>POS</strong> — that is normal</li>
-    </ol>
-    <div class="callout">
-      <strong>Tip:</strong> Use landscape on a tablet. Pull down on most pages to refresh data.
-    </div>
-    <h3>Quick tour after login</h3>
-    <div class="steps-grid">
-      <div class="step-card"><strong>POS</strong> Walk-in sales at the counter</div>
-      <div class="step-card"><strong>Chat</strong> LINE / WhatsApp inbox</div>
-      <div class="step-card"><strong>Reports</strong> Sales summary</div>
-      <div class="step-card"><strong>Bookings / Orders</strong> Appointments (H&amp;B) or Grab queue (F&amp;B)</div>
-    </div>
-    <p class="muted">Profile menu (avatar) opens Overview, catalog, Rooms &amp; staff, Settings, Account, and Resources.</p>
-  </section>
+    <section class="lesson" id="pos">
+      <div class="lesson-media">
+        <span class="lesson-num">3</span>
+        <img src="booklet-diagram-pos.png" alt="Tap item, review cart, take cash" />
+      </div>
+      <div class="lesson-body">
+        <h2>Practice one sale</h2>
+        <p class="one-liner">Top tab → POS</p>
+        <ul class="beats">
+          <li><b>1</b><span>Tap an item</span></li>
+          <li><b>2</b><span>Check the ticket</span></li>
+          <li><b>3</b><span>Charge → Cash or QR</span></li>
+        </ul>
+        <div class="lesson-actions">
+          <a class="btn btn-amber" href="/pos">Open POS</a>
+          <a class="btn btn-ghost" href="/bookings">Bookings</a>
+        </div>
+      </div>
+    </section>
 
-  <!-- CHAPTER 2 SHOP -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 2</div>
-    <h2>Confirm shop details</h2>
-    <ol>
-      <li>Open the profile avatar → <strong>Settings</strong></li>
-      <li>Check <strong>Shop name</strong> — edit if needed</li>
-      <li>Confirm the line under the name: <strong>Country · currency</strong> (example: TH · THB)</li>
-      <li>Save at the bottom of Settings when you change the name</li>
-    </ol>
-    <div class="callout">
-      Country and currency are controlled by BaseApp. Merchants cannot change country themselves.
-    </div>
-    <h3>Industry labels you will see</h3>
-    <table>
-      <thead><tr><th>Shop type</th><th>Catalog name</th><th>Primary ops</th></tr></thead>
-      <tbody>
-        <tr><td>Health &amp; Beauty</td><td>Services</td><td>Bookings</td></tr>
-        <tr><td>Food &amp; Beverage</td><td>Menu</td><td>Orders</td></tr>
-        <tr><td>Retail</td><td>Products</td><td>POS + Customers</td></tr>
-        <tr><td>General</td><td>Catalog</td><td>Bookings</td></tr>
-      </tbody>
-    </table>
-  </section>
+    <section class="done" id="done">
+      <img src="booklet-diagram-checklist.png" alt="Go-live checklist path" />
+      <div class="done-copy">
+        <h2>You’re ready</h2>
+        <p>Catalog on · LINE tested · one practice sale done.</p>
+        <ul class="beats">
+          <li><b>✓</b><span>Items listed</span></li>
+          <li><b>✓</b><span>LINE replies to menu/book</span></li>
+          <li><b>✓</b><span>POS cash sale works</span></li>
+        </ul>
+        <div class="lesson-actions">
+          <a class="btn btn-amber" href="/pos">Go to POS</a>
+          <a class="btn btn-ghost" href="/guides">Resources academy</a>
+        </div>
+      </div>
+    </section>
 
-  <!-- CHAPTER 3 CATALOG -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 3</div>
-    <h2>Upload your catalog</h2>
-    <img class="shot" src="booklet-step-catalog.png" alt="Catalog / services setup" />
-    <p>Profile → <strong>Services</strong>, <strong>Menu</strong>, or <strong>Products</strong> (depends on shop type).</p>
+    <p class="foot">BaseApp · admin.baseapp.asia · Need help? Send a screenshot to BaseApp.</p>
+  </div>
 
-    <h3>Health &amp; Beauty</h3>
-    <ol>
-      <li>Tap into the add form</li>
-      <li>Name — e.g. <em>Small line tattoo</em></li>
-      <li>Category — e.g. Tattoo, Treatments, Add-ons, Packages</li>
-      <li>Duration in minutes</li>
-      <li>Price in your shop currency</li>
-      <li>Deposit (optional — use 0 if none)</li>
-      <li>Save, then repeat</li>
-    </ol>
-
-    <h3>Food &amp; Beverage</h3>
-    <ol>
-      <li>Add each menu item: name, category (Food / Drinks / …), price</li>
-      <li>Optional: open <strong>Customisations</strong> for modifiers (ice, size, toppings)</li>
-      <li>Publish to Grab later from Settings after Grab is connected</li>
-    </ol>
-
-    <h3>Retail</h3>
-    <ol>
-      <li>Add products: name, category, price</li>
-      <li>Sell them from POS</li>
-    </ol>
-
-    <div class="callout">
-      <strong>Beta tip:</strong> Start with 5–15 items. Enough to train staff without delaying go-live.
-    </div>
-  </section>
-
-  <!-- CHAPTER 4 RESOURCES H&B -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 4 · Health &amp; Beauty</div>
-    <h2>Rooms &amp; staff</h2>
-    <ol>
-      <li>Profile → <strong>Rooms &amp; staff</strong></li>
-      <li>Add at least one <strong>Artist / therapist</strong> (your name is fine)</li>
-      <li>Add a <strong>Room / bay</strong> if you use stations</li>
-      <li>These appear when creating bookings and on the day board</li>
-    </ol>
-    <p class="muted">Skip this chapter for F&amp;B and Retail shops.</p>
-
-    <h3>Then create a practice booking</h3>
-    <img class="shot" src="booklet-step-bookings.png" alt="Bookings agenda" />
-    <ol>
-      <li>Open <strong>Bookings</strong> → <strong>New</strong></li>
-      <li>Customer name + phone</li>
-      <li>Pick service, artist, room, start time</li>
-      <li>Create booking</li>
-      <li>On the day: mark paid / complete from the booking detail</li>
-    </ol>
-  </section>
-
-  <!-- CHAPTER 5 LINE -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 5 · Recommended for Thailand</div>
-    <h2>Connect LINE Official Account</h2>
-    <img class="shot" src="booklet-step-line.png" alt="LINE connection" />
-
-    <h3>A. In LINE Developers</h3>
-    <ol>
-      <li>Open <span class="mono">https://developers.line.biz</span></li>
-      <li>Select your provider → Messaging API channel (or create one)</li>
-      <li>Copy <strong>Channel ID</strong>, <strong>Channel secret</strong>, and a long-lived <strong>Channel access token</strong></li>
-      <li>Webhook URL: <span class="mono">https://api.baseapp.asia/v1/webhooks/line</span></li>
-      <li>Enable the webhook</li>
-      <li>Turn off conflicting auto-replies if BaseApp should own the chat</li>
-    </ol>
-
-    <h3>B. In BaseApp Settings</h3>
-    <ol>
-      <li>Profile → <strong>Settings</strong> → <strong>LINE Messaging</strong></li>
-      <li>Paste Channel ID, secret, and access token</li>
-      <li>Optional: LIFF ID (booking also works by typing <strong>menu</strong> / <strong>book</strong>)</li>
-      <li>Tap <strong>Save LINE only</strong> (or save the full Settings form)</li>
-      <li>Confirm status shows token / secret on file</li>
-    </ol>
-
-    <h3>C. Smoke test</h3>
-    <ol>
-      <li>From a personal LINE account, add the shop OA</li>
-      <li>Send <strong>menu</strong> or <strong>book</strong></li>
-      <li>You should get a package / booking flow</li>
-      <li>Open BaseApp → <strong>Chat</strong> — the conversation appears</li>
-    </ol>
-    <div class="callout">
-      Nothing arrives? Recheck webhook Enabled, URL exact match, and that ID/secret/token are from the same channel.
-    </div>
-  </section>
-
-  <!-- CHAPTER 6 WA / GRAB -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 6 · Optional channels</div>
-    <h2>WhatsApp &amp; Grab Food</h2>
-
-    <h3>WhatsApp (optional)</h3>
-    <ol>
-      <li>Settings → WhatsApp / Meta</li>
-      <li>Copy Callback URL, Flows endpoint, Verify token into Meta Developer → WhatsApp → Configuration</li>
-      <li>Subscribe to <strong>messages</strong></li>
-      <li>Paste Display phone, Phone number ID, WABA ID, permanent access token into BaseApp</li>
-      <li>Save</li>
-      <li>Ask BaseApp to open your shop → Meta → <strong>Publish booking Flow</strong></li>
-    </ol>
-    <p class="muted">Webhook: <span class="mono">https://api.baseapp.asia/v1/webhooks/whatsapp</span></p>
-
-    <h3>Grab Food (F&amp;B only)</h3>
-    <ol>
-      <li>Finish your Menu in BaseApp first</li>
-      <li>Settings → Grab → <strong>Connect Grab</strong></li>
-      <li>Open the activation link and finish outlet linking</li>
-      <li>Paste Grab merchant ID if prompted</li>
-      <li><strong>Publish menu</strong></li>
-      <li>New orders appear under the <strong>Orders</strong> tab</li>
-    </ol>
-  </section>
-
-  <!-- CHAPTER 7 POS -->
-  <section class="page">
-    <div class="chapter-kicker">Chapter 7</div>
-    <h2>Your first walk-in sale</h2>
-    <img class="shot" src="booklet-step-pos.png" alt="POS counter" />
-    <ol>
-      <li>Open <strong>POS</strong></li>
-      <li>Tap catalog items into the ticket (adjust qty if needed)</li>
-      <li>Tap <strong>Confirm order</strong> / <strong>Charge</strong></li>
-      <li>Choose customer or continue as walk-in</li>
-      <li>Pay with <strong>Cash</strong> or <strong>QR</strong></li>
-      <li>Finish — optionally send a WhatsApp receipt if WA is connected</li>
-    </ol>
-    <div class="callout">
-      QR / pay links may be demo-style in beta unless BaseApp told you otherwise — still practice the full flow.
-    </div>
-
-    <h3>Day-to-day cheat sheet</h3>
-    <table>
-      <thead><tr><th>Job</th><th>Go to</th></tr></thead>
-      <tbody>
-        <tr><td>Sell at the counter</td><td>POS</td></tr>
-        <tr><td>Today’s appointments</td><td>Bookings</td></tr>
-        <tr><td>Reply to customers</td><td>Chat</td></tr>
-        <tr><td>Add prices / items</td><td>Profile → Services / Menu / Products</td></tr>
-        <tr><td>LINE / WhatsApp / Grab</td><td>Settings</td></tr>
-        <tr><td>Sales numbers</td><td>Reports</td></tr>
-        <tr><td>Download this booklet again</td><td>Resources</td></tr>
-      </tbody>
-    </table>
-  </section>
-
-  <!-- CHECKLIST -->
-  <section class="page">
-    <div class="chapter-kicker">Go-live</div>
-    <h2>First-week checklist</h2>
-    <ul class="checklist">
-      <li>☐ Signed in successfully</li>
-      <li>☐ Shop name looks right; currency matches country</li>
-      <li>☐ At least 5 catalog items added</li>
-      <li>☐ (H&amp;B) At least 1 artist (+ room if needed)</li>
-      <li>☐ LINE connected + <strong>menu</strong> / <strong>book</strong> test works</li>
-      <li>☐ One POS cash sale completed</li>
-      <li>☐ (H&amp;B) One manual booking created</li>
-      <li>☐ (Optional) WhatsApp saved + Flow published by BaseApp</li>
-      <li>☐ (F&amp;B) Grab connected + menu published</li>
-      <li>☐ Language set for staff who use the tablet</li>
-    </ul>
-
-    <h3>Need help?</h3>
-    <p>Reply to your BaseApp contact with a screenshot and what you tapped. Master Admin can also use <strong>View as</strong> to see your shop without your password.</p>
-
-    <div class="callout">
-      <strong>Master Admin note:</strong> Provision shops under Vendors → Create vendor (industry + country + owner login), then send this booklet from Resources or as a PDF attachment.
-    </div>
-
-    <p class="footer-note">
-      BaseApp · Shop Onboarding Booklet · admin.baseapp.asia · © Base Consulting
-    </p>
-  </section>
-
+  <script>
+    const links = [...document.querySelectorAll(".rail a")];
+    const sections = links.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const id = "#" + entry.target.id;
+          links.forEach((a) => a.classList.toggle("is-active", a.getAttribute("href") === id));
+        });
+      },
+      { rootMargin: "-35% 0px -55% 0px", threshold: 0.01 },
+    );
+    sections.forEach((s) => io.observe(s));
+  </script>
 </body>
 </html>
