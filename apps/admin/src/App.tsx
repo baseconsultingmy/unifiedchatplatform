@@ -32,6 +32,7 @@ import VendorGrabPage from "./pages/VendorGrabPage";
 import PlatformMetaPage from "./pages/PlatformMetaPage";
 import EdgePage from "./pages/EdgePage";
 import GettingStartedPage from "./pages/GettingStartedPage";
+import GuidesPage from "./pages/GuidesPage";
 import PullToRefresh from "./components/PullToRefresh";
 
 function Protected() {
@@ -173,6 +174,9 @@ function ProfileMenu({
               <NavLink to="/settings" role="menuitem">
                 {t("nav.settings")}
               </NavLink>
+              <NavLink to="/guides" role="menuitem">
+                {t("nav.guides")}
+              </NavLink>
               <NavLink to="/getting-started" role="menuitem">
                 {t("nav.gettingStarted")}
               </NavLink>
@@ -269,6 +273,9 @@ function Shell() {
                 {t("nav.customers")}
               </NavLink>
             ) : null}
+            <NavLink to="/guides" className="app-tab">
+              {t("nav.guides")}
+            </NavLink>
           </nav>
         )}
 
@@ -363,6 +370,7 @@ export default function App() {
               <Route path="services" element={<ServicesPage />} />
               <Route path="resources" element={<ResourcesPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="guides" element={<GuidesPage />} />
               <Route path="getting-started" element={<GettingStartedPage />} />
             </Route>
           </Route>

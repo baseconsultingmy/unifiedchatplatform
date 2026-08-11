@@ -47,6 +47,7 @@ export const ms: Dict = {
     edge: "Edge / DNS",
     customers: "Pelanggan",
     settings: "Tetapan",
+    guides: "Sumber",
     gettingStarted: "Mulakan",
     account: "Akaun",
     menu: "Menu",

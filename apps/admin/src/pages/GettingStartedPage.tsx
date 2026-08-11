@@ -133,8 +133,9 @@ export default function GettingStartedPage() {
         </ol>
 
         <p className="muted" style={{ marginTop: "1rem" }}>
-          Full written guide for your team: ask BaseApp for the beta onboarding doc, or see{" "}
-          <code>docs/BETA_ONBOARDING.md</code> in the project.
+          Full illustrated booklet: open{" "}
+          <Link to="/guides">Resources</Link> to download the PDF, or ask BaseApp for{" "}
+          <code>docs/BaseApp-Shop-Onboarding-Booklet.pdf</code>.
         </p>
       </section>
     </div>

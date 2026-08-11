@@ -47,6 +47,7 @@ export const th: Dict = {
     edge: "Edge / DNS",
     customers: "ลูกค้า",
     settings: "การตั้งค่า",
+    guides: "แหล่งข้อมูล",
     gettingStarted: "เริ่มต้นใช้งาน",
     account: "บัญชี",
     menu: "เมนู",

@@ -50,4 +50,5 @@ docker compose --env-file .env up -d --build
 ```
 
 See `docs/SERVER.md`, `docs/WHATSAPP.md`, and beta shop setup in `docs/BETA_ONBOARDING.md`
-(also in-app at **Getting started** → `/getting-started`).
+plus the illustrated booklet `docs/BaseApp-Shop-Onboarding-Booklet.pdf`
+(also in-app under **Resources** → `/guides`).

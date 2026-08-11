@@ -1,0 +1,48 @@
+{
+  "updated_at": "2026-08-11",
+  "items": [
+    {
+      "id": "onboarding-booklet",
+      "title": "Shop Onboarding Booklet",
+      "description": "Illustrated step-by-step guide: login, catalog, rooms & staff, LINE, WhatsApp, Grab, and first sale.",
+      "type": "pdf",
+      "href": "/guides/BaseApp-Shop-Onboarding-Booklet.pdf",
+      "preview": "/guides/booklet/booklet-cover.png",
+      "pages": "multi-page",
+      "audience": "all"
+    },
+    {
+      "id": "booklet-web",
+      "title": "Booklet (web view)",
+      "description": "Same booklet in the browser — useful on tablet without downloading.",
+      "type": "html",
+      "href": "/guides/booklet/index.html",
+      "preview": "/guides/booklet/booklet-checklist.png",
+      "audience": "all"
+    },
+    {
+      "id": "line-checklist",
+      "title": "LINE connect checklist",
+      "description": "Webhook URL, Channel ID / secret / token fields, and smoke-test commands (menu / book).",
+      "type": "anchor",
+      "href": "#line-setup",
+      "audience": "all"
+    },
+    {
+      "id": "whatsapp-notes",
+      "title": "WhatsApp setup notes",
+      "description": "Meta callback, Flows endpoint, verify token, and when to ask BaseApp to publish the booking Flow.",
+      "type": "anchor",
+      "href": "#whatsapp-setup",
+      "audience": "all"
+    },
+    {
+      "id": "grab-notes",
+      "title": "Grab Food notes",
+      "description": "Connect outlet, publish menu, and manage orders — F&B shops only.",
+      "type": "anchor",
+      "href": "#grab-setup",
+      "audience": "fnb"
+    }
+  ]
+}

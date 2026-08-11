@@ -1,5 +1,10 @@
 # BaseApp beta — shop onboarding guide
 
+> **Preferred for merchants:** open admin → top tab **Resources** (or profile → Resources) to
+> download the illustrated **Shop Onboarding Booklet** PDF, or open the web booklet.
+>
+> Files: `docs/BaseApp-Shop-Onboarding-Booklet.pdf` · `apps/admin/public/guides/`
+
 Welcome. This guide walks a new shop owner from first login to a working counter + chat channel.
 
 **Admin:** [https://admin.baseapp.asia](https://admin.baseapp.asia)  
