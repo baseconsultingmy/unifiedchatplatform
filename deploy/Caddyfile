@@ -2,8 +2,14 @@
 	email admin@baseapp.asia
 }
 
+# Marketing landings. Add nation hosts here after DNS A records exist
+# (my/sg/id/th/ph/vn.baseapp.asia) so ACME can issue certs.
+# Until then, preview regions with ?region=my on the apex.
 baseapp.asia, www.baseapp.asia {
-	respond "BaseApp Unified — gateway online. Admin: https://admin.baseapp.asia" 200
+	root * /srv/landing
+	encode gzip
+	try_files {path} /index.html
+	file_server
 }
 
 api.baseapp.asia {
@@ -15,5 +21,5 @@ admin.baseapp.asia {
 }
 
 :80 {
-	respond "BaseApp Unified — gateway online" 200
+	redir https://baseapp.asia{uri} permanent
 }

@@ -11,6 +11,8 @@ rsync -az --delete \
   --exclude .env \
   --exclude node_modules \
   --exclude dist \
-  ./apps ./deploy ./docs ./README.md ./.gitignore \
+  ./apps ./deploy ./docs ./brand ./README.md ./.gitignore \
   root@157.245.149.238:/opt/baseapp/
 ```
+
+Landing site lives in `deploy/landing/` (mounted into Caddy as `/srv/landing`).

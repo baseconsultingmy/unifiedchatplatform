@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" role="img" aria-label="BaseApp">
+  <title>BaseApp</title>
+  <!-- Product wordmark only (no mark). Full lockup: base-app-primary.png -->
+  <text x="0" y="46" font-family="Sora, Arial Black, Helvetica, sans-serif" font-size="40" font-weight="800" letter-spacing="0.04em" fill="#0F2744">BASE</text>
+  <text x="148" y="46" font-family="Sora, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#475569">App</text>
+</svg>

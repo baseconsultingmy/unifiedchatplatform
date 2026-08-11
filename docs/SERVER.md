@@ -28,14 +28,18 @@ In Exabytes DNS Manager for `baseapp.asia`, target A records:
 | `www` | CNAME → `baseapp.asia` | (via apex) | Live + HTTPS |
 | `api` | A | `157.245.149.238` | Live + HTTPS cert issued |
 | `admin` | A | `157.245.149.238` | Live + HTTPS cert issued |
+| `my` | A | `157.245.149.238` | Nation landing (MALAYSIA) — add in DNS |
+| `sg` / `id` / `th` / `ph` / `vn` | A | `157.245.149.238` | Optional nation landings |
 
 Smoke checks:
 
-- https://baseapp.asia
+- https://baseapp.asia → BaseApp + **ASIA**
+- https://my.baseapp.asia → BaseApp + **MALAYSIA** (after DNS)
 - https://www.baseapp.asia
 - https://api.baseapp.asia
 - https://admin.baseapp.asia
 
+Landing files: `deploy/landing/` (served by Caddy at `/srv/landing`).
 
 ## Deploy / reload edge proxy
 

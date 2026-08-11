@@ -47,7 +47,7 @@ export default function DashboardPage() {
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
             Create a vendor, share their owner login, and let them add services.
           </p>
-          <Link className="btn" to="/vendors">
+          <Link className="btn btn-signal" to="/vendors">
             Manage vendors
           </Link>
         </div>
@@ -93,7 +93,7 @@ export default function DashboardPage() {
           <p className="muted" style={{ marginBottom: "0.8rem" }}>
             Ring up a counter sale — cash or show a payment QR.
           </p>
-          <Link className="btn" to="/pos">
+          <Link className="btn btn-signal" to="/pos">
             Open POS
           </Link>
         </div>

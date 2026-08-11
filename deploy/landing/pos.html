@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>One POS — BaseApp</title>
+  <meta name="description" content="BaseApp Kiosk POS — counter sales, modifiers, and social commerce orders." />
+  <link rel="icon" href="assets/base-mark.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=ci-pill" />
+</head>
+<body class="viewport-page">
+  <div class="grain" aria-hidden="true"></div>
+  <div class="shell">
+    <nav class="nav" aria-label="Primary">
+            <a class="nav-brand" href="index.html" aria-label="BaseApp">
+        <img class="brand-mark" src="assets/base-mark-dark.png" alt="" width="120" height="64" />
+        <span class="brand-copy">
+          <span class="wordmark">
+            <span class="base">BASE</span><span class="app">App</span>
+          </span>
+          <span class="base-amber-pill" data-region-pill>ASIA</span>
+        </span>
+      </a>
+      <div class="nav-links">
+        <button type="button" class="nav-link" data-open="how">How it works</button>
+        <a class="nav-link" href="chat.html">Chat</a>
+        <a class="nav-link" href="pos.html" aria-current="page">POS</a>
+        <a class="btn btn-amber" href="https://admin.baseapp.asia">Sign in</a>
+      </div>
+    </nav>
+
+    <main class="function-stage">
+      <div class="function-copy">
+        <p class="kicker" style="color: rgba(255,255,255,0.5);">One POS</p>
+        <h1>Built for Malaysian stalls.</h1>
+        <p>Tap Nasi Lemak, Teh Tarik, Roti Canai. Add less sugar or less spicy. Take DuitNow at the counter — same order book as your chats.</p>
+        <ul class="function-list">
+          <li>Handheld-friendly menu &amp; modifiers</li>
+          <li>DuitNow QR, cash and card</li>
+          <li>Chat orders land on the same ticket</li>
+        </ul>
+        <div class="function-actions">
+          <a class="btn btn-amber" href="https://wa.me/60166131500?text=Hi%20BASE%20App%2C%20I%20want%20POS%20early%20access">Get early access</a>
+          <a class="btn btn-ghost" href="chat.html">See Chat</a>
+        </div>
+      </div>
+      <div class="function-media phone">
+        <img src="assets/mockup-base-kiosk-pos.png" alt="BASE Kiosk POS with Nasi Lemak and Teh Tarik" />
+      </div>
+    </main>
+
+    <footer class="footer-bar">
+      <a href="index.html">← Back to ONE</a>
+      <a href="https://wa.me/60166131500">016-613 1500</a>
+    </footer>
+  </div>
+
+  <div class="overlay" id="how" hidden>
+    <div class="overlay-panel" role="dialog" aria-modal="true" aria-labelledby="how-title">
+      <button type="button" class="overlay-close" data-close aria-label="Close">×</button>
+      <p class="kicker">How it works</p>
+      <h2 id="how-title">Customer chats or walks in. You see one order.</h2>
+      <ol class="how-list">
+        <li><strong>Reach out</strong> — WhatsApp, Messenger, LINE, or the counter</li>
+        <li><strong>Order + pay</strong> — payment link or DuitNow QR</li>
+        <li><strong>Fulfil</strong> — same ticket on your POS / kitchen</li>
+      </ol>
+      <div class="overlay-actions">
+        <a class="btn btn-amber" href="chat.html">See Chat</a>
+        <a class="btn btn-ghost-dark" href="pos.html">See POS</a>
+      </div>
+    </div>
+  </div>
+  <script src="app.js?v=ci-pill"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+.base-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-family: var(--font-brand);
+  line-height: 1;
+  user-select: none;
+}
+
+/* Product wordmark: BASEApp as one word (navy + grey), no divider */
+.base-wordmark-app {
+  gap: 0;
+}
+
+.base-app-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Horizontal product brand: mark | BaseApp + amber pill under wordmark */
+.base-app-brand {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0;
+  min-width: 0;
+}
+
+.base-app-brand-mark {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+  justify-self: center;
+}
+
+.base-app-brand-copy {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.35rem;
+  width: max-content;
+  min-width: 0;
+}
+
+.base-app-brand-copy .base-wordmark {
+  width: max-content;
+}
+
+.base-amber-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 1.25rem;
+  padding: 0.22rem 0.35rem;
+  border-radius: 0.4rem;
+  background: var(--base-amber);
+  font-family: var(--font-brand);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.base-app-brand-sm {
+  column-gap: 0.55rem;
+}
+
+.base-app-brand-sm .base-wordmark-base {
+  font-size: 1.05rem;
+}
+
+.base-app-brand-sm .base-wordmark-secondary {
+  font-size: 0.95rem;
+}
+
+.base-app-brand-sm .base-amber-pill {
+  font-size: 0.58rem;
+  min-height: 1.15rem;
+  padding: 0.18rem 0.28rem;
+  letter-spacing: 0.04em;
+}
+
+.base-app-brand-sm .base-app-brand-copy {
+  gap: 0.28rem;
+}
+
+.base-app-brand-md .base-wordmark-base {
+  font-size: 1.35rem;
+}
+
+.base-app-brand-md .base-wordmark-secondary {
+  font-size: 1.2rem;
+}
+
+.base-app-brand-md .base-amber-pill {
+  font-size: 0.68rem;
+  min-height: 1.35rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.base-app-brand-lg {
+  column-gap: 1rem;
+}
+
+.base-app-brand-lg .base-wordmark-base {
+  font-size: 1.85rem;
+  letter-spacing: 0.05em;
+}
+
+.base-app-brand-lg .base-wordmark-secondary {
+  font-size: 1.65rem;
+}
+
+.base-app-brand-lg .base-amber-pill {
+  font-size: 0.72rem;
+  min-height: 1.45rem;
+  padding: 0.3rem 0.4rem;
+  letter-spacing: 0.06em;
+}
+
+.base-app-brand-lg .base-app-brand-copy {
+  gap: 0.45rem;
+}
+
+.base-wordmark-base {
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+}
+
+.base-wordmark-secondary {
+  font-weight: 500;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+.base-wordmark-divider {
+  width: 1.5px;
+  height: 1.05rem;
+  border-radius: 1px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.base-wordmark-os {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.85rem;
+  height: 1.25rem;
+  padding: 0 0.4rem;
+  border-radius: 0.4rem;
+  background: var(--base-amber);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+}
+
+.base-wordmark-kiosk .base-wordmark-os {
+  text-transform: uppercase;
+}
+
+.base-wordmark-descriptor {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.38em;
+}
+
+.base-wordmark-consulting {
+  display: inline-grid;
+  gap: 0.15rem;
+}
+
+.base-wordmark-consulting .base-wordmark-base {
+  font-size: 1.35rem;
+}
+
+.base-wordmark.is-compact .base-wordmark-base {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+}
+
+.base-wordmark.is-compact .base-wordmark-secondary,
+.base-wordmark.is-compact .base-wordmark-divider,
+.base-wordmark.is-compact .base-wordmark-os,
+.base-wordmark.is-compact .base-wordmark-descriptor {
+  display: none;
+}
+
+.base-wordmark-simplified {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0.55rem;
+}
+
+.base-wordmark-arc {
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 0.7rem;
+  border: 2.5px solid var(--base-amber);
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+  pointer-events: none;
+}
+
+.base-wordmark-simplified .base-wordmark-base {
+  font-size: 1.35rem;
+  letter-spacing: 0.08em;
+}
+
+.base-primary-logo,
+.base-simplified-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.base-mark {
+  display: block;
+  border-radius: 0;
+  flex-shrink: 0;
+  object-fit: contain;
+  width: auto;
+  max-width: none;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.brand-lockup .brand-meta {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.brand-lockup .brand-meta > span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
