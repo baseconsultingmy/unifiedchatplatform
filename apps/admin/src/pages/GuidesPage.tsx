@@ -1,41 +1,23 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { shopCurrency } from "../currency";
 import { industryProfile } from "../industry";
 import { useT } from "../i18n";
 
-type GuideCard = {
+type Lesson = {
   id: string;
   title: string;
-  body: string;
-  href: string;
-  cta: string;
-  download?: boolean;
-  external?: boolean;
-  fnbOnly?: boolean;
-  image?: string;
+  summary: string;
+  image: string;
+  steps: string[];
+  tip?: string;
+  actions: { to?: string; href?: string; label: string; primary?: boolean; download?: boolean; external?: boolean }[];
 };
 
-const GUIDES: GuideCard[] = [
-  {
-    id: "booklet-pdf",
-    title: "Shop Onboarding Booklet (PDF)",
-    body: "Illustrated multi-page booklet with cover art and detailed steps for login, catalog, rooms & staff, LINE, WhatsApp, Grab, and your first sale.",
-    href: "/guides/BaseApp-Shop-Onboarding-Booklet.pdf",
-    cta: "Download PDF",
-    download: true,
-    image: "/guides/booklet/booklet-cover.png",
-  },
-  {
-    id: "booklet-web",
-    title: "Booklet (open in browser)",
-    body: "Same booklet as a web page — handy on a tablet without saving a file.",
-    href: "/guides/booklet/index.html",
-    cta: "Open booklet",
-    external: true,
-    image: "/guides/booklet/booklet-checklist.png",
-  },
-];
+function storageKey(tenantId?: number | string) {
+  return `baseapp.onboarding.v2.${tenantId || "shop"}`;
+}
 
 export default function GuidesPage() {
   const t = useT();
@@ -46,213 +28,332 @@ export default function GuidesPage() {
   const catalog = t(`industry.catalog_${profile.key}`);
   const roomsLabel = t(`industry.resources_${profile.key}`);
   const isFnb = profile.key === "fnb";
+  const shopName = user?.tenant?.name || "your shop";
 
-  const setupLinks = [
-    { to: "/settings", label: "Settings · shop / LINE / WhatsApp" },
-    { to: "/services", label: catalog },
-    ...(profile.supportsResources
-      ? [{ to: "/resources", label: roomsLabel }]
-      : []),
-    { to: "/pos", label: "POS" },
-    ...(profile.opsMode === "bookings"
-      ? [{ to: "/bookings", label: "Bookings" }]
-      : []),
-    ...(profile.opsMode === "orders" ? [{ to: "/orders", label: "Orders" }] : []),
-    { to: "/getting-started", label: "Quick checklist" },
-  ];
+  const lessons: Lesson[] = useMemo(() => {
+    const list: Lesson[] = [
+      {
+        id: "welcome",
+        title: "Welcome to your shop",
+        summary: `A 5-minute tour for ${shopName}. Finish each lesson, then jump into the real screen.`,
+        image: "/guides/booklet/guide-visual-hero.png",
+        steps: [
+          "You’ll set prices, connect LINE, and practice one sale.",
+          `This shop is ${t(`industry.${profile.key}`)} · ${country} / ${currency}.`,
+          "Use Next to move through lessons — progress saves on this tablet.",
+        ],
+        tip: "Best on a tablet in landscape. Pull down any page later to refresh.",
+        actions: [
+          { href: "/guides/BaseApp-Shop-Onboarding-Booklet.pdf", label: "Download PDF booklet", download: true },
+          { href: "/guides/booklet/index.html", label: "Open web booklet", external: true },
+        ],
+      },
+      {
+        id: "catalog",
+        title: `Add your ${catalog.toLowerCase()}`,
+        summary: "Customers and POS only see what you publish here. Start small — 5 to 15 items is enough for beta.",
+        image: "/guides/booklet/guide-visual-catalog.png",
+        steps:
+          profile.key === "fnb"
+            ? [
+                `Open ${catalog} from the profile menu.`,
+                "Add name, category (Food / Drinks…), and price.",
+                "Optional: Customisations for ice, size, toppings.",
+              ]
+            : profile.key === "retail"
+              ? [
+                  `Open ${catalog} from the profile menu.`,
+                  "Add product name, category, and price.",
+                  "Save — then sell from POS.",
+                ]
+              : [
+                  `Open ${catalog} from the profile menu.`,
+                  "Add name, category, duration, price, optional deposit.",
+                  "Save packages and add-ons the same way.",
+                ],
+        tip: "Wrong currency or shop type? Ask BaseApp Master Admin to Edit the vendor.",
+        actions: [{ to: "/services", label: `Open ${catalog}`, primary: true }],
+      },
+    ];
+
+    if (profile.supportsResources) {
+      list.push({
+        id: "rooms",
+        title: `${roomsLabel} & first booking`,
+        summary: "Assign artists and rooms so the day board stays conflict-free.",
+        image: "/guides/booklet/booklet-step-bookings.png",
+        steps: [
+          `Add at least one artist/therapist under ${roomsLabel}.`,
+          "Add a room/bay if you use stations.",
+          "Create a practice booking: customer, service, artist, time.",
+        ],
+        actions: [
+          { to: "/resources", label: `Open ${roomsLabel}`, primary: true },
+          { to: "/bookings", label: "Open Bookings" },
+        ],
+      });
+    }
+
+    list.push({
+      id: "line",
+      title: "Connect LINE",
+      summary: "Recommended for Thailand. Customers type menu or book to start booking in chat.",
+      image: "/guides/booklet/guide-visual-line.png",
+      steps: [
+        "LINE Developers → Messaging API → copy Channel ID, secret, access token.",
+        "Webhook URL: https://api.baseapp.asia/v1/webhooks/line — enable it.",
+        "BaseApp Settings → LINE Messaging → paste → Save.",
+        "From a personal LINE, message your OA: menu or book.",
+      ],
+      tip: "Chat booking works without LIFF. LIFF is optional for a mini-app.",
+      actions: [{ to: "/settings", label: "Open Settings · LINE", primary: true }],
+    });
+
+    list.push({
+      id: "pos",
+      title: "Practice a walk-in sale",
+      summary: "Ring up a real ticket so staff know the counter flow before opening day.",
+      image: "/guides/booklet/guide-visual-pos.png",
+      steps: [
+        "Open POS and tap catalog items into the ticket.",
+        "Confirm / Charge → walk-in or pick a customer.",
+        "Take Cash or QR — finish the receipt.",
+        ...(isFnb
+          ? ["Optional later: Settings → Connect Grab → Publish menu → Orders tab."]
+          : ["Optional later: WhatsApp in Settings + ask BaseApp to publish Flow."]),
+      ],
+      actions: [
+        { to: "/pos", label: "Open POS", primary: true },
+        { to: "/settings", label: "Channels in Settings" },
+      ],
+    });
+
+    return list;
+  }, [
+    catalog,
+    country,
+    currency,
+    isFnb,
+    profile.key,
+    profile.supportsResources,
+    roomsLabel,
+    shopName,
+    t,
+  ]);
+
+  const [activeId, setActiveId] = useState(lessons[0]?.id || "welcome");
+  const [done, setDone] = useState<Record<string, boolean>>({});
+  const [pulse, setPulse] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey(user?.tenant?.id));
+      if (raw) {
+        const parsed = JSON.parse(raw) as { done?: Record<string, boolean>; activeId?: string };
+        if (parsed.done) setDone(parsed.done);
+        if (parsed.activeId && lessons.some((l) => l.id === parsed.activeId)) {
+          setActiveId(parsed.activeId);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [user?.tenant?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- hydrate once per tenant
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        storageKey(user?.tenant?.id),
+        JSON.stringify({ done, activeId }),
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [activeId, done, user?.tenant?.id]);
+
+  const activeIndex = Math.max(
+    0,
+    lessons.findIndex((l) => l.id === activeId),
+  );
+  const lesson = lessons[activeIndex] || lessons[0];
+  const completedCount = lessons.filter((l) => done[l.id]).length;
+  const progress = lessons.length ? Math.round((completedCount / lessons.length) * 100) : 0;
+  const allDone = completedCount === lessons.length && lessons.length > 0;
+
+  function go(delta: number) {
+    const next = Math.min(lessons.length - 1, Math.max(0, activeIndex + delta));
+    setActiveId(lessons[next].id);
+    setPulse(true);
+    window.setTimeout(() => setPulse(false), 450);
+  }
+
+  function markDone(id: string) {
+    setDone((d) => ({ ...d, [id]: true }));
+    const idx = lessons.findIndex((l) => l.id === id);
+    if (idx >= 0 && idx < lessons.length - 1) {
+      window.setTimeout(() => setActiveId(lessons[idx + 1].id), 280);
+    }
+  }
+
+  function resetProgress() {
+    setDone({});
+    setActiveId(lessons[0]?.id || "welcome");
+  }
 
   return (
-    <div className="grid page-scroll guides-app" style={{ gap: "1rem" }}>
-      <section className="panel guides-hero">
-        <div className="bookings-toolbar">
-          <div>
-            <p className="muted" style={{ margin: 0 }}>
-              Resources
-            </p>
-            <h1>Setup guides for your store</h1>
-            <p>
-              Download the onboarding booklet and follow the detailed steps. Built for{" "}
-              <strong>{user?.tenant?.name || "your shop"}</strong>
-              {" · "}
-              {t(`industry.${profile.key}`)}
-              {" · "}
-              {country}/{currency}
-            </p>
+    <div className="guides-academy page-scroll">
+      <header className={`guides-academy-hero ${pulse ? "is-pulse" : ""}`}>
+        <div className="guides-academy-hero-copy">
+          <p className="guides-kicker">Resources · Learn BaseApp</p>
+          <h1>
+            Learn your shop
+            <span className="guides-accent"> in minutes</span>
+          </h1>
+          <p className="guides-lede">
+            Interactive setup for <strong>{shopName}</strong>
+            <span className="guides-dot">·</span>
+            {t(`industry.${profile.key}`)}
+            <span className="guides-dot">·</span>
+            {country}/{currency}
+          </p>
+          <div className="guides-progress-block" aria-label={`${progress}% complete`}>
+            <div className="guides-progress-meta">
+              <span>
+                {completedCount} of {lessons.length} lessons done
+              </span>
+              <strong>{progress}%</strong>
+            </div>
+            <div className="guides-progress-track">
+              <div className="guides-progress-fill" style={{ width: `${progress}%` }} />
+            </div>
           </div>
+          {allDone ? (
+            <p className="guides-celebrate">You’re set — open POS and take a real customer.</p>
+          ) : null}
+        </div>
+        <div className="guides-academy-hero-visual" aria-hidden>
+          <img src="/guides/booklet/guide-visual-hero.png" alt="" />
+        </div>
+      </header>
+
+      <div className="guides-academy-stage">
+        <nav className="guides-lesson-rail" aria-label="Lessons">
+          {lessons.map((l, i) => {
+            const isActive = l.id === lesson.id;
+            const isDone = !!done[l.id];
+            return (
+              <button
+                key={l.id}
+                type="button"
+                className={`guides-lesson-pill ${isActive ? "is-active" : ""} ${isDone ? "is-done" : ""}`}
+                onClick={() => {
+                  setActiveId(l.id);
+                  setPulse(true);
+                  window.setTimeout(() => setPulse(false), 450);
+                }}
+              >
+                <span className="guides-lesson-num">{isDone ? "✓" : i + 1}</span>
+                <span className="guides-lesson-label">{l.title}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <article className={`guides-lesson-panel ${pulse ? "is-enter" : ""}`} key={lesson.id}>
+          <div className="guides-lesson-media">
+            <img src={lesson.image} alt="" />
+            <span className="guides-lesson-badge">
+              Lesson {activeIndex + 1} / {lessons.length}
+            </span>
+          </div>
+
+          <div className="guides-lesson-body">
+            <h2>{lesson.title}</h2>
+            <p className="guides-lesson-summary">{lesson.summary}</p>
+
+            <ol className="guides-lesson-steps">
+              {lesson.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+
+            {lesson.tip ? <p className="guides-tip">{lesson.tip}</p> : null}
+
+            <div className="guides-lesson-actions">
+              {lesson.actions.map((a) =>
+                a.to ? (
+                  <Link
+                    key={a.label}
+                    className={`btn ${a.primary ? "" : "secondary"}`}
+                    to={a.to}
+                  >
+                    {a.label}
+                  </Link>
+                ) : (
+                  <a
+                    key={a.label}
+                    className={`btn ${a.primary ? "" : "secondary"}`}
+                    href={a.href}
+                    download={a.download || undefined}
+                    target={a.external ? "_blank" : undefined}
+                    rel={a.external ? "noreferrer" : undefined}
+                  >
+                    {a.label}
+                  </a>
+                ),
+              )}
+              {!done[lesson.id] ? (
+                <button type="button" className="btn secondary" onClick={() => markDone(lesson.id)}>
+                  Mark lesson done
+                </button>
+              ) : (
+                <span className="guides-done-chip">Completed</span>
+              )}
+            </div>
+
+            <div className="guides-lesson-nav">
+              <button
+                type="button"
+                className="btn secondary"
+                disabled={activeIndex === 0}
+                onClick={() => go(-1)}
+              >
+                Previous
+              </button>
+              {activeIndex < lessons.length - 1 ? (
+                <button type="button" className="btn" onClick={() => go(1)}>
+                  Next lesson
+                </button>
+              ) : (
+                <Link className="btn" to="/pos">
+                  Go to POS
+                </Link>
+              )}
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <footer className="guides-academy-foot">
+        <div>
+          <h3>Need the printable booklet?</h3>
+          <p className="muted">
+            Same content as a PDF for staff training offline.
+          </p>
+        </div>
+        <div className="guides-lesson-actions">
           <a
-            className="btn"
+            className="btn secondary"
             href="/guides/BaseApp-Shop-Onboarding-Booklet.pdf"
             download="BaseApp-Shop-Onboarding-Booklet.pdf"
           >
-            Download booklet PDF
+            Download PDF
           </a>
+          <button type="button" className="btn secondary" onClick={resetProgress}>
+            Reset progress
+          </button>
         </div>
-        <img
-          className="guides-hero-image"
-          src="/guides/booklet/booklet-cover.png"
-          alt="BaseApp onboarding booklet cover"
-        />
-      </section>
-
-      <section className="panel">
-        <h2 style={{ marginTop: 0 }}>Downloads</h2>
-        <div className="guides-grid">
-          {GUIDES.filter((g) => !g.fnbOnly || isFnb).map((g) => (
-            <article key={g.id} className="guides-card">
-              {g.image ? (
-                <img src={g.image} alt="" className="guides-card-image" />
-              ) : null}
-              <div className="guides-card-body">
-                <h3>{g.title}</h3>
-                <p className="muted">{g.body}</p>
-                {g.download ? (
-                  <a className="btn secondary" href={g.href} download>
-                    {g.cta}
-                  </a>
-                ) : (
-                  <a
-                    className="btn secondary"
-                    href={g.href}
-                    target={g.external ? "_blank" : undefined}
-                    rel={g.external ? "noreferrer" : undefined}
-                  >
-                    {g.cta}
-                  </a>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2 style={{ marginTop: 0 }}>Step-by-step (with pictures)</h2>
-        <div className="guides-chapters">
-          <article className="guides-chapter">
-            <img src="/guides/booklet/booklet-step-login.png" alt="Sign in" />
-            <div>
-              <h3>1. Sign in</h3>
-              <ol>
-                <li>
-                  Open <code>https://admin.baseapp.asia/login</code>
-                </li>
-                <li>Enter the email + temporary password BaseApp sent you</li>
-                <li>
-                  Tap <strong>Sign in</strong> — you land on POS
-                </li>
-              </ol>
-            </div>
-          </article>
-
-          <article className="guides-chapter">
-            <img src="/guides/booklet/booklet-step-catalog.png" alt="Catalog setup" />
-            <div>
-              <h3>2. Upload {catalog.toLowerCase()}</h3>
-              <ol>
-                <li>
-                  Profile → <strong>{catalog}</strong>
-                </li>
-                <li>Add name, category, and price (plus duration/deposit for services)</li>
-                <li>Start with 5–15 items for beta</li>
-              </ol>
-              <Link className="btn secondary" to="/services">
-                Open {catalog}
-              </Link>
-            </div>
-          </article>
-
-          {profile.supportsResources ? (
-            <article className="guides-chapter">
-              <img src="/guides/booklet/booklet-step-bookings.png" alt="Bookings" />
-              <div>
-                <h3>3. Rooms, staff &amp; bookings</h3>
-                <ol>
-                  <li>
-                    Profile → <strong>{roomsLabel}</strong> — add artist + room/bay
-                  </li>
-                  <li>
-                    Open <strong>Bookings → New</strong> for a practice appointment
-                  </li>
-                </ol>
-                <div className="btn-row">
-                  <Link className="btn secondary" to="/resources">
-                    Open {roomsLabel}
-                  </Link>
-                  <Link className="btn secondary" to="/bookings">
-                    Open Bookings
-                  </Link>
-                </div>
-              </div>
-            </article>
-          ) : null}
-
-          <article className="guides-chapter" id="line-setup">
-            <img src="/guides/booklet/booklet-step-line.png" alt="LINE setup" />
-            <div>
-              <h3>{profile.supportsResources ? "4" : "3"}. Connect LINE</h3>
-              <ol>
-                <li>
-                  In LINE Developers, copy Channel ID, secret, and long-lived access token
-                </li>
-                <li>
-                  Webhook URL: <code>https://api.baseapp.asia/v1/webhooks/line</code> — enable it
-                </li>
-                <li>
-                  BaseApp → <strong>Settings → LINE Messaging</strong> → paste → Save
-                </li>
-                <li>
-                  From LINE, message your OA with <strong>menu</strong> or <strong>book</strong>
-                </li>
-              </ol>
-              <Link className="btn secondary" to="/settings">
-                Open Settings
-              </Link>
-            </div>
-          </article>
-
-          <article className="guides-chapter" id="whatsapp-setup">
-            <img src="/guides/booklet/booklet-step-pos.png" alt="POS practice" />
-            <div>
-              <h3>Practice a sale (+ optional WhatsApp / Grab)</h3>
-              <ol>
-                <li>
-                  <strong>POS</strong> → tap items → Charge → Cash or QR
-                </li>
-                <li id="grab-setup">
-                  WhatsApp: Settings → copy Meta webhook values → paste Phone number ID + token → ask
-                  BaseApp to publish Flow
-                </li>
-                {isFnb ? (
-                  <li>Grab: Settings → Connect Grab → publish menu → manage under Orders</li>
-                ) : null}
-              </ol>
-              <div className="btn-row">
-                <Link className="btn" to="/pos">
-                  Open POS
-                </Link>
-                <Link className="btn secondary" to="/settings">
-                  Channels in Settings
-                </Link>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2 style={{ marginTop: 0 }}>Jump into the app</h2>
-        <div className="btn-row" style={{ flexWrap: "wrap" }}>
-          {setupLinks.map((l) => (
-            <Link key={l.to} className="btn secondary" to={l.to}>
-              {l.label}
-            </Link>
-          ))}
-        </div>
-        <p className="muted" style={{ marginTop: "0.85rem" }}>
-          Need help? Send BaseApp a screenshot and what you tapped. Master Admin can use{" "}
-          <strong>View as</strong> to assist without your password.
-        </p>
-      </section>
+      </footer>
     </div>
   );
 }
