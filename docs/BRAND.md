@@ -48,7 +48,7 @@ CSS source of truth: [`brand/tokens.css`](../brand/tokens.css)
 | Base Kiosk OS | `brand/logos/base-kiosk-os.svg` | OS surface wordmark (light) |
 | Base Kiosk OS dark | `brand/logos/base-kiosk-os-dark.svg` | OS surface wordmark (dark) |
 
-Product logo uses the same family + amber arc as the company logo, with **BaseApp** beside it and an amber context pill under BaseApp (login: `kiosk`; app shell: Master Admin / page / shop). Transparent PNG masters — do not flatten onto white.
+Product logo uses the same family + amber arc as the company logo, with **BaseApp** beside it and an amber context pill under BaseApp (login: `kiosk`; app shell: Master Admin / page / shop). Marketing landings use the same pattern with a **region** pill: `baseapp.asia` → ASIA, `my.baseapp.asia` → MALAYSIA, etc. Transparent PNG masters — do not flatten onto white.
 
 ### Base Kiosk OS pattern (from Transit OS)
 

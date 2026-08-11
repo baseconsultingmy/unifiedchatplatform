@@ -2,8 +2,14 @@
 	email admin@baseapp.asia
 }
 
-baseapp.asia, www.baseapp.asia {
-	respond "BaseApp Unified — gateway online. Admin: https://admin.baseapp.asia" 200
+# Marketing / nation landings — region pill from hostname (see landing/app.js)
+baseapp.asia, www.baseapp.asia,
+my.baseapp.asia, sg.baseapp.asia, id.baseapp.asia,
+th.baseapp.asia, ph.baseapp.asia, vn.baseapp.asia {
+	root * /srv/landing
+	encode gzip
+	try_files {path} /index.html
+	file_server
 }
 
 api.baseapp.asia {
@@ -15,5 +21,5 @@ admin.baseapp.asia {
 }
 
 :80 {
-	respond "BaseApp Unified — gateway online" 200
+	redir https://baseapp.asia{uri} permanent
 }
