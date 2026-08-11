@@ -19,6 +19,113 @@
   height: auto;
 }
 
+/* Horizontal product brand: mark | BaseApp + amber pill under wordmark */
+.base-app-brand {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0;
+  min-width: 0;
+}
+
+.base-app-brand-mark {
+  grid-row: 1;
+  grid-column: 1;
+  align-self: center;
+  justify-self: center;
+}
+
+.base-app-brand-copy {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.base-amber-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 1.25rem;
+  padding: 0.22rem 0.55rem;
+  border-radius: 0.4rem;
+  background: var(--base-amber);
+  font-family: var(--font-brand);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.base-app-brand-sm {
+  column-gap: 0.55rem;
+}
+
+.base-app-brand-sm .base-wordmark-base {
+  font-size: 1.05rem;
+}
+
+.base-app-brand-sm .base-wordmark-secondary {
+  font-size: 0.95rem;
+}
+
+.base-app-brand-sm .base-amber-pill {
+  font-size: 0.62rem;
+  min-height: 1.15rem;
+  padding: 0.18rem 0.45rem;
+}
+
+.base-app-brand-sm .base-app-brand-copy {
+  gap: 0.28rem;
+}
+
+.base-app-brand-md .base-wordmark-base {
+  font-size: 1.35rem;
+}
+
+.base-app-brand-md .base-wordmark-secondary {
+  font-size: 1.2rem;
+}
+
+.base-app-brand-md .base-amber-pill {
+  font-size: 0.72rem;
+  min-height: 1.35rem;
+  padding: 0.25rem 0.6rem;
+}
+
+.base-app-brand-lg {
+  column-gap: 1rem;
+}
+
+.base-app-brand-lg .base-wordmark-base {
+  font-size: 1.85rem;
+  letter-spacing: 0.05em;
+}
+
+.base-app-brand-lg .base-wordmark-secondary {
+  font-size: 1.65rem;
+}
+
+.base-app-brand-lg .base-amber-pill {
+  font-size: 0.78rem;
+  min-height: 1.45rem;
+  padding: 0.3rem 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.base-app-brand-lg .base-app-brand-copy {
+  gap: 0.45rem;
+}
+
 .base-wordmark-base {
   font-weight: 800;
   font-size: 1.15rem;
@@ -125,6 +232,8 @@
   border-radius: 0;
   flex-shrink: 0;
   object-fit: contain;
+  width: auto;
+  max-width: none;
 }
 
 .brand-lockup {

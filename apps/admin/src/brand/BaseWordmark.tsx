@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 type Variant = "kiosk-os" | "app" | "consulting-lockup";
 type Tone = "light" | "dark";
+type BrandSize = "sm" | "md" | "lg";
 
 type Props = {
   variant?: Variant;
@@ -78,23 +79,80 @@ export function BaseWordmark({
 }
 
 /** Official mark: family silhouettes + amber arc (shared by company + product). */
-export function BaseMark({ className = "", size = 36 }: { className?: string; size?: number }) {
+export function BaseMark({
+  className = "",
+  size = 36,
+  tone = "light",
+}: {
+  className?: string;
+  size?: number;
+  tone?: Tone;
+}) {
+  const src = tone === "dark" ? "/brand/base-mark-dark.png" : "/brand/base-mark.png";
   return (
     <img
       className={`base-mark ${className}`.trim()}
-      src="/brand/base-mark.png"
-      width={size}
-      height={size}
+      src={src}
       alt=""
       aria-hidden
+      style={{ height: size, width: "auto" }}
     />
   );
 }
 
+/** Amber CI pill — used under BaseApp for surface / context labels. */
+export function BaseAmberPill({
+  children,
+  tone = "light",
+  className = "",
+}: {
+  children: string;
+  tone?: Tone;
+  className?: string;
+}) {
+  const color = tone === "dark" ? "#000000" : "#FFFFFF";
+  return (
+    <span className={`base-amber-pill ${className}`.trim()} style={{ color }}>
+      {children}
+    </span>
+  );
+}
+
+const MARK_SIZE: Record<BrandSize, number> = { sm: 36, md: 52, lg: 72 };
+
 /**
- * BaseApp product logo — horizontal lockup (family + arc | BaseApp).
- * Transparent PNG. Use tone="dark" on navy / dark grounds.
- * Company logo remains base-consulting-primary.png.
+ * Product brand lockup: family mark + BaseApp, with amber context pill under BaseApp.
+ * Login → badge "kiosk". App shell → Master Admin / page / shop name.
+ */
+export function BaseAppBrand({
+  badge,
+  tone = "light",
+  size = "md",
+  className = "",
+}: {
+  badge: string;
+  tone?: Tone;
+  size?: BrandSize;
+  className?: string;
+}) {
+  const markSize = MARK_SIZE[size];
+  return (
+    <div
+      className={`base-app-brand base-app-brand-${size} ${className}`.trim()}
+      aria-label={`BaseApp ${badge}`}
+    >
+      <BaseMark size={markSize} tone={tone} className="base-app-brand-mark" />
+      <div className="base-app-brand-copy">
+        <BaseWordmark variant="app" tone={tone} />
+        <BaseAmberPill tone={tone}>{badge}</BaseAmberPill>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * BaseApp product logo — horizontal lockup PNG (family + arc | BaseApp).
+ * Prefer BaseAppBrand when an amber context pill is needed.
  */
 export function BaseAppLogo({
   className = "",
@@ -118,7 +176,33 @@ export function BaseAppLogo({
   );
 }
 
-/** @deprecated Prefer BaseAppLogo for product surfaces */
+/** @deprecated Prefer BaseAppLogo / BaseAppBrand for product surfaces */
 export function BasePrimaryLogo(props: { className?: string; width?: number; tone?: Tone }) {
   return <BaseAppLogo {...props} />;
+}
+
+/** Map app route + role to the amber context pill label. */
+export function contextPillLabel(input: {
+  pathname: string;
+  isPlatformAdmin: boolean;
+  impersonating: boolean;
+  shopName?: string | null;
+  catalogLabel?: string;
+  resourcesLabel?: string;
+}): string {
+  const path = input.pathname.replace(/\/+$/, "") || "/";
+
+  if (path.startsWith("/vendors")) return "Master Admin";
+  if (path.startsWith("/overview")) return input.isPlatformAdmin ? "Overview" : "Overview";
+  if (path.startsWith("/pos")) return "POS";
+  if (path.startsWith("/conversations")) return "Chat";
+  if (path.startsWith("/bookings")) return "Bookings";
+  if (path.startsWith("/customers")) return "Customers";
+  if (path.startsWith("/services")) return input.catalogLabel || "Services";
+  if (path.startsWith("/resources")) return input.resourcesLabel || "Resources";
+  if (path.startsWith("/settings")) return "Settings";
+
+  if (input.isPlatformAdmin) return "Master Admin";
+  if (input.impersonating) return input.shopName || "Vendor";
+  return input.shopName || "BaseApp";
 }

@@ -9,7 +9,7 @@ import {
 } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./auth";
-import { BaseAppLogo } from "./brand/BaseWordmark";
+import { BaseAppBrand, contextPillLabel } from "./brand/BaseWordmark";
 import { industryProfile } from "./industry";
 import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
@@ -163,6 +163,7 @@ function ProfileMenu({
 function Shell() {
   const { user, impersonating, exitViewAs } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isPlatformAdmin = user?.role === "platform_admin" && !impersonating;
   const catalogLabel = industryProfile(user?.tenant?.industry).catalogNoun;
   const resourcesLabel = industryProfile(user?.tenant?.industry).resourcesNoun;
@@ -173,20 +174,20 @@ function Shell() {
     navigate("/vendors");
   }
 
-  const shopLabel = isPlatformAdmin
-    ? "Master Admin"
-    : impersonating
-      ? user?.tenant?.name || "Vendor"
-      : user?.tenant?.name || "BaseApp";
+  const pill = contextPillLabel({
+    pathname: location.pathname,
+    isPlatformAdmin,
+    impersonating,
+    shopName: user?.tenant?.name,
+    catalogLabel,
+    resourcesLabel,
+  });
 
   return (
     <div className="app-shell app-shell-topnav">
       <header className="app-topbar">
         <div className="app-topbar-brand">
-          <BaseAppLogo width={168} />
-          <div className="brand-meta">
-            <span className="app-topbar-shop">{shopLabel}</span>
-          </div>
+          <BaseAppBrand badge={pill} size="sm" />
         </div>
 
         {isPlatformAdmin ? (

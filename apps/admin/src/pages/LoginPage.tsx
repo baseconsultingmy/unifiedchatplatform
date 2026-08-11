@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import { BaseAppLogo } from "../brand/BaseWordmark";
+import { BaseAppBrand } from "../brand/BaseWordmark";
 
 export default function LoginPage() {
   const { token, login } = useAuth();
@@ -32,7 +32,7 @@ export default function LoginPage() {
           <div className="login-hero-glow" aria-hidden />
           <div className="login-hero-brand">
             <div className="login-primary-logo">
-              <BaseAppLogo tone="dark" width={320} />
+              <BaseAppBrand badge="kiosk" tone="dark" size="lg" />
             </div>
           </div>
           <p className="login-hero-tagline">
