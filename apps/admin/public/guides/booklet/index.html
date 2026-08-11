@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BaseApp · Quick setup</title>
+  <title>BaseApp · Setup guide</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -14,7 +14,7 @@
       --grey: #475569;
       --amber: #e5a100;
       --paper: #eef2f7;
-      --panel: #ffffff;
+      --panel: #fff;
       --line: rgba(15, 39, 68, 0.12);
       --shadow: 0 18px 40px rgba(15, 39, 68, 0.1);
       --font-brand: "Sora", sans-serif;
@@ -30,438 +30,475 @@
       background:
         radial-gradient(900px 420px at 10% -10%, rgba(229, 161, 0, 0.12), transparent 50%),
         linear-gradient(180deg, #f5f7fb 0%, var(--paper) 100%);
-      line-height: 1.4;
+      line-height: 1.45;
     }
     a { color: inherit; }
-    .wrap {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 1.25rem 1rem 3rem;
-    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 1.1rem 1rem 3rem; }
     .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; margin-bottom: 0.9rem; flex-wrap: wrap;
     }
-    .brand {
-      font-family: var(--font-brand);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      font-size: 1.05rem;
-    }
+    .brand { font-family: var(--font-brand); font-weight: 700; letter-spacing: -0.03em; }
     .brand span { color: var(--amber); }
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      border: 0;
-      border-radius: 999px;
-      padding: 0.7rem 1.05rem;
-      font-family: var(--font-ui);
-      font-weight: 700;
-      font-size: 0.92rem;
-      text-decoration: none;
-      cursor: pointer;
-      transition: transform 0.2s var(--ease), background 0.2s var(--ease);
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 0; border-radius: 999px; padding: 0.65rem 0.95rem;
+      font-family: var(--font-ui); font-weight: 700; font-size: 0.9rem;
+      text-decoration: none; cursor: pointer;
     }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-amber {
-      background: var(--amber);
-      color: var(--navy-deep);
+    .btn-amber { background: var(--amber); color: var(--navy-deep); }
+    .btn-ghost { background: rgba(15, 39, 68, 0.08); color: var(--navy); }
+
+    .track {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem;
     }
-    .btn-ghost {
-      background: rgba(15, 39, 68, 0.08);
-      color: var(--navy);
+    .track button {
+      border: 1px solid var(--line); background: rgba(255,255,255,0.85);
+      border-radius: 999px; padding: 0.55rem 0.9rem; font-weight: 700;
+      font-family: var(--font-ui); color: var(--navy); cursor: pointer;
+    }
+    .track button.is-on {
+      background: rgba(229, 161, 0, 0.18);
+      border-color: rgba(229, 161, 0, 0.55);
     }
 
     .hero {
-      display: grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      gap: 0;
-      overflow: hidden;
-      border-radius: 22px;
+      border-radius: 20px; overflow: hidden; color: #fff;
       background: linear-gradient(145deg, var(--navy-deep), var(--navy) 55%, #1a3d63);
-      color: #fff;
-      box-shadow: var(--shadow);
-      min-height: 280px;
-      margin-bottom: 1.25rem;
-      animation: rise 0.55s var(--ease) both;
+      box-shadow: var(--shadow); margin-bottom: 1rem;
+      display: grid; grid-template-columns: 1.1fr 0.9fr;
     }
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: none; }
-    }
-    .hero-copy {
-      padding: 1.75rem 1.5rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 0.65rem;
-    }
-    .eyebrow {
-      margin: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-size: 0.72rem;
-      color: rgba(241, 244, 248, 0.7);
-    }
+    .hero-copy { padding: 1.5rem 1.3rem; display: grid; gap: 0.55rem; align-content: center; }
     .hero h1 {
-      margin: 0;
-      font-family: var(--font-brand);
-      font-size: clamp(1.8rem, 4vw, 2.5rem);
-      line-height: 1.1;
-      letter-spacing: -0.03em;
+      margin: 0; font-family: var(--font-brand); font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+      letter-spacing: -0.03em; line-height: 1.15;
     }
-    .hero h1 em {
-      font-style: normal;
-      color: var(--amber);
-    }
-    .hero p {
-      margin: 0;
-      color: rgba(241, 244, 248, 0.86);
-      max-width: 22rem;
-      font-size: 1rem;
-    }
-    .hero-visual {
-      position: relative;
-      min-height: 240px;
-    }
-    .hero-visual img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      opacity: 0.95;
-      mask-image: linear-gradient(90deg, transparent, #000 20%);
-    }
+    .hero h1 em { font-style: normal; color: var(--amber); }
+    .hero p { margin: 0; color: rgba(241,244,248,0.88); }
+    .hero-visual img { width: 100%; height: 100%; object-fit: cover; display: block; min-height: 200px; }
 
-    .rail {
-      display: flex;
-      gap: 0.45rem;
-      overflow-x: auto;
-      padding-bottom: 0.35rem;
-      margin-bottom: 1rem;
-      scrollbar-width: thin;
-    }
+    .rail { display: flex; gap: 0.4rem; overflow-x: auto; margin-bottom: 0.9rem; }
     .rail a {
-      flex: 0 0 auto;
-      text-decoration: none;
-      border-radius: 999px;
-      padding: 0.55rem 0.85rem;
-      background: rgba(255, 255, 255, 0.8);
-      border: 1px solid var(--line);
-      font-weight: 700;
-      font-size: 0.84rem;
-      color: var(--navy);
+      flex: 0 0 auto; text-decoration: none; border-radius: 999px;
+      padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.85);
+      border: 1px solid var(--line); font-weight: 700; font-size: 0.82rem;
     }
-    .rail a:hover,
-    .rail a.is-active {
-      background: rgba(229, 161, 0, 0.16);
-      border-color: rgba(229, 161, 0, 0.5);
-    }
+    .rail a.is-active { background: rgba(229,161,0,0.16); border-color: rgba(229,161,0,0.5); }
 
-    .lesson {
-      display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
-      gap: 0;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      margin-bottom: 1rem;
-      scroll-margin-top: 1rem;
-      animation: rise 0.5s var(--ease) both;
+    .card {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
+      box-shadow: var(--shadow); overflow: hidden; margin-bottom: 0.9rem;
+      scroll-margin-top: 0.8rem;
     }
-    .lesson:nth-child(2) { animation-delay: 0.05s; }
-    .lesson:nth-child(3) { animation-delay: 0.1s; }
-    .lesson:nth-child(4) { animation-delay: 0.15s; }
-    .lesson:nth-child(5) { animation-delay: 0.2s; }
-
-    .lesson-media {
-      position: relative;
-      background: var(--navy);
-      min-height: 260px;
-    }
-    .lesson-media img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .lesson-num {
-      position: absolute;
-      top: 0.85rem;
-      left: 0.85rem;
-      width: 2.2rem;
-      height: 2.2rem;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: var(--amber);
-      color: var(--navy-deep);
+    .card-media { position: relative; background: var(--navy); max-height: 240px; }
+    .card-media img { width: 100%; height: 240px; object-fit: cover; display: block; }
+    .badge {
+      position: absolute; left: 0.8rem; top: 0.8rem; background: var(--amber);
+      color: var(--navy-deep); font-weight: 800; border-radius: 999px;
+      width: 2rem; height: 2rem; display: grid; place-items: center;
       font-family: var(--font-brand);
-      font-weight: 800;
-      font-size: 1rem;
     }
-
-    .lesson-body {
-      padding: 1.25rem 1.2rem 1.15rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+    .card-body { padding: 1.1rem 1.1rem 1.15rem; display: grid; gap: 0.7rem; }
+    .card-body h2 { margin: 0; font-family: var(--font-brand); font-size: 1.25rem; letter-spacing: -0.02em; }
+    .lede { margin: 0; color: var(--grey); }
+    .block { border-top: 1px solid var(--line); padding-top: 0.75rem; }
+    .block h3 { margin: 0 0 0.45rem; font-size: 0.98rem; font-family: var(--font-brand); }
+    .block ol { margin: 0; padding-left: 1.15rem; display: grid; gap: 0.35rem; }
+    .block li { font-size: 0.92rem; }
+    .note {
+      margin: 0.45rem 0 0; padding: 0.55rem 0.7rem; border-left: 3px solid var(--amber);
+      background: rgba(229,161,0,0.1); font-size: 0.88rem;
     }
-    .lesson-body h2 {
-      margin: 0;
-      font-family: var(--font-brand);
-      font-size: 1.35rem;
-      letter-spacing: -0.02em;
-    }
-    .lesson-body .one-liner {
-      margin: 0;
-      color: var(--grey);
-      font-size: 0.95rem;
-    }
-    .beats {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: 0.45rem;
-    }
-    .beats li {
-      display: grid;
-      grid-template-columns: 1.6rem 1fr;
-      gap: 0.55rem;
-      align-items: start;
-      font-weight: 600;
-      font-size: 0.95rem;
-    }
-    .beats b {
-      width: 1.6rem;
-      height: 1.6rem;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: rgba(15, 39, 68, 0.08);
-      color: var(--navy);
-      font-size: 0.78rem;
-    }
-    .code-chip {
-      display: inline-block;
-      margin-top: 0.15rem;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 0.78rem;
-      background: rgba(15, 39, 68, 0.06);
-      padding: 0.35rem 0.5rem;
-      border-radius: 8px;
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem;
+      background: rgba(15,39,68,0.06); padding: 0.4rem 0.5rem; border-radius: 8px;
       word-break: break-all;
     }
-    .lesson-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.45rem;
-      margin-top: auto;
-      padding-top: 0.35rem;
-    }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .foot { text-align: center; color: var(--grey); font-size: 0.85rem; margin-top: 1rem; }
+    .hidden { display: none !important; }
 
-    .done {
-      margin-top: 1.25rem;
-      border-radius: 20px;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      background: var(--panel);
-      box-shadow: var(--shadow);
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-    .done img {
-      width: 100%;
-      height: 100%;
-      min-height: 220px;
-      object-fit: cover;
-      display: block;
-    }
-    .done-copy {
-      padding: 1.35rem 1.25rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 0.65rem;
-    }
-    .done-copy h2 {
-      margin: 0;
-      font-family: var(--font-brand);
-      font-size: 1.4rem;
-    }
-    .done-copy p {
-      margin: 0;
-      color: var(--grey);
-    }
-
-    .foot {
-      margin-top: 1.25rem;
-      text-align: center;
-      color: var(--grey);
-      font-size: 0.85rem;
-    }
-
-    @media (max-width: 820px) {
-      .hero,
-      .lesson,
-      .done {
-        grid-template-columns: 1fr;
-      }
-      .hero-visual {
-        min-height: 160px;
-        max-height: 180px;
-      }
-      .hero-visual img {
-        mask-image: linear-gradient(#000 60%, transparent);
-      }
-      .lesson-media {
-        min-height: 200px;
-        max-height: 230px;
-      }
-    }
-
-    @media print {
-      body { background: #fff; }
-      .topbar, .rail, .lesson-actions, .btn { display: none !important; }
-      .lesson, .hero, .done { break-inside: avoid; box-shadow: none; }
+    @media (max-width: 800px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-visual img { max-height: 160px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
-      <div class="brand">BaseApp <span>Quick setup</span></div>
-      <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
-        <a class="btn btn-ghost" href="/guides">Back to Resources</a>
+      <div class="brand">BaseApp <span>Setup guide</span></div>
+      <div class="actions">
+        <a class="btn btn-ghost" href="/guides">Resources</a>
         <a class="btn btn-amber" href="/guides/BaseApp-Shop-Onboarding-Booklet.pdf" download>PDF</a>
       </div>
     </div>
 
+    <div class="track" role="tablist" aria-label="Shop type">
+      <button type="button" data-industry="health_beauty" class="is-on">Health &amp; Beauty</button>
+      <button type="button" data-industry="fnb">Food &amp; Beverage</button>
+      <button type="button" data-industry="retail">Retail</button>
+    </div>
+
     <header class="hero">
       <div class="hero-copy">
-        <p class="eyebrow">4 steps · ~15 minutes</p>
-        <h1>Set up your shop <em>visually</em></h1>
-        <p>Short steps. Big pictures. Open the real screen when you’re ready.</p>
-        <div class="lesson-actions">
-          <a class="btn btn-amber" href="#catalog">Start with catalog</a>
-          <a class="btn btn-ghost" href="#pos" style="background:rgba(255,255,255,0.12);color:#fff">Jump to POS</a>
-        </div>
+        <p id="heroEyebrow" style="margin:0;letter-spacing:.12em;text-transform:uppercase;font-size:.72rem;color:rgba(241,244,248,.7)">Health & Beauty track</p>
+        <h1>Detailed setup <em>for your shop type</em></h1>
+        <p id="heroLede">Services, artists, LINE booking, then POS.</p>
       </div>
-      <div class="hero-visual">
-        <img src="guide-visual-hero.png" alt="BaseApp guided setup" />
-      </div>
+      <div class="hero-visual"><img src="guide-visual-hero.png" alt="" /></div>
     </header>
 
-    <nav class="rail" aria-label="Steps">
-      <a href="#catalog">1 · Catalog</a>
-      <a href="#line">2 · LINE</a>
-      <a href="#pos">3 · First sale</a>
-      <a href="#done">4 · Go live</a>
-    </nav>
-
-    <section class="lesson" id="catalog">
-      <div class="lesson-media">
-        <span class="lesson-num">1</span>
-        <img src="booklet-diagram-catalog.png" alt="Add name, category, price, then Save" />
-      </div>
-      <div class="lesson-body">
-        <h2>Add 5–15 items</h2>
-        <p class="one-liner">Profile → Services / Menu / Products</p>
-        <ul class="beats">
-          <li><b>1</b><span>Name</span></li>
-          <li><b>2</b><span>Category</span></li>
-          <li><b>3</b><span>Price (your currency)</span></li>
-          <li><b>4</b><span>Save — repeat</span></li>
-        </ul>
-        <div class="lesson-actions">
-          <a class="btn btn-amber" href="/services">Open catalog</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="lesson" id="line">
-      <div class="lesson-media">
-        <span class="lesson-num">2</span>
-        <img src="booklet-diagram-line.png" alt="Connect LINE channel to BaseApp webhook" />
-      </div>
-      <div class="lesson-body">
-        <h2>Connect LINE</h2>
-        <p class="one-liner">Settings → LINE Messaging</p>
-        <ul class="beats">
-          <li><b>1</b><span>Copy Channel ID · secret · token</span></li>
-          <li><b>2</b><span>Paste webhook, enable it</span></li>
-          <li><b>3</b><span>Save in BaseApp</span></li>
-          <li><b>4</b><span>Message OA: <strong>menu</strong> or <strong>book</strong></span></li>
-        </ul>
-        <div class="code-chip">https://api.baseapp.asia/v1/webhooks/line</div>
-        <div class="lesson-actions">
-          <a class="btn btn-amber" href="/settings">Open Settings</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="lesson" id="pos">
-      <div class="lesson-media">
-        <span class="lesson-num">3</span>
-        <img src="booklet-diagram-pos.png" alt="Tap item, review cart, take cash" />
-      </div>
-      <div class="lesson-body">
-        <h2>Practice one sale</h2>
-        <p class="one-liner">Top tab → POS</p>
-        <ul class="beats">
-          <li><b>1</b><span>Tap an item</span></li>
-          <li><b>2</b><span>Check the ticket</span></li>
-          <li><b>3</b><span>Charge → Cash or QR</span></li>
-        </ul>
-        <div class="lesson-actions">
-          <a class="btn btn-amber" href="/pos">Open POS</a>
-          <a class="btn btn-ghost" href="/bookings">Bookings</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="done" id="done">
-      <img src="booklet-diagram-checklist.png" alt="Go-live checklist path" />
-      <div class="done-copy">
-        <h2>You’re ready</h2>
-        <p>Catalog on · LINE tested · one practice sale done.</p>
-        <ul class="beats">
-          <li><b>✓</b><span>Items listed</span></li>
-          <li><b>✓</b><span>LINE replies to menu/book</span></li>
-          <li><b>✓</b><span>POS cash sale works</span></li>
-        </ul>
-        <div class="lesson-actions">
-          <a class="btn btn-amber" href="/pos">Go to POS</a>
-          <a class="btn btn-ghost" href="/guides">Resources academy</a>
-        </div>
-      </div>
-    </section>
-
-    <p class="foot">BaseApp · admin.baseapp.asia · Need help? Send a screenshot to BaseApp.</p>
+    <nav class="rail" id="rail"></nav>
+    <div id="content"></div>
+    <p class="foot">Pick your shop type above if the track looks wrong. Need help? Send BaseApp a screenshot.</p>
   </div>
 
   <script>
-    const links = [...document.querySelectorAll(".rail a")];
-    const sections = links.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          const id = "#" + entry.target.id;
-          links.forEach((a) => a.classList.toggle("is-active", a.getAttribute("href") === id));
-        });
+    const LINE_SECTION = `
+      <div class="block">
+        <h3>A. Create a Messaging API channel</h3>
+        <ol>
+          <li>Open <a href="https://developers.line.biz" target="_blank" rel="noreferrer">developers.line.biz</a> and sign in with LINE.</li>
+          <li>Create a <strong>Provider</strong> (your shop/company) if you do not have one.</li>
+          <li>Create a channel → choose <strong>Messaging API</strong>.</li>
+          <li>Enter channel name / description → create. Link your Official Account if asked.</li>
+        </ol>
+      </div>
+      <div class="block">
+        <h3>B. Copy Channel ID &amp; Channel secret</h3>
+        <ol>
+          <li>Open the channel → <strong>Basic settings</strong>.</li>
+          <li>Copy <strong>Channel ID</strong> (long number).</li>
+          <li>Show &amp; copy <strong>Channel secret</strong> (keep private).</li>
+        </ol>
+      </div>
+      <div class="block">
+        <h3>C. Issue Channel access token</h3>
+        <ol>
+          <li>Open <strong>Messaging API</strong> tab.</li>
+          <li>Find <strong>Channel access token</strong>.</li>
+          <li>Click <strong>Issue</strong> (long-lived) if empty → Copy the token.</li>
+          <li>If you re-issue later, paste the new token into BaseApp again.</li>
+        </ol>
+      </div>
+      <div class="block">
+        <h3>D. Set webhook URL</h3>
+        <ol>
+          <li>Still on Messaging API → <strong>Webhook settings</strong>.</li>
+          <li>Paste this exact URL:</li>
+        </ol>
+        <div class="code">https://api.baseapp.asia/v1/webhooks/line</div>
+        <ol start="3">
+          <li>Update → Enable Webhook = On.</li>
+          <li>Optional: turn off LINE auto-replies/greetings so BaseApp can answer.</li>
+        </ol>
+        <p class="note">Verify may fail until secrets are saved in BaseApp — do step E, then Verify again.</p>
+      </div>
+      <div class="block">
+        <h3>E. Paste into BaseApp Settings</h3>
+        <ol>
+          <li>Admin → avatar → <strong>Settings → LINE Messaging</strong>.</li>
+          <li>Paste Channel ID, Channel secret, Channel access token.</li>
+          <li>Skip LIFF ID for beta.</li>
+          <li>Tap <strong>Save LINE only</strong>.</li>
+          <li>Confirm status shows token/secret on file.</li>
+        </ol>
+      </div>
+      <div class="block">
+        <h3>F. Test</h3>
+        <ol>
+          <li>From your phone LINE app, add the Official Account.</li>
+          <li>Send <strong>menu</strong> or <strong>book</strong>.</li>
+          <li>You should get a booking/menu flow.</li>
+          <li>In BaseApp open <strong>Chat</strong> — the thread should appear.</li>
+        </ol>
+        <p class="note">No reply? Same-channel ID/secret/token, webhook Enabled, URL exact match.</p>
+      </div>
+    `;
+
+    const TRACKS = {
+      health_beauty: {
+        label: "Health & Beauty track",
+        lede: "Services → artists/rooms → LINE → bookings → POS.",
+        rail: [
+          ["#catalog", "1 · Services"],
+          ["#rooms", "2 · Staff"],
+          ["#line", "3 · LINE"],
+          ["#pos", "4 · Practice"],
+        ],
+        html: `
+          <section class="card" id="catalog">
+            <div class="card-media"><span class="badge">1</span><img src="booklet-diagram-catalog.png" alt="Catalog fields" /></div>
+            <div class="card-body">
+              <h2>Add services</h2>
+              <p class="lede">Avatar → Services. These power LINE booking and POS.</p>
+              <div class="block">
+                <h3>Create each service</h3>
+                <ol>
+                  <li>Name — e.g. Small line tattoo / Haircut.</li>
+                  <li>Category — Treatments, Tattoo, Add-ons, Packages…</li>
+                  <li>Duration (minutes) — used for booking slots.</li>
+                  <li>Price in your shop currency.</li>
+                  <li>Deposit — optional; use 0 if you collect later.</li>
+                  <li>Save. Start with 5–15 items.</li>
+                </ol>
+                <p class="note">Packages = longer duration + higher price. Add-ons = short duration.</p>
+              </div>
+              <div class="actions"><a class="btn btn-amber" href="/services">Open Services</a></div>
+            </div>
+          </section>
+
+          <section class="card" id="rooms">
+            <div class="card-media"><span class="badge">2</span><img src="booklet-step-bookings.png" alt="Bookings" /></div>
+            <div class="card-body">
+              <h2>Artists, rooms &amp; a practice booking</h2>
+              <p class="lede">Stops double-booking on the day board.</p>
+              <div class="block">
+                <h3>Rooms &amp; staff</h3>
+                <ol>
+                  <li>Avatar → Rooms &amp; staff.</li>
+                  <li>Add Type = Artist / therapist + name → Save.</li>
+                  <li>Optional: Type = Room / bay (Bay A) → Save.</li>
+                </ol>
+              </div>
+              <div class="block">
+                <h3>Practice booking</h3>
+                <ol>
+                  <li>Top tab → Bookings → New.</li>
+                  <li>Customer name + phone.</li>
+                  <li>Pick service, artist, room, start time → Create.</li>
+                  <li>Open it later to Mark paid / Complete.</li>
+                </ol>
+              </div>
+              <div class="actions">
+                <a class="btn btn-amber" href="/resources">Rooms &amp; staff</a>
+                <a class="btn btn-ghost" href="/bookings">Bookings</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" id="line">
+            <div class="card-media"><span class="badge">3</span><img src="booklet-diagram-line.png" alt="LINE connect" /></div>
+            <div class="card-body">
+              <h2>Connect LINE (full walkthrough)</h2>
+              <p class="lede">Where to create keys, what to copy, where to paste.</p>
+              ${LINE_SECTION}
+              <div class="actions"><a class="btn btn-amber" href="/settings">Open Settings · LINE</a></div>
+            </div>
+          </section>
+
+          <section class="card" id="pos">
+            <div class="card-media"><span class="badge">4</span><img src="booklet-diagram-pos.png" alt="POS" /></div>
+            <div class="card-body">
+              <h2>Practice POS + go live</h2>
+              <div class="block">
+                <h3>Walk-in sale</h3>
+                <ol>
+                  <li>Top tab → POS → tap services into the ticket.</li>
+                  <li>Confirm → walk-in or customer.</li>
+                  <li>Cash or QR → finish receipt.</li>
+                </ol>
+              </div>
+              <div class="block">
+                <h3>Optional WhatsApp</h3>
+                <ol>
+                  <li>Settings → WhatsApp / Meta → copy callback + verify token into Meta.</li>
+                  <li>Paste Phone number ID + token → Save.</li>
+                  <li>Ask BaseApp to Publish booking Flow.</li>
+                </ol>
+                <p class="note">For Thailand beta, LINE alone is enough.</p>
+              </div>
+              <div class="actions">
+                <a class="btn btn-amber" href="/pos">Open POS</a>
+                <a class="btn btn-ghost" href="/guides">Resources academy</a>
+              </div>
+            </div>
+          </section>
+        `,
       },
-      { rootMargin: "-35% 0px -55% 0px", threshold: 0.01 },
-    );
-    sections.forEach((s) => io.observe(s));
+      fnb: {
+        label: "Food & Beverage track",
+        lede: "Menu → POS → Orders → optional Grab & LINE.",
+        rail: [
+          ["#catalog", "1 · Menu"],
+          ["#pos", "2 · POS"],
+          ["#grab", "3 · Grab"],
+          ["#line", "4 · LINE"],
+        ],
+        html: `
+          <section class="card" id="catalog">
+            <div class="card-media"><span class="badge">1</span><img src="booklet-diagram-catalog.png" alt="Menu" /></div>
+            <div class="card-body">
+              <h2>Build your menu</h2>
+              <p class="lede">Avatar → Menu. Powers POS and Grab.</p>
+              <div class="block">
+                <h3>Add an item</h3>
+                <ol>
+                  <li>Name — e.g. Iced latte / Nasi lemak.</li>
+                  <li>Category — Food, Drinks, Snacks, Combos…</li>
+                  <li>Price in your shop currency → Save.</li>
+                </ol>
+              </div>
+              <div class="block">
+                <h3>Customisations (modifiers)</h3>
+                <ol>
+                  <li>Open Customisations on a saved item.</li>
+                  <li>Group = Ice / Size / Toppings.</li>
+                  <li>Add options (+ optional price delta).</li>
+                  <li>Set required / min / max → Save.</li>
+                </ol>
+                <p class="note">Do drinks first. Start with 8–15 bestsellers.</p>
+              </div>
+              <div class="actions"><a class="btn btn-amber" href="/services">Open Menu</a></div>
+            </div>
+          </section>
+
+          <section class="card" id="pos">
+            <div class="card-media"><span class="badge">2</span><img src="booklet-diagram-pos.png" alt="POS" /></div>
+            <div class="card-body">
+              <h2>Practice kitchen POS</h2>
+              <div class="block">
+                <ol>
+                  <li>Top tab → POS.</li>
+                  <li>Tap items → adjust qty → add table/note if shown.</li>
+                  <li>Charge → Cash or QR.</li>
+                  <li>Repeat until staff are comfortable.</li>
+                </ol>
+              </div>
+              <div class="actions"><a class="btn btn-amber" href="/pos">Open POS</a></div>
+            </div>
+          </section>
+
+          <section class="card" id="grab">
+            <div class="card-media"><span class="badge">3</span><img src="guide-visual-pos.png" alt="Orders" /></div>
+            <div class="card-body">
+              <h2>Grab Food (after menu works)</h2>
+              <div class="block">
+                <ol>
+                  <li>Settings → Grab → <strong>Connect Grab</strong>.</li>
+                  <li>Open activation link → finish outlet linking.</li>
+                  <li>Paste Grab merchant ID if asked → Save.</li>
+                  <li><strong>Publish menu</strong>.</li>
+                  <li>Top tab → Orders: Accept → Preparing → Ready → Complete.</li>
+                </ol>
+                <p class="note">Skip Grab until dine-in POS feels easy.</p>
+              </div>
+              <div class="actions">
+                <a class="btn btn-amber" href="/settings">Grab in Settings</a>
+                <a class="btn btn-ghost" href="/orders">Orders</a>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" id="line">
+            <div class="card-media"><span class="badge">4</span><img src="booklet-diagram-line.png" alt="LINE" /></div>
+            <div class="card-body">
+              <h2>LINE for F&amp;B chat (optional)</h2>
+              <p class="lede">Same key creation as other shops — useful for customer chat / pre-orders.</p>
+              ${LINE_SECTION}
+              <div class="actions"><a class="btn btn-amber" href="/settings">Open Settings · LINE</a></div>
+            </div>
+          </section>
+        `,
+      },
+      retail: {
+        label: "Retail track",
+        lede: "Products → POS → optional LINE/WhatsApp.",
+        rail: [
+          ["#catalog", "1 · Products"],
+          ["#pos", "2 · POS"],
+          ["#line", "3 · LINE"],
+        ],
+        html: `
+          <section class="card" id="catalog">
+            <div class="card-media"><span class="badge">1</span><img src="booklet-diagram-catalog.png" alt="Products" /></div>
+            <div class="card-body">
+              <h2>Add products</h2>
+              <div class="block">
+                <ol>
+                  <li>Avatar → Products.</li>
+                  <li>Name, category (General / Skincare / Merchandise), price → Save.</li>
+                  <li>Start with 5–15 SKUs.</li>
+                </ol>
+              </div>
+              <div class="actions"><a class="btn btn-amber" href="/services">Open Products</a></div>
+            </div>
+          </section>
+          <section class="card" id="pos">
+            <div class="card-media"><span class="badge">2</span><img src="booklet-diagram-pos.png" alt="POS" /></div>
+            <div class="card-body">
+              <h2>Practice POS</h2>
+              <div class="block">
+                <ol>
+                  <li>POS → tap products → set qty → Charge.</li>
+                  <li>Cash or QR → receipt.</li>
+                </ol>
+              </div>
+              <div class="actions"><a class="btn btn-amber" href="/pos">Open POS</a></div>
+            </div>
+          </section>
+          <section class="card" id="line">
+            <div class="card-media"><span class="badge">3</span><img src="booklet-diagram-line.png" alt="LINE" /></div>
+            <div class="card-body">
+              <h2>Connect LINE (optional)</h2>
+              ${LINE_SECTION}
+              <div class="actions"><a class="btn btn-amber" href="/settings">Open Settings · LINE</a></div>
+            </div>
+          </section>
+        `,
+      },
+    };
+
+    const params = new URLSearchParams(location.search);
+    let industry = params.get("industry") || "health_beauty";
+    if (industry === "general") industry = "health_beauty";
+    if (!TRACKS[industry]) industry = "health_beauty";
+
+    const railEl = document.getElementById("rail");
+    const contentEl = document.getElementById("content");
+    const eyebrow = document.getElementById("heroEyebrow");
+    const lede = document.getElementById("heroLede");
+
+    function render(ind) {
+      industry = ind;
+      const track = TRACKS[ind];
+      eyebrow.textContent = track.label;
+      lede.textContent = track.lede;
+      document.querySelectorAll(".track button").forEach((b) => {
+        b.classList.toggle("is-on", b.dataset.industry === ind);
+      });
+      railEl.innerHTML = track.rail
+        .map(([href, label]) => `<a href="${href}">${label}</a>`)
+        .join("");
+      contentEl.innerHTML = track.html;
+      const url = new URL(location.href);
+      url.searchParams.set("industry", ind);
+      history.replaceState(null, "", url);
+      bindRail();
+    }
+
+    function bindRail() {
+      const links = [...railEl.querySelectorAll("a")];
+      const sections = links.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const id = "#" + entry.target.id;
+            links.forEach((a) => a.classList.toggle("is-active", a.getAttribute("href") === id));
+          });
+        },
+        { rootMargin: "-35% 0px -55% 0px", threshold: 0.01 },
+      );
+      sections.forEach((s) => io.observe(s));
+    }
+
+    document.querySelectorAll(".track button").forEach((b) => {
+      b.addEventListener("click", () => render(b.dataset.industry));
+    });
+
+    render(industry);
   </script>
 </body>
 </html>

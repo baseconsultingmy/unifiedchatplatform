@@ -4752,6 +4752,73 @@ a.btn {
   font-size: 0.9rem;
 }
 
+.guides-details {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+.guides-details-toggle {
+  appearance: none;
+  border: 1px dashed rgba(15, 39, 68, 0.28);
+  background: rgba(15, 39, 68, 0.03);
+  color: var(--base-navy);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-align: left;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.guides-details-toggle:hover {
+  border-color: var(--base-amber);
+  background: rgba(229, 161, 0, 0.08);
+}
+
+.guides-details-toggle[aria-expanded="true"] {
+  border-style: solid;
+  border-color: rgba(15, 39, 68, 0.18);
+  background: #fff;
+}
+
+.guides-details-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.guides-detail-block {
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--base-line);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(229, 161, 0, 0.06), transparent 42%),
+    #fff;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.guides-detail-block h3 {
+  margin: 0;
+  font-family: var(--font-brand);
+  font-size: 1.02rem;
+  color: var(--base-navy);
+}
+
+.guides-detail-block ol {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--base-navy);
+  font-size: 0.92rem;
+}
+
+.guides-detail-block .btn {
+  justify-self: start;
+}
+
 .guides-lesson-actions,
 .guides-lesson-nav {
   display: flex;

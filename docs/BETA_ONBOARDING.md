@@ -1,11 +1,18 @@
 # BaseApp beta — shop onboarding guide
 
-> **Preferred for merchants:** open admin → top tab **Resources** (or profile → Resources) to
-> download the illustrated **Shop Onboarding Booklet** PDF, or open the web booklet.
+> **Preferred for merchants:** open admin → top tab **Resources** (or profile → Resources).
+> The in-app academy adapts to your shop type (Health & Beauty / F&B / Retail) and expands
+> every step — especially **Connect LINE** (where to create a channel and find Channel ID,
+> secret, and access token).
+>
+> Also available: illustrated PDF + web booklet with industry track picker  
+> (`/guides/booklet/index.html?industry=health_beauty|fnb|retail`).
 >
 > Files: `docs/BaseApp-Shop-Onboarding-Booklet.pdf` · `apps/admin/public/guides/`
 
 Welcome. This guide walks a new shop owner from first login to a working counter + chat channel.
+
+**Industry tracks differ:** Health & Beauty uses Services + duration/deposit + Rooms & staff + Bookings + LINE. F&B uses Menu + modifiers + POS + Orders (+ optional Grab). Retail uses Products + POS. The Resources tab only shows the lessons that match your shop.
 
 **Admin:** [https://admin.baseapp.asia](https://admin.baseapp.asia)  
 **Support:** reply to your BaseApp contact (or email the person who sent your login).
@@ -132,37 +139,57 @@ Skip this step for F&B and Retail.
 
 ## 6. Connect LINE (recommended for Thailand)
 
-Customers message your Official Account; BaseApp can take bookings in chat (`menu` / `book`).
+Customers message your Official Account; BaseApp can take bookings / replies in chat (`menu` / `book`).  
+You need three values from LINE Developers: **Channel ID**, **Channel secret**, **Channel access token**.
 
-### In LINE Developers
+### A. Create / open LINE Developers
 
-1. Open [https://developers.line.biz](https://developers.line.biz) → your provider → **Messaging API** channel  
-   (or create a new Messaging API channel for the shop)
-2. Copy:
-   - **Channel ID**
-   - **Channel secret**
-   - **Channel access token** (long-lived — issue / copy from Messaging API tab)
-3. Under Messaging API → **Webhook settings**:
-   - Webhook URL: `https://api.baseapp.asia/v1/webhooks/line`
-   - Enable webhook
-   - Disable “Auto-reply messages” / greeting that fight the bot if you want BaseApp to own the chat (optional; ask BaseApp if unsure)
+1. On a laptop, open [https://developers.line.biz](https://developers.line.biz) and log in with a LINE account  
+2. If you are new: create a **Provider** (your shop or company name)  
+3. **Create a channel** → choose **Messaging API**  
+4. Fill channel name / description / category → agree to terms → **Create**  
+5. If you already have a LINE Official Account, link it when prompted  
 
-### In BaseApp
+### B. Find Channel ID & Channel secret
 
-1. Profile → **Settings**
-2. Scroll to **LINE Messaging**
-3. Paste **Channel ID**, **Channel secret**, **Channel access token**
-4. Optional: **LIFF ID** if you use a LINE mini-app (booking also works by typing `menu` / `book` without LIFF)
-5. Click **Save LINE only** (or save the full Settings form)
-6. Confirm status shows token / secret **on file**
+1. Open your Messaging API channel  
+2. Open the **Basic settings** tab  
+3. **Channel ID** — long number → **Copy**  
+4. **Channel secret** — click **Show** / **Copy** (keep private; never post in public chat)
 
-### Smoke test
+### C. Issue a Channel access token
 
-1. From a personal LINE account, add the shop OA and send: `menu` or `book`
-2. You should get a package / booking flow reply
-3. Open BaseApp → **Chat** — the conversation should appear
+1. Still in the channel → **Messaging API** tab  
+2. Scroll to **Channel access token**  
+3. If empty: **Issue** (long-lived) / **Issue channel access token**  
+4. **Copy** the token once and store it safely  
+5. If you re-issue later, paste the new token into BaseApp again  
 
-If nothing arrives: double-check webhook URL, that the webhook is **Enabled**, and that Channel ID / secret / token match the same channel.
+### D. Turn on the webhook
+
+1. Messaging API tab → **Webhook settings**  
+2. Webhook URL = `https://api.baseapp.asia/v1/webhooks/line`  
+3. **Update** → **Verify** (may fail until BaseApp has your secret — do step E, then Verify again)  
+4. **Enable Webhook** = On  
+5. **Use webhooks** = Enabled  
+6. Optional: disable LINE auto-reply / greeting so BaseApp can answer  
+
+### E. Paste into BaseApp
+
+1. Admin → avatar → **Settings** → **LINE Messaging**  
+2. Paste **Channel ID**, **Channel secret**, **Channel access token**  
+3. **LIFF ID** is optional — skip for beta  
+4. Tap **Save LINE only** (or save the full Settings form)  
+5. Confirm status shows token / secret **on file**
+
+### F. Smoke test
+
+1. From a personal LINE app, add the shop Official Account  
+2. Send: `menu` or `book`  
+3. You should get a package / booking flow reply  
+4. In BaseApp open **Chat** — the conversation should appear  
+
+**No reply?** Re-check webhook Enabled, exact URL, and that ID / secret / token are from the **same** channel.
 
 ---
 
