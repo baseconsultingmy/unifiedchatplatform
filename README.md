@@ -4,15 +4,19 @@ WhatsApp + LINE communication and booking platform for SMEs (**Base Kiosk OS**),
 
 ## Brand / CI
 
-Locked corporate identity: [`brand/`](brand/) · [`docs/BRAND.md`](docs/BRAND.md)
+**Locked August 2026** — [`docs/BRAND.md`](docs/BRAND.md) · assets in [`brand/`](brand/)
+
+Canonical product lockup: family mark + **BaseApp** + amber pill (width = wordmark).
 
 | Layer | Name |
 |---|---|
 | Company | Base Consulting |
-| Platform | BaseApp |
+| Product | BaseApp |
+| Context / region pill | kiosk · Master Admin · ASIA · MALAYSIA · … |
 | OS wordmark | Base Kiosk OS |
 
-Colors (locked): Navy `#0F2744` · Grey `#475569` · Amber `#E5A100` · Black `#000000`
+Colors (locked): Navy `#0F2744` · Grey `#475569` · Amber `#E5A100` · Black `#000000`  
+Type (locked): Sora (brand) · Manrope (UI)
 
 Admin UX (current): tablet **top-bar** primary tabs (POS / Chat / Bookings) + profile menu — CI is applied on top of that shell.
 
