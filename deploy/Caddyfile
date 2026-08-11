@@ -2,10 +2,10 @@
 	email admin@baseapp.asia
 }
 
-# Marketing / nation landings — region pill from hostname (see landing/app.js)
-baseapp.asia, www.baseapp.asia,
-my.baseapp.asia, sg.baseapp.asia, id.baseapp.asia,
-th.baseapp.asia, ph.baseapp.asia, vn.baseapp.asia {
+# Marketing landings. Add nation hosts here after DNS A records exist
+# (my/sg/id/th/ph/vn.baseapp.asia) so ACME can issue certs.
+# Until then, preview regions with ?region=my on the apex.
+baseapp.asia, www.baseapp.asia {
 	root * /srv/landing
 	encode gzip
 	try_files {path} /index.html
