@@ -91,6 +91,14 @@ p {
   justify-self: start;
 }
 
+.app-topbar-brand .base-app-logo {
+  display: block;
+  height: auto;
+  max-height: 40px;
+  width: auto;
+  flex-shrink: 0;
+}
+
 .app-topbar-brand .brand-meta {
   display: grid;
   gap: 0.1rem;
@@ -908,15 +916,17 @@ p {
 .login-primary-logo {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 1.1rem 1.25rem 0.85rem;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .login-primary-logo img {
   display: block;
+  max-width: min(100%, 22rem);
+  height: auto;
 }
 
 .login-hero-arc {

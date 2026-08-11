@@ -9,7 +9,7 @@ import {
 } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { AuthProvider, useAuth } from "./auth";
-import { BaseMark, BaseWordmark } from "./brand/BaseWordmark";
+import { BaseAppLogo } from "./brand/BaseWordmark";
 import { industryProfile } from "./industry";
 import BookingsPage from "./pages/BookingsPage";
 import ConversationsPage from "./pages/ConversationsPage";
@@ -183,9 +183,8 @@ function Shell() {
     <div className="app-shell app-shell-topnav">
       <header className="app-topbar">
         <div className="app-topbar-brand">
-          <BaseMark size={48} />
+          <BaseAppLogo width={168} />
           <div className="brand-meta">
-            <BaseWordmark variant="app" />
             <span className="app-topbar-shop">{shopLabel}</span>
           </div>
         </div>

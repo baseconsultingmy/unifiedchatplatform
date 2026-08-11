@@ -92,20 +92,25 @@ export function BaseMark({ className = "", size = 36 }: { className?: string; si
 }
 
 /**
- * BaseApp product logo — family + arc + BaseApp (no Consulting).
+ * BaseApp product logo — horizontal lockup (family + arc | BaseApp).
+ * Transparent PNG. Use tone="dark" on navy / dark grounds.
  * Company logo remains base-consulting-primary.png.
  */
 export function BaseAppLogo({
   className = "",
-  width = 220,
+  width = 280,
+  tone = "light",
 }: {
   className?: string;
   width?: number;
+  tone?: Tone;
 }) {
+  const src =
+    tone === "dark" ? "/brand/base-app-primary-dark.png" : "/brand/base-app-primary.png";
   return (
     <img
       className={`base-app-logo ${className}`.trim()}
-      src="/brand/base-app-primary.png"
+      src={src}
       width={width}
       alt="BaseApp"
       style={{ height: "auto" }}
@@ -114,6 +119,6 @@ export function BaseAppLogo({
 }
 
 /** @deprecated Prefer BaseAppLogo for product surfaces */
-export function BasePrimaryLogo(props: { className?: string; width?: number }) {
+export function BasePrimaryLogo(props: { className?: string; width?: number; tone?: Tone }) {
   return <BaseAppLogo {...props} />;
 }
