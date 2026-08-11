@@ -42,8 +42,8 @@ CSS source of truth: [`brand/tokens.css`](../brand/tokens.css)
 | Asset | File | Use |
 |---|---|---|
 | **Company** — Base Consulting | `brand/logos/base-consulting-primary.png` | Company lockup (includes CONSULTING) |
-| **Product** — BaseApp (light) | `brand/logos/base-app-primary.png` | Horizontal product logo: family + arc \| BaseApp (transparent) |
-| **Product** — BaseApp (dark) | `brand/logos/base-app-primary-dark.png` | Same lockup for dark grounds (transparent) |
+| **Product** — BaseApp (light) | `brand/logos/base-app-lockup.png` | Horizontal product logo: family + arc \| BaseApp (transparent) |
+| **Product** — BaseApp (dark) | `brand/logos/base-app-lockup-dark.png` | Same lockup for dark grounds (transparent) |
 | **Mark** (family + arc only) | `brand/logos/base-mark.png` | Favicon, compact icon |
 | Base Kiosk OS | `brand/logos/base-kiosk-os.svg` | OS surface wordmark (light) |
 | Base Kiosk OS dark | `brand/logos/base-kiosk-os-dark.svg` | OS surface wordmark (dark) |

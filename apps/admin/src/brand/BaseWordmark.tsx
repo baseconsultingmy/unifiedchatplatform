@@ -106,7 +106,7 @@ export function BaseAppLogo({
   tone?: Tone;
 }) {
   const src =
-    tone === "dark" ? "/brand/base-app-primary-dark.png" : "/brand/base-app-primary.png";
+    tone === "dark" ? "/brand/base-app-lockup-dark.png" : "/brand/base-app-lockup.png";
   return (
     <img
       className={`base-app-logo ${className}`.trim()}
