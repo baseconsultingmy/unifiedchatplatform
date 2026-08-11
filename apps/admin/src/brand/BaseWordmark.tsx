@@ -13,8 +13,9 @@ type Props = {
 };
 
 /**
- * Product wordmarks from locked Base CI.
+ * Product wordmarks from locked Base CI (August 2026).
  * Company = Base Consulting · Product = BaseApp · OS surface = Base Kiosk OS
+ * See docs/BRAND.md — do not invent alternate lockups.
  */
 export function BaseWordmark({
   variant = "kiosk-os",
