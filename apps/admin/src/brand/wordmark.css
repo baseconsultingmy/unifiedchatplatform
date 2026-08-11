@@ -8,6 +8,17 @@
   user-select: none;
 }
 
+/* Product wordmark: BASEApp as one word (navy + grey), no divider */
+.base-wordmark-app {
+  gap: 0;
+}
+
+.base-app-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
 .base-wordmark-base {
   font-weight: 800;
   font-size: 1.15rem;

@@ -1,1 +1,1 @@
-export { BaseMark, BasePrimaryLogo, BaseWordmark } from "./BaseWordmark";
+export { BaseAppLogo, BaseMark, BasePrimaryLogo, BaseWordmark } from "./BaseWordmark";

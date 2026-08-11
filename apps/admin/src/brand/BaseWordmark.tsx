@@ -12,7 +12,8 @@ type Props = {
 };
 
 /**
- * Product wordmarks from locked Base CI (Transit OS pattern for Kiosk OS).
+ * Product wordmarks from locked Base CI.
+ * Company = Base Consulting · Product = BaseApp · OS surface = Base Kiosk OS
  */
 export function BaseWordmark({
   variant = "kiosk-os",
@@ -76,7 +77,7 @@ export function BaseWordmark({
   );
 }
 
-/** Official primary mark: family silhouettes + amber arc (from uploaded master PNG). */
+/** Official mark: family silhouettes + amber arc (shared by company + product). */
 export function BaseMark({ className = "", size = 36 }: { className?: string; size?: number }) {
   return (
     <img
@@ -90,8 +91,11 @@ export function BaseMark({ className = "", size = 36 }: { className?: string; si
   );
 }
 
-/** Official primary BASE logo (CONSULTING omitted for product). */
-export function BasePrimaryLogo({
+/**
+ * BaseApp product logo — family + arc + BaseApp (no Consulting).
+ * Company logo remains base-consulting-primary.png.
+ */
+export function BaseAppLogo({
   className = "",
   width = 220,
 }: {
@@ -100,11 +104,16 @@ export function BasePrimaryLogo({
 }) {
   return (
     <img
-      className={`base-primary-logo ${className}`.trim()}
-      src="/brand/base-primary.png"
+      className={`base-app-logo ${className}`.trim()}
+      src="/brand/base-app-primary.png"
       width={width}
-      alt="BASE"
+      alt="BaseApp"
       style={{ height: "auto" }}
     />
   );
+}
+
+/** @deprecated Prefer BaseAppLogo for product surfaces */
+export function BasePrimaryLogo(props: { className?: string; width?: number }) {
+  return <BaseAppLogo {...props} />;
 }

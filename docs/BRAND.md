@@ -6,9 +6,9 @@ Locked July 2026 · Internal brand use · Adapted from Base Consulting + Base Tr
 
 | Layer | Name | Use |
 |---|---|---|
-| Company | **Base Consulting** | Legal, footer, print masters |
-| Platform | **BaseApp** | Product suite, domain (`baseapp.asia`), admin title |
-| OS surface | **Base Kiosk OS** | Counter / kiosk shell wordmark (Transit-pattern) |
+| Company | **Base Consulting** | Company logo (family + arc + BASE + CONSULTING) |
+| Product | **BaseApp** | Product logo (family + arc + BaseApp) — login, product chrome |
+| OS surface | **Base Kiosk OS** | Counter shell wordmark (Transit-pattern: BASE \| Kiosk \[OS\]) |
 
 Architecture was reused from Transit; **visual CI is Base Consulting**, not Urge Transit bus livery.
 
@@ -37,18 +37,17 @@ CSS source of truth: [`brand/tokens.css`](../brand/tokens.css)
 - No gradients on logos
 - No multi-color silhouettes
 
-## Wordmarks
+## Logos
 
 | Asset | File | Use |
 |---|---|---|
-| **Primary** (family + arc + BASE) | `brand/logos/base-primary.svg` | Login, brand moments (CONSULTING omitted) |
-| Primary + CONSULTING | `brand/logos/base-consulting.svg` | Company lockup |
-| **Mark** (family + arc only) | `brand/logos/base-mark.svg` | Favicon, top-bar icon |
-| **Simplified** (arc over BASE) | `brand/logos/base-simplified.svg` | Compact wordmark |
-| Base Kiosk OS | `brand/logos/base-kiosk-os.svg` | Product wordmark light |
-| Base Kiosk OS dark | `brand/logos/base-kiosk-os-dark.svg` | Product wordmark on dark |
+| **Company** — Base Consulting | `brand/logos/base-consulting-primary.png` | Company lockup (includes CONSULTING) |
+| **Product** — BaseApp | `brand/logos/base-app-primary.png` | Product logo: family + arc + BaseApp |
+| **Mark** (family + arc only) | `brand/logos/base-mark.png` | Favicon, top-bar icon |
+| Base Kiosk OS | `brand/logos/base-kiosk-os.svg` | OS surface wordmark (light) |
+| Base Kiosk OS dark | `brand/logos/base-kiosk-os-dark.svg` | OS surface wordmark (dark) |
 
-Prefer the **primary** or **simplified** Base logos — do not invent alternate marks.
+Product logo uses the same family + amber arc as the company logo, with **BaseApp** under it (no CONSULTING).
 
 ### Base Kiosk OS pattern (from Transit OS)
 

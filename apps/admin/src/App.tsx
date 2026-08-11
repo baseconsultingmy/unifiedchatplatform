@@ -185,7 +185,7 @@ function Shell() {
         <div className="app-topbar-brand">
           <BaseMark size={48} />
           <div className="brand-meta">
-            <BaseWordmark variant="kiosk-os" />
+            <BaseWordmark variant="app" />
             <span className="app-topbar-shop">{shopLabel}</span>
           </div>
         </div>
